@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 function HomePage() {
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
-      <nav style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+    <div style={{ fontFamily: 'sans-serif', padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: '1100px', margin: '0 auto', boxSizing: 'border-box' }}>
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '40px' }}>
         <div><strong>Luke</strong></div>
-        <div style={{ display: 'flex', gap: '20px' }}>
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
           <a href="#about">About</a>
           <a href="#services">Services</a>
           <a href="#tools">Tools</a>
@@ -16,14 +16,14 @@ function HomePage() {
       </nav>
 
       <section style={{ marginBottom: '60px' }}>
-        <h1 style={{ fontSize: '42px', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', lineHeight: 1.1, marginBottom: '20px' }}>
           Freelance Musician, Drummer, Producer
         </h1>
-        <p style={{ fontSize: '18px', marginBottom: '20px' }}>
+        <p style={{ fontSize: 'clamp(16px, 2.4vw, 20px)', lineHeight: 1.6, marginBottom: '20px', maxWidth: '700px' }}>
           A clean home base for your music work, services, and tools.
         </p>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <a href="#services">
             <button>View Services</button>
           </a>
@@ -211,18 +211,18 @@ function TempoGuessrPage() {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+    <div style={{ fontFamily: 'sans-serif', padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: '1100px', margin: '0 auto', boxSizing: 'border-box' }}>
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '40px' }}>
         <strong>Tempo Guessr</strong>
         <Link to="/">← Back to Home</Link>
       </nav>
 
-      <h1 style={{ fontSize: '42px', marginBottom: '16px' }}>Tempo Guessr</h1>
-      <p style={{ fontSize: '18px', marginBottom: '30px' }}>
+      <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', lineHeight: 1.1, marginBottom: '16px' }}>Tempo Guessr</h1>
+      <p style={{ fontSize: 'clamp(16px, 2.4vw, 20px)', lineHeight: 1.6, marginBottom: '30px', maxWidth: '700px' }}>
         Hear a random metronome tempo, then guess the BPM.
       </p>
 
-      <div style={{ display: 'grid', gap: '24px', marginBottom: '30px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '24px', marginBottom: '30px' }}>
         <div>
           <label>Minimum BPM</label>
           <br />
@@ -242,7 +242,7 @@ function TempoGuessrPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
         <button onClick={startRound} disabled={isPlaying}>
           {isPlaying ? 'Playing...' : 'Start Round'}
         </button>
@@ -311,23 +311,23 @@ function TempoGuessrPage() {
 
 function BeatsPage() {
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+    <div style={{ fontFamily: 'sans-serif', padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: '1280px', margin: '0 auto', boxSizing: 'border-box' }}>
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '40px' }}>
         <strong>Beat Store</strong>
         <Link to="/">← Back to Home</Link>
       </nav>
 
-      <h1 style={{ fontSize: '42px', marginBottom: '16px' }}>Beat Store</h1>
-      <p style={{ fontSize: '18px', marginBottom: '30px' }}>
+      <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', lineHeight: 1.1, marginBottom: '16px' }}>Beat Store</h1>
+      <p style={{ fontSize: 'clamp(16px, 2.4vw, 20px)', lineHeight: 1.6, marginBottom: '30px', maxWidth: '700px' }}>
         Stream and purchase beats directly below.
       </p>
 
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%' }}>
         <iframe
           src="https://player.beatstars.com/?storeId=152173"
           width="100%"
-          height="800"
-          style={{ maxWidth: '1024px', border: 'none' }}
+          height="900"
+          style={{ width: '100%', maxWidth: '100%', minHeight: '70vh', border: 'none', display: 'block' }}
           title="BeatStars Store"
         ></iframe>
       </div>
