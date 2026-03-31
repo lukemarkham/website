@@ -30,6 +30,9 @@ function HomePage() {
           <Link to="/tempo-guessr">
             <button>Open Tempo Guessr</button>
           </Link>
+          <Link to="/beats">
+            <button>View Beat Store</button>
+          </Link>
         </div>
       </section>
 
@@ -52,12 +55,20 @@ function HomePage() {
 
       <section id="tools" style={{ marginBottom: '60px' }}>
         <h2>Tools</h2>
-        <div style={{ border: '1px solid #ccc', padding: '20px' }}>
+        <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px' }}>
           <h3>Tempo Guessr</h3>
           <p>
             A browser-based tool that plays a random tempo and lets you guess the BPM.
           </p>
           <Link to="/tempo-guessr">Go to Tempo Guessr</Link>
+        </div>
+
+        <div style={{ border: '1px solid #ccc', padding: '20px' }}>
+          <h3>Beat Store</h3>
+          <p>
+            Browse and purchase beats directly from my BeatStars store.
+          </p>
+          <Link to="/beats">Go to Beat Store</Link>
         </div>
       </section>
 
@@ -298,12 +309,39 @@ function TempoGuessrPage() {
   )
 }
 
+function BeatsPage() {
+  return (
+    <div style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <strong>Beat Store</strong>
+        <Link to="/">← Back to Home</Link>
+      </nav>
+
+      <h1 style={{ fontSize: '42px', marginBottom: '16px' }}>Beat Store</h1>
+      <p style={{ fontSize: '18px', marginBottom: '30px' }}>
+        Stream and purchase beats directly below.
+      </p>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <iframe
+          src="https://player.beatstars.com/?storeId=152173"
+          width="100%"
+          height="800"
+          style={{ maxWidth: '1024px', border: 'none' }}
+          title="BeatStars Store"
+        ></iframe>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/tempo-guessr" element={<TempoGuessrPage />} />
+        <Route path="/beats" element={<BeatsPage />} />
       </Routes>
     </BrowserRouter>
   )
