@@ -2,80 +2,179 @@ import './App.css'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+const pageShellStyle = {
+  width: '100%',
+  maxWidth: '1200px',
+  margin: '0 auto',
+  padding: 'clamp(24px, 4vw, 48px)',
+  boxSizing: 'border-box',
+  textAlign: 'center',
+}
+
+const sectionStyle = {
+  marginBottom: '32px',
+  padding: 'clamp(24px, 3vw, 36px)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  borderRadius: '28px',
+  background: 'rgba(255, 255, 255, 0.04)',
+  boxShadow: '0 18px 60px rgba(0, 0, 0, 0.22)',
+  backdropFilter: 'blur(8px)',
+}
+
+const titleStyle = {
+  fontSize: 'clamp(38px, 7vw, 72px)',
+  lineHeight: 1.02,
+  letterSpacing: '-0.04em',
+  margin: '0 0 18px',
+}
+
+const introStyle = {
+  fontSize: 'clamp(16px, 2.3vw, 20px)',
+  lineHeight: 1.7,
+  margin: '0 auto 24px',
+  maxWidth: '760px',
+  color: 'rgba(245, 239, 230, 0.82)',
+}
+
+const sectionHeadingStyle = {
+  fontSize: 'clamp(24px, 4vw, 34px)',
+  letterSpacing: '-0.03em',
+  margin: '0 0 12px',
+}
+
+const mutedTextStyle = {
+  color: 'rgba(245, 239, 230, 0.74)',
+  lineHeight: 1.7,
+  margin: 0,
+}
+
+const gridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+  gap: '20px',
+}
+
+const cardStyle = {
+  padding: '24px',
+  borderRadius: '22px',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
+  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+}
+
+const buttonRowStyle = {
+  display: 'flex',
+  gap: '12px',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+}
+
+const metaStyle = {
+  display: 'inline-block',
+  marginBottom: '18px',
+  padding: '8px 14px',
+  borderRadius: '999px',
+  border: '1px solid rgba(212, 176, 106, 0.35)',
+  background: 'rgba(212, 176, 106, 0.08)',
+  color: '#d4b06a',
+  fontSize: '12px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.18em',
+}
+
+function PrimaryButton({ children }) {
+  return <button className="primary-button">{children}</button>
+}
+
+function SecondaryButton({ children }) {
+  return <button className="secondary-button">{children}</button>
+}
+
 function HomePage() {
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: '1100px', margin: '0 auto', boxSizing: 'border-box', textAlign: 'center' }}>
-      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '40px' }}>
-        <div><strong>Luke</strong></div>
+    <div style={pageShellStyle}>
+      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '28px' }}>
+        <div className="wordmark">Luke</div>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a href="#about">About</a>
-          <a href="#services">Services</a>
-          <a href="#tools">Tools</a>
-          <a href="#contact">Contact</a>
+          <a className="nav-link" href="#about">About</a>
+          <a className="nav-link" href="#services">Services</a>
+          <a className="nav-link" href="#tools">Tools</a>
+          <a className="nav-link" href="#contact">Contact</a>
         </div>
       </nav>
 
-      <section style={{ marginBottom: '60px' }}>
-        <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', lineHeight: 1.1, marginBottom: '20px' }}>
-          Freelance Musician, Drummer, Producer
-        </h1>
-        <p style={{ fontSize: 'clamp(16px, 2.4vw, 20px)', lineHeight: 1.6, margin: '0 auto 20px', maxWidth: '700px' }}>
-          A clean home base for your music work, services, and tools.
+      <section style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 56px)', marginBottom: '28px' }}>
+        <div style={metaStyle}>Freelance Musician • Drummer • Producer</div>
+        <h1 style={titleStyle}>Modern musician website, beat store, and practice tools in one place.</h1>
+        <p style={introStyle}>
+          Built as a clean home base for your music work, your beat catalog, and tools like Tempo Guessr — all with a more premium, artist-first look.
         </p>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={buttonRowStyle}>
           <a href="#services">
-            <button>View Services</button>
+            <PrimaryButton>View Services</PrimaryButton>
           </a>
           <Link to="/tempo-guessr">
-            <button>Open Tempo Guessr</button>
+            <SecondaryButton>Open Tempo Guessr</SecondaryButton>
           </Link>
           <Link to="/beats">
-            <button>View Beat Store</button>
+            <SecondaryButton>View Beat Store</SecondaryButton>
           </Link>
         </div>
       </section>
 
-      <section id="about" style={{ marginBottom: '60px' }}>
-        <h2>About</h2>
-        <p>
-          This will eventually be your bio. You can describe your background,
-          experience, and the type of work you want to attract.
+      <section id="about" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>About</h2>
+        <p style={{ ...mutedTextStyle, maxWidth: '760px', margin: '0 auto' }}>
+          This can become your bio section: who you are, what you play, what kind of records or artists you like working with, and why someone should trust you with a session, production job, or live date.
         </p>
       </section>
 
-      <section id="services" style={{ marginBottom: '60px' }}>
-        <h2>Services</h2>
-        <ul>
-          <li><strong>Session Drumming:</strong> Remote or in-person drum tracking</li>
-          <li><strong>Production & Editing:</strong> Arrangement, editing, programming</li>
-          <li><strong>Live Performance:</strong> Touring and live gigs</li>
-        </ul>
-      </section>
-
-      <section id="tools" style={{ marginBottom: '60px' }}>
-        <h2>Tools</h2>
-        <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px' }}>
-          <h3>Tempo Guessr</h3>
-          <p>
-            A browser-based tool that plays a random tempo and lets you guess the BPM.
-          </p>
-          <Link to="/tempo-guessr">Go to Tempo Guessr</Link>
-        </div>
-
-        <div style={{ border: '1px solid #ccc', padding: '20px' }}>
-          <h3>Beat Store</h3>
-          <p>
-            Browse and purchase beats directly from my BeatStars store.
-          </p>
-          <Link to="/beats">Go to Beat Store</Link>
+      <section id="services" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>Services</h2>
+        <div style={gridStyle}>
+          <div style={cardStyle}>
+            <h3 className="card-title">Session Drumming</h3>
+            <p style={mutedTextStyle}>Remote or in-person drum tracking with a clean process, musical instincts, and player-first communication.</p>
+          </div>
+          <div style={cardStyle}>
+            <h3 className="card-title">Production & Editing</h3>
+            <p style={mutedTextStyle}>Arrangement help, editing, programming, and practical musical problem-solving for artists and producers.</p>
+          </div>
+          <div style={cardStyle}>
+            <h3 className="card-title">Live Performance</h3>
+            <p style={mutedTextStyle}>Touring, live dates, and dependable musical support for artists who need someone prepared and adaptable.</p>
+          </div>
         </div>
       </section>
 
-      <section id="contact" style={{ marginBottom: '60px' }}>
-        <h2>Contact</h2>
-        <p>Reach out for sessions, gigs, or collaborations.</p>
-        <a href="mailto:you@example.com">Email Me</a>
+      <section id="tools" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>Tools & Store</h2>
+        <div style={gridStyle}>
+          <div style={cardStyle}>
+            <h3 className="card-title">Tempo Guessr</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              A browser-based tool that plays a random tempo and lets you guess the BPM.
+            </p>
+            <Link className="text-link" to="/tempo-guessr">Go to Tempo Guessr</Link>
+          </div>
+
+          <div style={cardStyle}>
+            <h3 className="card-title">Beat Store</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Browse and purchase beats directly from your BeatStars store without leaving the site.
+            </p>
+            <Link className="text-link" to="/beats">Go to Beat Store</Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>Contact</h2>
+        <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
+          Reach out for sessions, gigs, collaborations, production work, or custom music inquiries.
+        </p>
+        <a className="text-link" href="mailto:you@example.com">Email Me</a>
       </section>
     </div>
   )
@@ -211,126 +310,138 @@ function TempoGuessrPage() {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: '1100px', margin: '0 auto', boxSizing: 'border-box', textAlign: 'center' }}>
-      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '40px' }}>
-        <strong>Tempo Guessr</strong>
-        <Link to="/">← Back to Home</Link>
+    <div style={pageShellStyle}>
+      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '28px' }}>
+        <div className="wordmark">Tempo Guessr</div>
+        <Link className="nav-link" to="/">Back to Home</Link>
       </nav>
 
-      <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', lineHeight: 1.1, marginBottom: '16px' }}>Tempo Guessr</h1>
-      <p style={{ fontSize: 'clamp(16px, 2.4vw, 20px)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: '700px' }}>
-        Hear a random metronome tempo, then guess the BPM.
-      </p>
+      <section style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Tempo Guessr</h1>
+        <p style={introStyle}>Hear a random metronome tempo, then guess the BPM.</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '24px', marginBottom: '30px', textAlign: 'center' }}>
-        <div>
-          <label>Minimum BPM</label>
-          <br />
-          <input type="number" value={minBpm} onChange={(e) => setMinBpm(e.target.value)} />
-        </div>
-
-        <div>
-          <label>Maximum BPM</label>
-          <br />
-          <input type="number" value={maxBpm} onChange={(e) => setMaxBpm(e.target.value)} />
-        </div>
-
-        <div>
-          <label>Bars of clicks</label>
-          <br />
-          <input type="number" min="1" max="8" value={bars} onChange={(e) => setBars(e.target.value)} />
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '24px' }}>
-        <button onClick={startRound} disabled={isPlaying}>
-          {isPlaying ? 'Playing...' : 'Start Round'}
-        </button>
-      </div>
-
-      <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-        <label>Your BPM guess</label>
-        <br />
-        <input
-          type="number"
-          value={guess}
-          onChange={(e) => setGuess(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              submitGuess()
-            }
-          }}
-        />
-        <button onClick={submitGuess} disabled={!roundActive || isPlaying || guess === ''} style={{ marginLeft: '10px' }}>
-          Submit Guess
-        </button>
-      </div>
-
-      <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '30px', textAlign: 'center' }}>
-        {!result ? (
-          <p>
-            {roundActive
-              ? isPlaying
-                ? 'Listen to the clicks, then enter your guess when playback ends.'
-                : 'Playback finished. Enter your BPM guess.'
-              : 'Press Start Round to begin.'}
-          </p>
-        ) : (
-          <div>
-            <p><strong>Target tempo:</strong> {result.target} BPM</p>
-            <p><strong>Your guess:</strong> {result.guess} BPM</p>
-            <p><strong>Error:</strong> {result.diff} BPM</p>
-            <p><strong>Score:</strong> {result.score}/100</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '18px', marginBottom: '24px' }}>
+          <div className="control-card">
+            <label className="control-label">Minimum BPM</label>
+            <input className="control-input" type="number" value={minBpm} onChange={(e) => setMinBpm(e.target.value)} />
           </div>
-        )}
-      </div>
 
-      <div style={{ textAlign: 'center' }}>
-        <h2>Session Stats</h2>
-        <p><strong>Rounds played:</strong> {history.length}</p>
-        <p><strong>Average error:</strong> {averageError === null ? '—' : `${averageError} BPM`}</p>
+          <div className="control-card">
+            <label className="control-label">Maximum BPM</label>
+            <input className="control-input" type="number" value={maxBpm} onChange={(e) => setMaxBpm(e.target.value)} />
+          </div>
 
-        <div style={{ marginTop: '20px' }}>
-          {history.length === 0 ? (
-            <p>No rounds yet.</p>
+          <div className="control-card">
+            <label className="control-label">Bars of Clicks</label>
+            <input className="control-input" type="number" min="1" max="8" value={bars} onChange={(e) => setBars(e.target.value)} />
+          </div>
+        </div>
+
+        <div style={{ ...buttonRowStyle, marginBottom: '24px' }}>
+          <button className="primary-button" onClick={startRound} disabled={isPlaying}>
+            {isPlaying ? 'Playing...' : 'Start Round'}
+          </button>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: '18px' }}>
+          <label className="control-label">Your BPM Guess</label>
+          <div style={{ ...buttonRowStyle, marginTop: '14px' }}>
+            <input
+              className="control-input guess-input"
+              type="number"
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  submitGuess()
+                }
+              }}
+            />
+            <button className="secondary-button" onClick={submitGuess} disabled={!roundActive || isPlaying || guess === ''}>
+              Submit Guess
+            </button>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: '18px' }}>
+          {!result ? (
+            <p style={mutedTextStyle}>
+              {roundActive
+                ? isPlaying
+                  ? 'Listen to the clicks, then enter your guess when playback ends.'
+                  : 'Playback finished. Enter your BPM guess.'
+                : 'Press Start Round to begin.'}
+            </p>
           ) : (
-            history.map((item) => (
-              <div key={item.id} style={{ borderTop: '1px solid #ddd', padding: '12px 0' }}>
-                <div><strong>Guess:</strong> {item.guess} BPM</div>
-                <div><strong>Target:</strong> {item.target} BPM</div>
-                <div><strong>Off by:</strong> {item.diff} BPM</div>
-                <div><strong>Score:</strong> {item.score}</div>
+            <div className="stats-grid">
+              <div>
+                <div className="stat-label">Target Tempo</div>
+                <div className="stat-value">{result.target} BPM</div>
               </div>
-            ))
+              <div>
+                <div className="stat-label">Your Guess</div>
+                <div className="stat-value">{result.guess} BPM</div>
+              </div>
+              <div>
+                <div className="stat-label">Error</div>
+                <div className="stat-value">{result.diff} BPM</div>
+              </div>
+              <div>
+                <div className="stat-label">Score</div>
+                <div className="stat-value">{result.score}/100</div>
+              </div>
+            </div>
           )}
         </div>
-      </div>
+
+        <div style={cardStyle}>
+          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Session Stats</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+            Rounds played: {history.length} • Average error: {averageError === null ? '—' : `${averageError} BPM`}
+          </p>
+
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {history.length === 0 ? (
+              <p style={mutedTextStyle}>No rounds yet.</p>
+            ) : (
+              history.map((item) => (
+                <div key={item.id} className="history-row">
+                  <span>Guess {item.guess}</span>
+                  <span>Target {item.target}</span>
+                  <span>Off by {item.diff}</span>
+                  <span>Score {item.score}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
 
 function BeatsPage() {
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: '1280px', margin: '0 auto', boxSizing: 'border-box', textAlign: 'center' }}>
-      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '40px' }}>
-        <strong>Beat Store</strong>
-        <Link to="/">← Back to Home</Link>
+    <div style={{ ...pageShellStyle, maxWidth: '1320px' }}>
+      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '28px' }}>
+        <div className="wordmark">Beat Store</div>
+        <Link className="nav-link" to="/">Back to Home</Link>
       </nav>
 
-      <h1 style={{ fontSize: 'clamp(32px, 6vw, 56px)', lineHeight: 1.1, marginBottom: '16px' }}>Beat Store</h1>
-      <p style={{ fontSize: 'clamp(16px, 2.4vw, 20px)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: '700px' }}>
-        Stream and purchase beats directly below.
-      </p>
+      <section style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Beat Store</h1>
+        <p style={introStyle}>Stream and purchase beats directly below.</p>
 
-      <div style={{ width: '100%' }}>
-        <iframe
-          src="https://player.beatstars.com/?storeId=152173"
-          width="100%"
-          height="900"
-          style={{ width: '100%', maxWidth: '100%', minHeight: '70vh', border: 'none', display: 'block' }}
-          title="BeatStars Store"
-        ></iframe>
-      </div>
+        <div className="embed-shell">
+          <iframe
+            src="https://player.beatstars.com/?storeId=152173"
+            width="100%"
+            height="900"
+            style={{ width: '100%', maxWidth: '100%', minHeight: '70vh', border: 'none', display: 'block', borderRadius: '18px' }}
+            title="BeatStars Store"
+          ></iframe>
+        </div>
+      </section>
     </div>
   )
 }
