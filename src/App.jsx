@@ -323,17 +323,44 @@ function TempoGuessrPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '18px', marginBottom: '24px' }}>
           <div className="control-card">
             <label className="control-label">Minimum BPM</label>
-            <input className="control-input" type="number" value={minBpm} onChange={(e) => setMinBpm(e.target.value)} />
+            <div className="range-value">{minBpm}</div>
+            <input
+              className="range-input"
+              type="range"
+              min="30"
+              max="250"
+              step="1"
+              value={minBpm}
+              onChange={(e) => setMinBpm(e.target.value)}
+            />
           </div>
 
           <div className="control-card">
             <label className="control-label">Maximum BPM</label>
-            <input className="control-input" type="number" value={maxBpm} onChange={(e) => setMaxBpm(e.target.value)} />
+            <div className="range-value">{maxBpm}</div>
+            <input
+              className="range-input"
+              type="range"
+              min="30"
+              max="250"
+              step="1"
+              value={maxBpm}
+              onChange={(e) => setMaxBpm(e.target.value)}
+            />
           </div>
 
           <div className="control-card">
             <label className="control-label">Bars of Clicks</label>
-            <input className="control-input" type="number" min="1" max="8" value={bars} onChange={(e) => setBars(e.target.value)} />
+            <div className="range-value">{bars}</div>
+            <input
+              className="range-input"
+              type="range"
+              min="1"
+              max="8"
+              step="1"
+              value={bars}
+              onChange={(e) => setBars(e.target.value)}
+            />
           </div>
         </div>
 
