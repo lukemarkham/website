@@ -2,49 +2,52 @@ import './App.css'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
+
 const pageShellStyle = {
   width: '100%',
-  maxWidth: '1200px',
+  maxWidth: '1180px',
   margin: '0 auto',
-  padding: 'clamp(24px, 4vw, 48px)',
+  padding: 'clamp(24px, 4vw, 56px)',
   boxSizing: 'border-box',
   textAlign: 'center',
 }
 
 const sectionStyle = {
-  marginBottom: '32px',
-  padding: 'clamp(24px, 3vw, 36px)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  borderRadius: '28px',
-  background: 'rgba(255, 255, 255, 0.04)',
-  boxShadow: '0 18px 60px rgba(0, 0, 0, 0.22)',
-  backdropFilter: 'blur(8px)',
+  marginBottom: '28px',
+  padding: 'clamp(26px, 3vw, 38px)',
+  border: '1px solid var(--surface-border)',
+  borderRadius: '30px',
+  background: 'var(--surface)',
+  boxShadow: 'var(--surface-shadow)',
+  backdropFilter: 'blur(14px)',
 }
 
 const titleStyle = {
   fontSize: 'clamp(38px, 7vw, 72px)',
-  lineHeight: 1.02,
-  letterSpacing: '-0.04em',
-  margin: '0 0 18px',
+  lineHeight: 0.96,
+  letterSpacing: '-0.045em',
+  margin: '0 0 20px',
 }
 
 const introStyle = {
   fontSize: 'clamp(16px, 2.3vw, 20px)',
-  lineHeight: 1.7,
-  margin: '0 auto 24px',
-  maxWidth: '760px',
-  color: 'rgba(245, 239, 230, 0.82)',
+  lineHeight: 1.75,
+  margin: '0 auto 28px',
+  maxWidth: '720px',
+  color: 'var(--text-soft)',
 }
 
 const sectionHeadingStyle = {
   fontSize: 'clamp(24px, 4vw, 34px)',
-  letterSpacing: '-0.03em',
-  margin: '0 0 12px',
+  letterSpacing: '-0.035em',
+  margin: '0 0 14px',
 }
 
 const mutedTextStyle = {
-  color: 'rgba(245, 239, 230, 0.74)',
-  lineHeight: 1.7,
+  color: 'var(--text-muted)',
+  lineHeight: 1.75,
   margin: 0,
 }
 
@@ -55,11 +58,11 @@ const gridStyle = {
 }
 
 const cardStyle = {
-  padding: '24px',
-  borderRadius: '22px',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  background: 'linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
-  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+  padding: '26px',
+  borderRadius: '24px',
+  border: '1px solid var(--surface-border)',
+  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03))',
+  boxShadow: '0 16px 40px rgba(3, 6, 10, 0.18)',
 }
 
 const buttonRowStyle = {
@@ -72,14 +75,46 @@ const buttonRowStyle = {
 const metaStyle = {
   display: 'inline-block',
   marginBottom: '18px',
-  padding: '8px 14px',
+  padding: '9px 16px',
   borderRadius: '999px',
-  border: '1px solid rgba(212, 176, 106, 0.35)',
-  background: 'rgba(212, 176, 106, 0.08)',
-  color: '#d4b06a',
-  fontSize: '12px',
+  border: '1px solid rgba(205, 168, 116, 0.28)',
+  background: 'rgba(205, 168, 116, 0.08)',
+  color: 'var(--accent-strong)',
+  fontSize: '11px',
   textTransform: 'uppercase',
-  letterSpacing: '0.18em',
+  letterSpacing: '0.22em',
+}
+
+function SiteNav({ wordmark = 'Luke' }) {
+  return (
+    <nav className="site-nav">
+      <div className="wordmark">{wordmark}</div>
+      <div className="nav-links">
+        <a className="nav-link" href="/#about">About</a>
+        <a className="nav-link" href="/#services">Services</a>
+        <div className="nav-dropdown">
+          <button
+            type="button"
+            className="nav-link nav-trigger"
+            aria-haspopup="menu"
+          >
+            Content
+          </button>
+          <div className="nav-dropdown-menu" role="menu">
+            <Link className="dropdown-link" to="/video">
+              Video
+            </Link>
+            <Link className="dropdown-link" to="/audio">
+              Audio
+            </Link>
+          </div>
+        </div>
+        <a className="nav-link" href="/#tools">Practice Tools</a>
+        <a className="nav-link" href="/#store">Beat Store</a>
+        <a className="nav-link" href="/#contact">Contact</a>
+      </div>
+    </nav>
+  )
 }
 
 function PrimaryButton({ children }) {
@@ -93,30 +128,21 @@ function SecondaryButton({ children }) {
 function HomePage() {
   return (
     <div style={pageShellStyle}>
-      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '28px' }}>
-        <div className="wordmark">Luke</div>
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a className="nav-link" href="#about">About</a>
-          <a className="nav-link" href="#services">Services</a>
-          <a className="nav-link" href="#tools">Practice Tools</a>
-          <a className="nav-link" href="#store">Beat Store</a>
-          <a className="nav-link" href="#contact">Contact</a>
-        </div>
-      </nav>
+      <SiteNav />
 
-      <section style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 56px)', marginBottom: '28px' }}>
+      <section className="hero-shell" style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 60px)', marginBottom: '28px' }}>
         <div style={metaStyle}>Freelance Musician • Drummer • Producer</div>
         <h1 style={titleStyle}>Modern musician website, beat store, and practice tools in one place.</h1>
         <p style={introStyle}>
-          Built as a clean home base for your music work, your beat catalog, and tools like Tempo Guessr — all with a more premium, artist-first look.
+          Built as a clear home base for sessions, production work, release-ready content, and tools like Tempo Guessr, with a sharper layout that feels more like a professional portfolio than a starter site.
         </p>
 
-        <div style={buttonRowStyle}>
+        <div style={buttonRowStyle} className="hero-actions">
           <a href="#services">
             <PrimaryButton>View Services</PrimaryButton>
           </a>
-          <Link to="/tempo-guessr">
-            <SecondaryButton>Open Tempo Guessr</SecondaryButton>
+          <Link to="/video">
+            <SecondaryButton>Watch Video Work</SecondaryButton>
           </Link>
           <Link to="/beats">
             <SecondaryButton>View Beat Store</SecondaryButton>
@@ -162,6 +188,26 @@ function HomePage() {
         </div>
       </section>
 
+      <section id="content" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>Content</h2>
+        <div style={gridStyle}>
+          <div style={cardStyle}>
+            <h3 className="card-title">Video</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              A dedicated place for live clips, studio sessions, playthroughs, reels, and visual work that supports your brand.
+            </p>
+            <Link className="text-link" to="/video">Open Video Page</Link>
+          </div>
+          <div style={cardStyle}>
+            <h3 className="card-title">Audio</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Highlight productions, mixes, records you played on, demos, or curated listening selections without forcing everything into one page.
+            </p>
+            <Link className="text-link" to="/audio">Open Audio Page</Link>
+          </div>
+        </div>
+      </section>
+
       <section id="store" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Beat Store</h2>
         <div style={gridStyle}>
@@ -198,6 +244,26 @@ function clamp(value, min, max) {
 
 function scoreFromDifference(diff) {
   return Math.max(0, 100 - diff * 5)
+}
+
+function buildYouTubeEmbedUrl(videoId) {
+  return `https://www.youtube.com/embed/${videoId}?rel=0`
+}
+
+function buildYouTubePlaylistEmbedUrl(playlistId) {
+  return `https://www.youtube.com/embed?listType=playlist&list=${playlistId}&rel=0`
+}
+
+function getBestThumbnail(thumbnails) {
+  if (!thumbnails) return ''
+  return (
+    thumbnails.maxres?.url ||
+    thumbnails.standard?.url ||
+    thumbnails.high?.url ||
+    thumbnails.medium?.url ||
+    thumbnails.default?.url ||
+    ''
+  )
 }
 
 function TempoGuessrPage() {
@@ -317,10 +383,7 @@ function TempoGuessrPage() {
 
   return (
     <div style={pageShellStyle}>
-      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '28px' }}>
-        <div className="wordmark">Tempo Guessr</div>
-        <Link className="nav-link" to="/">Back to Home</Link>
-      </nav>
+      <SiteNav wordmark="Tempo Guessr" />
 
       <section style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Tempo Guessr</h1>
@@ -456,10 +519,7 @@ function TempoGuessrPage() {
 function BeatsPage() {
   return (
     <div style={{ ...pageShellStyle, maxWidth: '1320px' }}>
-      <nav style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '28px' }}>
-        <div className="wordmark">Beat Store</div>
-        <Link className="nav-link" to="/">Back to Home</Link>
-      </nav>
+      <SiteNav wordmark="Beat Store" />
 
       <section style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Beat Store</h1>
@@ -479,6 +539,187 @@ function BeatsPage() {
   )
 }
 
+function VideoPage() {
+  const [videos, setVideos] = useState([])
+  const [status, setStatus] = useState(YOUTUBE_API_KEY ? 'loading' : 'fallback')
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    if (!YOUTUBE_API_KEY) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    async function loadPlaylistVideos() {
+      try {
+        setStatus('loading')
+        setErrorMessage('')
+
+        const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems')
+        url.searchParams.set('part', 'snippet,contentDetails')
+        url.searchParams.set('maxResults', '24')
+        url.searchParams.set('playlistId', YOUTUBE_PLAYLIST_ID)
+        url.searchParams.set('key', YOUTUBE_API_KEY)
+
+        const response = await fetch(url, { signal: controller.signal })
+        if (!response.ok) {
+          throw new Error(`YouTube API request failed with status ${response.status}.`)
+        }
+
+        const data = await response.json()
+        const playlistVideos = (data.items || [])
+          .map((item) => {
+            const snippet = item.snippet || {}
+            const resourceVideoId = snippet.resourceId?.videoId
+            const contentVideoId = item.contentDetails?.videoId
+            const videoId = resourceVideoId || contentVideoId
+
+            if (!videoId) {
+              return null
+            }
+
+            return {
+              id: item.id,
+              videoId,
+              title: snippet.title || 'Untitled video',
+              description: snippet.description || '',
+              thumbnail: getBestThumbnail(snippet.thumbnails),
+            }
+          })
+          .filter(Boolean)
+
+        if (playlistVideos.length === 0) {
+          throw new Error('No playlist videos were returned.')
+        }
+
+        setVideos(playlistVideos)
+        setStatus('ready')
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return
+        }
+
+        setStatus('fallback')
+        setErrorMessage(error.message)
+      }
+    }
+
+    loadPlaylistVideos()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav wordmark="Video" />
+
+      <section style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+        <div style={metaStyle}>Content</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Video</h1>
+        <p style={introStyle}>
+          This page now pulls from your YouTube playlist automatically when an API key is configured, so you can update the playlist once and let the site reflect it.
+        </p>
+
+        {status === 'ready' ? (
+          <div className="video-portfolio">
+            <div className="video-portfolio-header">
+              <h2 style={{ ...sectionHeadingStyle, marginBottom: '6px' }}>Playlist Grid</h2>
+              <p style={mutedTextStyle}>
+                {videos.length} videos pulled from YouTube. Add a new video to the playlist and it appears here automatically.
+              </p>
+            </div>
+
+            <div className="video-grid">
+              {videos.map((video) => (
+                <article key={video.id} className="video-grid-card">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.videoId}&list=${YOUTUBE_PLAYLIST_ID}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="video-grid-link"
+                  >
+                    <div className="video-grid-media">
+                      <img className="video-thumb" src={video.thumbnail} alt="" />
+                      <span className="video-play-badge">Watch</span>
+                    </div>
+                    <div className="video-card-copy">
+                      <span className="video-card-title">{video.title}</span>
+                      {video.description ? (
+                        <span className="video-card-description">{video.description}</span>
+                      ) : null}
+                    </div>
+                  </a>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="video-fallback-grid">
+            <div style={cardStyle}>
+              <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Playlist Embed</h2>
+              <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+                {status === 'loading'
+                  ? 'Loading the playlist from YouTube.'
+                  : 'The page is using the direct YouTube playlist embed because no API key is configured or the playlist request failed.'}
+              </p>
+              {errorMessage ? <p className="video-note">{errorMessage}</p> : null}
+
+              <div className="embed-shell">
+                <iframe
+                  src={buildYouTubePlaylistEmbedUrl(YOUTUBE_PLAYLIST_ID)}
+                  title="YouTube playlist"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                  className="video-frame"
+                ></iframe>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Auto-Populate Setup</h2>
+              <p style={{ ...mutedTextStyle, marginBottom: '14px' }}>
+                To render each playlist video as its own card, add a referrer-restricted YouTube Data API key to your Vite env as <code>VITE_YOUTUBE_API_KEY</code>.
+              </p>
+              <p className="video-note">Playlist ID: {YOUTUBE_PLAYLIST_ID}</p>
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function AudioPage() {
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav wordmark="Audio" />
+
+      <section style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+        <div style={metaStyle}>Content</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Audio</h1>
+        <p style={introStyle}>
+          Use this page for productions, session credits, featured tracks, beat snippets, or curated playlists that show your sound clearly.
+        </p>
+
+        <div style={gridStyle}>
+          <div style={cardStyle}>
+            <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Featured Tracks</h2>
+            <p style={mutedTextStyle}>Lead with the strongest examples and keep the section selective. Strong curation reads more professionally than volume.</p>
+          </div>
+          <div style={cardStyle}>
+            <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Credits & Collaborations</h2>
+            <p style={mutedTextStyle}>Add short notes about the artist, your role, and the type of work so a visitor immediately understands the context.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -486,6 +727,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/tempo-guessr" element={<TempoGuessrPage />} />
         <Route path="/beats" element={<BeatsPage />} />
+        <Route path="/video" element={<VideoPage />} />
+        <Route path="/audio" element={<AudioPage />} />
       </Routes>
     </BrowserRouter>
   )
