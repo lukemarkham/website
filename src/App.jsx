@@ -85,11 +85,12 @@ const metaStyle = {
   letterSpacing: '0.22em',
 }
 
-function SiteNav({ wordmark = 'Luke' }) {
+function SiteNav({ showHomeLink = false }) {
   return (
     <nav className="site-nav">
-      <div className="wordmark">{wordmark}</div>
+      <div className="wordmark">Luke Markham</div>
       <div className="nav-links">
+        {showHomeLink ? <Link className="nav-link" to="/">Home</Link> : null}
         <a className="nav-link" href="/#about">About</a>
         <a className="nav-link" href="/#services">Services</a>
         <div className="nav-dropdown">
@@ -109,7 +110,20 @@ function SiteNav({ wordmark = 'Luke' }) {
             </Link>
           </div>
         </div>
-        <a className="nav-link" href="/#tools">Practice Tools</a>
+        <div className="nav-dropdown">
+          <button
+            type="button"
+            className="nav-link nav-trigger"
+            aria-haspopup="menu"
+          >
+            Practice Tools
+          </button>
+          <div className="nav-dropdown-menu" role="menu">
+            <Link className="dropdown-link" to="/tempo-guessr">
+              Tempo Guessr
+            </Link>
+          </div>
+        </div>
         <a className="nav-link" href="/#store">Beat Store</a>
         <a className="nav-link" href="/#contact">Contact</a>
       </div>
@@ -130,7 +144,7 @@ function HomePage() {
     <div style={pageShellStyle}>
       <SiteNav />
 
-      <section className="hero-shell" style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 60px)', marginBottom: '28px' }}>
+      <section className="hero-shell surface-panel" style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 60px)', marginBottom: '28px' }}>
         <div style={metaStyle}>Freelance Musician • Drummer • Producer</div>
         <h1 style={titleStyle}>Modern musician website, beat store, and practice tools in one place.</h1>
         <p style={introStyle}>
@@ -150,35 +164,35 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="about" style={sectionStyle}>
+      <section id="about" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>About</h2>
         <p style={{ ...mutedTextStyle, maxWidth: '760px', margin: '0 auto' }}>
           This can become your bio section: who you are, what you play, what kind of records or artists you like working with, and why someone should trust you with a session, production job, or live date.
         </p>
       </section>
 
-      <section id="services" style={sectionStyle}>
+      <section id="services" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Services</h2>
         <div style={gridStyle}>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Session Drumming</h3>
             <p style={mutedTextStyle}>Remote or in-person drum tracking with a clean process, musical instincts, and player-first communication.</p>
           </div>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Production & Editing</h3>
             <p style={mutedTextStyle}>Arrangement help, editing, programming, and practical musical problem-solving for artists and producers.</p>
           </div>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Live Performance</h3>
             <p style={mutedTextStyle}>Touring, live dates, and dependable musical support for artists who need someone prepared and adaptable.</p>
           </div>
         </div>
       </section>
 
-      <section id="tools" style={sectionStyle}>
+      <section id="tools" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Practice Tools</h2>
         <div style={gridStyle}>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Tempo Guessr</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
               A browser-based tool that plays a random tempo and lets you guess the BPM.
@@ -188,17 +202,17 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="content" style={sectionStyle}>
+      <section id="content" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Content</h2>
         <div style={gridStyle}>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Video</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
               A dedicated place for live clips, studio sessions, playthroughs, reels, and visual work that supports your brand.
             </p>
             <Link className="text-link" to="/video">Open Video Page</Link>
           </div>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Audio</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
               Highlight productions, mixes, records you played on, demos, or curated listening selections without forcing everything into one page.
@@ -208,10 +222,10 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="store" style={sectionStyle}>
+      <section id="store" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Beat Store</h2>
         <div style={gridStyle}>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Beat Store</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
               Browse and purchase beats directly from your BeatStars store without leaving the site.
@@ -221,7 +235,7 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="contact" style={sectionStyle}>
+      <section id="contact" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Contact</h2>
         <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
           Reach out for sessions, gigs, collaborations, production work, or custom music inquiries.
@@ -383,9 +397,9 @@ function TempoGuessrPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav wordmark="Tempo Guessr" />
+      <SiteNav showHomeLink />
 
-      <section style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Tempo Guessr</h1>
         <p style={introStyle}>Hear a random metronome tempo, then guess the BPM.</p>
 
@@ -439,7 +453,7 @@ function TempoGuessrPage() {
           </button>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '18px' }}>
+        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
           <label className="control-label">Your BPM Guess</label>
           <div style={{ ...buttonRowStyle, marginTop: '14px' }}>
             <input
@@ -459,7 +473,7 @@ function TempoGuessrPage() {
           </div>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '18px' }}>
+        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
           {!result ? (
             <p style={mutedTextStyle}>
               {roundActive
@@ -490,7 +504,7 @@ function TempoGuessrPage() {
           )}
         </div>
 
-        <div style={cardStyle}>
+        <div className="surface-card" style={cardStyle}>
           <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Session Stats</h2>
           <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
             Rounds played: {history.length} • Average error: {averageError === null ? '—' : `${averageError} BPM`}
@@ -519,9 +533,9 @@ function TempoGuessrPage() {
 function BeatsPage() {
   return (
     <div style={{ ...pageShellStyle, maxWidth: '1320px' }}>
-      <SiteNav wordmark="Beat Store" />
+      <SiteNav showHomeLink />
 
-      <section style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Beat Store</h1>
         <p style={introStyle}>Stream and purchase beats directly below.</p>
 
@@ -614,9 +628,9 @@ function VideoPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav wordmark="Video" />
+      <SiteNav showHomeLink />
 
-      <section style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
         <div style={metaStyle}>Content</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Video</h1>
         <p style={introStyle}>
@@ -658,7 +672,7 @@ function VideoPage() {
           </div>
         ) : (
           <div className="video-fallback-grid">
-            <div style={cardStyle}>
+            <div className="surface-card" style={cardStyle}>
               <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Playlist Embed</h2>
               <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
                 {status === 'loading'
@@ -679,7 +693,7 @@ function VideoPage() {
               </div>
             </div>
 
-            <div style={cardStyle}>
+            <div className="surface-card" style={cardStyle}>
               <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Auto-Populate Setup</h2>
               <p style={{ ...mutedTextStyle, marginBottom: '14px' }}>
                 To render each playlist video as its own card, add a referrer-restricted YouTube Data API key to your Vite env as <code>VITE_YOUTUBE_API_KEY</code>.
@@ -696,9 +710,9 @@ function VideoPage() {
 function AudioPage() {
   return (
     <div style={pageShellStyle}>
-      <SiteNav wordmark="Audio" />
+      <SiteNav showHomeLink />
 
-      <section style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
         <div style={metaStyle}>Content</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Audio</h1>
         <p style={introStyle}>
@@ -706,11 +720,11 @@ function AudioPage() {
         </p>
 
         <div style={gridStyle}>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Featured Tracks</h2>
             <p style={mutedTextStyle}>Lead with the strongest examples and keep the section selective. Strong curation reads more professionally than volume.</p>
           </div>
-          <div style={cardStyle}>
+          <div className="surface-card" style={cardStyle}>
             <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Credits & Collaborations</h2>
             <p style={mutedTextStyle}>Add short notes about the artist, your role, and the type of work so a visitor immediately understands the context.</p>
           </div>
