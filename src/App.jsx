@@ -98,7 +98,8 @@ function HomePage() {
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
           <a className="nav-link" href="#about">About</a>
           <a className="nav-link" href="#services">Services</a>
-          <a className="nav-link" href="#tools">Tools</a>
+          <a className="nav-link" href="#tools">Practice Tools</a>
+          <a className="nav-link" href="#store">Beat Store</a>
           <a className="nav-link" href="#contact">Contact</a>
         </div>
       </nav>
@@ -149,7 +150,7 @@ function HomePage() {
       </section>
 
       <section id="tools" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Tools & Store</h2>
+        <h2 style={sectionHeadingStyle}>Practice Tools</h2>
         <div style={gridStyle}>
           <div style={cardStyle}>
             <h3 className="card-title">Tempo Guessr</h3>
@@ -158,7 +159,12 @@ function HomePage() {
             </p>
             <Link className="text-link" to="/tempo-guessr">Go to Tempo Guessr</Link>
           </div>
+        </div>
+      </section>
 
+      <section id="store" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>Beat Store</h2>
+        <div style={gridStyle}>
           <div style={cardStyle}>
             <h3 className="card-title">Beat Store</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
