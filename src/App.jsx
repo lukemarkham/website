@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
+const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
 
 const pageShellStyle = {
   width: '100%',
@@ -671,34 +672,24 @@ function VideoPage() {
             </div>
           </div>
         ) : (
-          <div className="video-fallback-grid">
-            <div className="surface-card" style={cardStyle}>
-              <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Playlist Embed</h2>
-              <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-                {status === 'loading'
-                  ? 'Loading the playlist from YouTube.'
-                  : 'The page is using the direct YouTube playlist embed because no API key is configured or the playlist request failed.'}
-              </p>
-              {errorMessage ? <p className="video-note">{errorMessage}</p> : null}
+          <div className="surface-card" style={cardStyle}>
+            <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Playlist Embed</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              {status === 'loading'
+                ? 'Loading the playlist from YouTube.'
+                : 'Showing the direct YouTube playlist embed for now.'}
+            </p>
+            {errorMessage ? <p className="video-note">{errorMessage}</p> : null}
 
-              <div className="embed-shell">
-                <iframe
-                  src={buildYouTubePlaylistEmbedUrl(YOUTUBE_PLAYLIST_ID)}
-                  title="YouTube playlist"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                  className="video-frame"
-                ></iframe>
-              </div>
-            </div>
-
-            <div className="surface-card" style={cardStyle}>
-              <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Auto-Populate Setup</h2>
-              <p style={{ ...mutedTextStyle, marginBottom: '14px' }}>
-                To render each playlist video as its own card, add a referrer-restricted YouTube Data API key to your Vite env as <code>VITE_YOUTUBE_API_KEY</code>.
-              </p>
-              <p className="video-note">Playlist ID: {YOUTUBE_PLAYLIST_ID}</p>
+            <div className="embed-shell">
+              <iframe
+                src={buildYouTubePlaylistEmbedUrl(YOUTUBE_PLAYLIST_ID)}
+                title="YouTube playlist"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+                className="video-frame"
+              ></iframe>
             </div>
           </div>
         )}
@@ -716,17 +707,25 @@ function AudioPage() {
         <div style={metaStyle}>Content</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Audio</h1>
         <p style={introStyle}>
-          Use this page for productions, session credits, featured tracks, beat snippets, or curated playlists that show your sound clearly.
+          This page can serve as a clean listening hub for curated records, references, productions, or artist-facing playlists that support the rest of the site.
         </p>
 
-        <div style={gridStyle}>
-          <div className="surface-card" style={cardStyle}>
-            <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Featured Tracks</h2>
-            <p style={mutedTextStyle}>Lead with the strongest examples and keep the section selective. Strong curation reads more professionally than volume.</p>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Credits & Collaborations</h2>
-            <p style={mutedTextStyle}>Add short notes about the artist, your role, and the type of work so a visitor immediately understands the context.</p>
+        <div className="surface-card" style={cardStyle}>
+          <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Featured Playlist</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+            Spotify is embedded directly for now, which gives you an easy rolling source of truth without adding any manual maintenance to the site.
+          </p>
+
+          <div className="embed-shell">
+            <iframe
+              title="Spotify playlist"
+              src={`https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0`}
+              width="100%"
+              height="720"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              className="audio-frame"
+            ></iframe>
           </div>
         </div>
       </section>

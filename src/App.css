@@ -108,12 +108,14 @@ a {
 }
 
 .site-nav {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
   margin-bottom: 28px;
+  z-index: 40;
   animation: fadeUp 500ms ease both;
 }
 
@@ -201,6 +203,7 @@ h3 {
   position: relative;
   padding-bottom: 14px;
   margin-bottom: -14px;
+  z-index: 50;
 }
 
 .nav-dropdown-menu {
@@ -280,6 +283,7 @@ h3 {
 .surface-panel {
   position: relative;
   overflow: hidden;
+  z-index: 1;
   animation: fadeUp 560ms ease both;
 }
 
@@ -496,8 +500,7 @@ h3 {
   box-shadow: var(--surface-shadow);
 }
 
-.video-portfolio,
-.video-fallback-grid {
+.video-portfolio {
   display: grid;
   gap: 20px;
 }
