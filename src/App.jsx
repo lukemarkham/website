@@ -2,9 +2,17 @@ import './App.css'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+const reviewImageModules = import.meta.glob('./assets/reviews/*.{png,jpg,jpeg,webp,avif}', {
+  eager: true,
+  import: 'default',
+})
+
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
+const reviewImages = Object.entries(reviewImageModules)
+  .sort(([left], [right]) => left.localeCompare(right))
+  .map(([, src]) => src)
 
 const pageShellStyle = {
   width: '100%',
@@ -140,6 +148,115 @@ function SecondaryButton({ children }) {
   return <button className="secondary-button">{children}</button>
 }
 
+function ReviewGallery() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isReviewVisible, setIsReviewVisible] = useState(true)
+  const transitionTimeoutRef = useRef(null)
+  const totalImages = reviewImages.length
+
+  function showReview(nextIndex) {
+    if (nextIndex === currentIndex) {
+      return
+    }
+
+    if (transitionTimeoutRef.current) {
+      window.clearTimeout(transitionTimeoutRef.current)
+    }
+
+    setIsReviewVisible(false)
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setCurrentIndex(nextIndex)
+      setIsReviewVisible(true)
+      transitionTimeoutRef.current = null
+    }, 180)
+  }
+
+  useEffect(() => {
+    if (totalImages <= 1) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      showReview((currentIndex + 1) % totalImages)
+    }, 5500)
+
+    return () => {
+      window.clearInterval(intervalId)
+      if (transitionTimeoutRef.current) {
+        window.clearTimeout(transitionTimeoutRef.current)
+      }
+    }
+  }, [currentIndex, totalImages])
+
+  if (totalImages === 0) {
+    return (
+      <section id="reviews" className="surface-panel" style={sectionStyle}>
+        <div className="reviews-header">
+          <div style={metaStyle}>Client Notes</div>
+          <h2 style={sectionHeadingStyle}>Review Gallery</h2>
+          <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto' }}>
+            Add screenshots to <code>src/assets/reviews/</code> and they will automatically join this rotating gallery on the next rebuild.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section id="reviews" className="surface-panel" style={sectionStyle}>
+      <div className="reviews-header">
+        <div style={metaStyle}>Client Notes</div>
+        <h2 style={sectionHeadingStyle}>What Clients Sent Back</h2>
+        <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto' }}>
+          A quiet rotating gallery of screenshots from client responses and review notes.
+        </p>
+      </div>
+
+      <div className="review-stage surface-card">
+        <div className="review-frame">
+          <img
+            className={`review-image${isReviewVisible ? ' is-visible' : ''}`}
+            src={reviewImages[currentIndex]}
+            alt={`Client review screenshot ${currentIndex + 1}`}
+          />
+        </div>
+
+        {totalImages > 1 ? (
+          <div className="review-controls">
+            <button
+              type="button"
+              className="review-control"
+              onClick={() => showReview((currentIndex - 1 + totalImages) % totalImages)}
+              aria-label="Previous review"
+            >
+              Prev
+            </button>
+            <div className="review-dots" aria-label="Review gallery position">
+              {reviewImages.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className={`review-dot${index === currentIndex ? ' is-active' : ''}`}
+                  onClick={() => showReview(index)}
+                  aria-label={`Show review ${index + 1}`}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="review-control"
+              onClick={() => showReview((currentIndex + 1) % totalImages)}
+              aria-label="Next review"
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 function HomePage() {
   return (
     <div style={pageShellStyle}>
@@ -189,6 +306,8 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      <ReviewGallery />
 
       <section id="tools" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Practice Tools</h2>
