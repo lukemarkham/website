@@ -6,6 +6,7 @@ import { reviews } from './data/reviews'
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
+const SOUNDBETTER_MAP_URL = 'https://soundbetter.com/profiles/45761-luke-markham/map'
 
 const pageShellStyle = {
   width: '100%',
@@ -190,70 +191,102 @@ function ReviewGallery() {
 
   if (totalReviews === 0) {
     return (
-      <section id="reviews" className="surface-panel" style={sectionStyle}>
-        <div className="reviews-header">
-          <div style={metaStyle}>Client Notes</div>
-          <h2 style={sectionHeadingStyle}>Review Gallery</h2>
-          <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto' }}>
-            Add cleaned quotes to <code>src/data/reviews.js</code> and they will automatically join this rotating gallery.
-          </p>
-        </div>
-      </section>
+      <div className="review-stage surface-card">
+        <blockquote className="review-quote is-medium is-visible">
+          Add cleaned quotes to <code>src/data/reviews.js</code> and they will automatically join this rotating gallery.
+        </blockquote>
+      </div>
     )
   }
 
   return (
-    <section id="reviews" className="surface-panel" style={sectionStyle}>
+    <div className="review-stage surface-card">
+      <div className={`review-stars${isReviewVisible ? ' is-visible' : ''}`} aria-label={`${currentReview.stars} star review`}>
+        {'★'.repeat(currentReview.stars)}
+      </div>
+      <blockquote className={`review-quote ${getReviewSizeClass(currentReview.quote)}${isReviewVisible ? ' is-visible' : ''}`}>
+        {currentReview.quote}
+      </blockquote>
+      <p className={`review-source${isReviewVisible ? ' is-visible' : ''}`}>
+        {currentReview.source}
+      </p>
+
+      {totalReviews > 1 ? (
+        <div className="review-controls">
+          <button
+            type="button"
+            className="review-control"
+            onClick={() => showReview((currentIndex - 1 + totalReviews) % totalReviews)}
+            aria-label="Previous review"
+          >
+            Prev
+          </button>
+          <div className="review-dots" aria-label="Review gallery position">
+            {reviews.map((review, index) => (
+              <button
+                key={review.id}
+                type="button"
+                className={`review-dot${index === currentIndex ? ' is-active' : ''}`}
+                onClick={() => showReview(index)}
+                aria-label={`Show review ${index + 1}`}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            className="review-control"
+            onClick={() => showReview((currentIndex + 1) % totalReviews)}
+            aria-label="Next review"
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function ClientMapSection() {
+  return (
+    <a
+      className="map-card surface-card"
+      href={SOUNDBETTER_MAP_URL}
+      target="_blank"
+      rel="noreferrer"
+    >
+      <div className="map-card-media">
+        <img
+          className="map-card-image"
+          src="/soundbetter-map/client-map.png"
+          alt="SoundBetter client map preview"
+        />
+      </div>
+    </a>
+  )
+}
+
+function SoundBetterSection() {
+  return (
+    <section id="soundbetter" className="surface-panel" style={sectionStyle}>
       <div className="reviews-header">
-        <div style={metaStyle}>Client Notes</div>
-        <h2 style={sectionHeadingStyle}>What Clients Sent Back</h2>
-        <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto' }}>
-          A quiet rotating gallery of cleaned notes from client responses and review messages.
-        </p>
+        <div style={metaStyle}>SoundBetter</div>
+        <h2 style={sectionHeadingStyle}>Reviews And Client Map</h2>
       </div>
 
-      <div className="review-stage surface-card">
-        <div className={`review-stars${isReviewVisible ? ' is-visible' : ''}`} aria-label={`${currentReview.stars} star review`}>
-          {'★'.repeat(currentReview.stars)}
-        </div>
-        <blockquote className={`review-quote ${getReviewSizeClass(currentReview.quote)}${isReviewVisible ? ' is-visible' : ''}`}>
-          {currentReview.quote}
-        </blockquote>
-        <p className={`review-source${isReviewVisible ? ' is-visible' : ''}`}>
-          {currentReview.source}
-        </p>
-
-        {totalReviews > 1 ? (
-          <div className="review-controls">
-            <button
-              type="button"
-              className="review-control"
-              onClick={() => showReview((currentIndex - 1 + totalReviews) % totalReviews)}
-              aria-label="Previous review"
-            >
-              Prev
-            </button>
-            <div className="review-dots" aria-label="Review gallery position">
-              {reviews.map((review, index) => (
-                <button
-                  key={review.id}
-                  type="button"
-                  className={`review-dot${index === currentIndex ? ' is-active' : ''}`}
-                  onClick={() => showReview(index)}
-                  aria-label={`Show review ${index + 1}`}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              className="review-control"
-              onClick={() => showReview((currentIndex + 1) % totalReviews)}
-              aria-label="Next review"
-            >
-              Next
-            </button>
+      <div className="soundbetter-grid">
+        <div className="soundbetter-column">
+          <div className="soundbetter-column-header">
+            <span className="soundbetter-kicker">5-Star Reviews</span>
           </div>
-        ) : null}
+          <ReviewGallery />
+        </div>
+
+        <div className="soundbetter-column">
+          <div className="soundbetter-column-header">
+            <span className="soundbetter-kicker">Client Map</span>
+          </div>
+          <ClientMapSection />
+        </div>
       </div>
     </section>
   )
@@ -309,7 +342,7 @@ function HomePage() {
         </div>
       </section>
 
-      <ReviewGallery />
+      <SoundBetterSection />
 
       <section id="tools" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Practice Tools</h2>
@@ -343,7 +376,6 @@ function HomePage() {
           </div>
         </div>
       </section>
-
       <section id="store" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Beat Store</h2>
         <div style={gridStyle}>
