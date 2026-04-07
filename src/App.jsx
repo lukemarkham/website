@@ -1,18 +1,11 @@
 import './App.css'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
-
-const reviewImageModules = import.meta.glob('./assets/reviews/*.{png,jpg,jpeg,webp,avif}', {
-  eager: true,
-  import: 'default',
-})
+import { reviews } from './data/reviews'
 
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
-const reviewImages = Object.entries(reviewImageModules)
-  .sort(([left], [right]) => left.localeCompare(right))
-  .map(([, src]) => src)
 
 const pageShellStyle = {
   width: '100%',
@@ -152,7 +145,14 @@ function ReviewGallery() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isReviewVisible, setIsReviewVisible] = useState(true)
   const transitionTimeoutRef = useRef(null)
-  const totalImages = reviewImages.length
+  const totalReviews = reviews.length
+  const currentReview = reviews[currentIndex]
+
+  function getReviewSizeClass(quote) {
+    if (quote.length > 240) return 'is-compact'
+    if (quote.length > 150) return 'is-medium'
+    return 'is-large'
+  }
 
   function showReview(nextIndex) {
     if (nextIndex === currentIndex) {
@@ -172,12 +172,12 @@ function ReviewGallery() {
   }
 
   useEffect(() => {
-    if (totalImages <= 1) {
+    if (totalReviews <= 1) {
       return
     }
 
     const intervalId = window.setInterval(() => {
-      showReview((currentIndex + 1) % totalImages)
+      showReview((currentIndex + 1) % totalReviews)
     }, 5500)
 
     return () => {
@@ -186,16 +186,16 @@ function ReviewGallery() {
         window.clearTimeout(transitionTimeoutRef.current)
       }
     }
-  }, [currentIndex, totalImages])
+  }, [currentIndex, totalReviews])
 
-  if (totalImages === 0) {
+  if (totalReviews === 0) {
     return (
       <section id="reviews" className="surface-panel" style={sectionStyle}>
         <div className="reviews-header">
           <div style={metaStyle}>Client Notes</div>
           <h2 style={sectionHeadingStyle}>Review Gallery</h2>
           <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto' }}>
-            Add screenshots to <code>src/assets/reviews/</code> and they will automatically join this rotating gallery on the next rebuild.
+            Add cleaned quotes to <code>src/data/reviews.js</code> and they will automatically join this rotating gallery.
           </p>
         </div>
       </section>
@@ -208,33 +208,35 @@ function ReviewGallery() {
         <div style={metaStyle}>Client Notes</div>
         <h2 style={sectionHeadingStyle}>What Clients Sent Back</h2>
         <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto' }}>
-          A quiet rotating gallery of screenshots from client responses and review notes.
+          A quiet rotating gallery of cleaned notes from client responses and review messages.
         </p>
       </div>
 
       <div className="review-stage surface-card">
-        <div className="review-frame">
-          <img
-            className={`review-image${isReviewVisible ? ' is-visible' : ''}`}
-            src={reviewImages[currentIndex]}
-            alt={`Client review screenshot ${currentIndex + 1}`}
-          />
+        <div className={`review-stars${isReviewVisible ? ' is-visible' : ''}`} aria-label={`${currentReview.stars} star review`}>
+          {'★'.repeat(currentReview.stars)}
         </div>
+        <blockquote className={`review-quote ${getReviewSizeClass(currentReview.quote)}${isReviewVisible ? ' is-visible' : ''}`}>
+          {currentReview.quote}
+        </blockquote>
+        <p className={`review-source${isReviewVisible ? ' is-visible' : ''}`}>
+          {currentReview.source}
+        </p>
 
-        {totalImages > 1 ? (
+        {totalReviews > 1 ? (
           <div className="review-controls">
             <button
               type="button"
               className="review-control"
-              onClick={() => showReview((currentIndex - 1 + totalImages) % totalImages)}
+              onClick={() => showReview((currentIndex - 1 + totalReviews) % totalReviews)}
               aria-label="Previous review"
             >
               Prev
             </button>
             <div className="review-dots" aria-label="Review gallery position">
-              {reviewImages.map((_, index) => (
+              {reviews.map((review, index) => (
                 <button
-                  key={index}
+                  key={review.id}
                   type="button"
                   className={`review-dot${index === currentIndex ? ' is-active' : ''}`}
                   onClick={() => showReview(index)}
@@ -245,7 +247,7 @@ function ReviewGallery() {
             <button
               type="button"
               className="review-control"
-              onClick={() => showReview((currentIndex + 1) % totalImages)}
+              onClick={() => showReview((currentIndex + 1) % totalReviews)}
               aria-label="Next review"
             >
               Next
