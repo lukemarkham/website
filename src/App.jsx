@@ -193,7 +193,7 @@ function ReviewGallery() {
     return (
       <div className="review-stage surface-card">
         <blockquote className="review-quote is-medium is-visible">
-          Add cleaned quotes to <code>src/data/reviews.js</code> and they will automatically join this rotating gallery.
+          Reviews will appear here soon.
         </blockquote>
       </div>
     )
@@ -299,9 +299,9 @@ function HomePage() {
 
       <section className="hero-shell surface-panel" style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 60px)', marginBottom: '28px' }}>
         <div style={metaStyle}>Freelance Musician • Drummer • Producer</div>
-        <h1 style={titleStyle}>Modern musician website, beat store, and practice tools in one place.</h1>
+        <h1 style={titleStyle}>Drums, production, and musical support for artists who care about the details.</h1>
         <p style={introStyle}>
-          Built as a clear home base for sessions, production work, release-ready content, and tools like Tempo Guessr, with a sharper layout that feels more like a professional portfolio than a starter site.
+          Luke Markham helps artists, producers, and students bring songs into focus through tasteful drum parts, practical production support, and clear musical communication.
         </p>
 
         <div style={buttonRowStyle} className="hero-actions">
@@ -320,7 +320,7 @@ function HomePage() {
       <section id="about" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>About</h2>
         <p style={{ ...mutedTextStyle, maxWidth: '760px', margin: '0 auto' }}>
-          This can become your bio section: who you are, what you play, what kind of records or artists you like working with, and why someone should trust you with a session, production job, or live date.
+          Luke is an NYC-based drummer, producer, and collaborator with 12+ years of professional experience across remote sessions, live performances, original productions, and private instruction. His work centers on serving the song, keeping the process organized, and making each part feel intentional.
         </p>
       </section>
 
@@ -329,15 +329,20 @@ function HomePage() {
         <div style={gridStyle}>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Session Drumming</h3>
-            <p style={mutedTextStyle}>Remote or in-person drum tracking with a clean process, musical instincts, and player-first communication.</p>
+            <p style={mutedTextStyle}>Remote and in-person drum tracking with parts shaped around the song, the artist, and the production.</p>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Production & Editing</h3>
-            <p style={mutedTextStyle}>Arrangement help, editing, programming, and practical musical problem-solving for artists and producers.</p>
+            <p style={mutedTextStyle}>Arrangement support, editing, programming, and practical problem-solving for artists and producers.</p>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Private Drum Lessons</h3>
+            <p style={mutedTextStyle}>One-on-one instruction for students who want stronger time, better feel, cleaner technique, and a more musical approach to the kit.</p>
+            <a className="text-link" href="mailto:luke@lukemarkham.com?subject=Private%20Drum%20Lessons">Ask About Lessons</a>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Live Performance</h3>
-            <p style={mutedTextStyle}>Touring, live dates, and dependable musical support for artists who need someone prepared and adaptable.</p>
+            <p style={mutedTextStyle}>Prepared, adaptable drum support for live dates, artist sets, rehearsals, and performance-focused projects.</p>
           </div>
         </div>
       </section>
@@ -363,14 +368,14 @@ function HomePage() {
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Video</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A dedicated place for live clips, studio sessions, playthroughs, reels, and visual work that supports your brand.
+              Live clips, studio sessions, playthroughs, and performance videos in one dedicated viewing space.
             </p>
             <Link className="text-link" to="/video">Open Video Page</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Audio</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Highlight productions, mixes, records you played on, demos, or curated listening selections without forcing everything into one page.
+              A listening hub for productions, drum work, beats, and selected recordings.
             </p>
             <Link className="text-link" to="/audio">Open Audio Page</Link>
           </div>
@@ -382,7 +387,7 @@ function HomePage() {
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Beat Store</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Browse and purchase beats directly from your BeatStars store without leaving the site.
+              Browse beats and production-ready instrumentals through the embedded BeatStars store.
             </p>
             <Link className="text-link" to="/beats">Go to Beat Store</Link>
           </div>
@@ -392,9 +397,9 @@ function HomePage() {
       <section id="contact" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Contact</h2>
         <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
-          Reach out for sessions, gigs, collaborations, production work, or custom music inquiries.
+          Reach out about recording sessions, private lessons, live work, production support, or custom music.
         </p>
-        <a className="text-link" href="mailto:you@example.com">Email Me</a>
+        <a className="text-link" href="mailto:luke@lukemarkham.com">Email Me</a>
       </section>
     </div>
   )
@@ -691,7 +696,7 @@ function BeatsPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Beat Store</h1>
-        <p style={introStyle}>Stream and purchase beats directly below.</p>
+        <p style={introStyle}>Stream, browse, and purchase beats from Luke's BeatStars store.</p>
 
         <div className="embed-shell">
           <iframe
@@ -788,7 +793,7 @@ function VideoPage() {
         <div style={metaStyle}>Content</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Video</h1>
         <p style={introStyle}>
-          This page now pulls from your YouTube playlist automatically when an API key is configured, so you can update the playlist once and let the site reflect it.
+          Watch recent performances, playthroughs, studio clips, and other video work.
         </p>
 
         {status === 'ready' ? (
@@ -796,7 +801,7 @@ function VideoPage() {
             <div className="video-portfolio-header">
               <h2 style={{ ...sectionHeadingStyle, marginBottom: '6px' }}>Playlist Grid</h2>
               <p style={mutedTextStyle}>
-                {videos.length} videos pulled from YouTube. Add a new video to the playlist and it appears here automatically.
+                {videos.length} videos from Luke's featured YouTube playlist.
               </p>
             </div>
 
@@ -829,8 +834,8 @@ function VideoPage() {
             <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Playlist Embed</h2>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
               {status === 'loading'
-                ? 'Loading the playlist from YouTube.'
-                : 'Showing the direct YouTube playlist embed for now.'}
+                ? 'Loading videos from YouTube.'
+                : 'Watch the featured YouTube playlist below.'}
             </p>
             {errorMessage ? <p className="video-note">{errorMessage}</p> : null}
 
@@ -860,13 +865,13 @@ function AudioPage() {
         <div style={metaStyle}>Content</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Audio</h1>
         <p style={introStyle}>
-          This page can serve as a clean listening hub for curated records, references, productions, or artist-facing playlists that support the rest of the site.
+          Listen to selected productions, drum work, beats, and releases.
         </p>
 
         <div className="surface-card" style={cardStyle}>
           <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Featured Playlist</h2>
           <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-            Spotify is embedded directly for now, which gives you an easy rolling source of truth without adding any manual maintenance to the site.
+            A curated Spotify playlist featuring selected audio work.
           </p>
 
           <div className="embed-shell">
