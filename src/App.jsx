@@ -12,6 +12,48 @@ const REVERB_SHOP_SLUG = import.meta.env.VITE_REVERB_SHOP_SLUG || 'lukes-gear-em
 const REVERB_SHOP_URL = import.meta.env.VITE_REVERB_SHOP_URL || `https://reverb.com/shop/${REVERB_SHOP_SLUG}`
 const REVERB_EMBED_SCRIPT_URL = 'https://d1g5417jjjo7sf.cloudfront.net/assets/embed/reverb.js'
 const JQUERY_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'
+const METRONOME_TICKS_PER_BEAT = 12
+const METRONOME_LOOKAHEAD_MS = 25
+const METRONOME_SCHEDULE_AHEAD_SECONDS = 0.12
+
+const METRONOME_SUBDIVISIONS = [
+  {
+    id: 'beat',
+    label: 'Beat',
+    description: 'Quarter-note pulse after beat 1',
+    defaultProbability: 100,
+    ticks: [0],
+    frequency: 920,
+    volume: 0.26,
+  },
+  {
+    id: 'eighth',
+    label: 'Eighth Upbeats',
+    description: 'The “and” of each beat',
+    defaultProbability: 60,
+    ticks: [6],
+    frequency: 720,
+    volume: 0.18,
+  },
+  {
+    id: 'sixteenth',
+    label: 'Sixteenth Inner Notes',
+    description: 'The e and a partials',
+    defaultProbability: 35,
+    ticks: [3, 9],
+    frequency: 580,
+    volume: 0.14,
+  },
+  {
+    id: 'triplet',
+    label: 'Triplet Partials',
+    description: 'Middle triplet notes',
+    defaultProbability: 0,
+    ticks: [4, 8],
+    frequency: 660,
+    volume: 0.14,
+  },
+]
 
 const pageShellStyle = {
   width: '100%',
@@ -130,6 +172,12 @@ function SiteNav({ showHomeLink = false }) {
             <Link className="dropdown-link" to="/tempo-guessr">
               Tempo Guessr
             </Link>
+            <Link className="dropdown-link" to="/metronome">
+              Metronome
+            </Link>
+            <Link className="dropdown-link" to="/sticking-generator">
+              Sticking Generator
+            </Link>
           </div>
         </div>
         <a className="nav-link" href="/#store">Beat Store</a>
@@ -146,9 +194,6 @@ function SiteNav({ showHomeLink = false }) {
           <div className="nav-dropdown-menu" role="menu">
             <Link className="dropdown-link" to="/photography">
               Photography
-            </Link>
-            <Link className="dropdown-link" to="/books">
-              Book Reviews
             </Link>
           </div>
         </div>
@@ -458,6 +503,20 @@ function HomePage() {
             </p>
             <Link className="text-link" to="/tempo-guessr">Go to Tempo Guessr</Link>
           </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Metronome</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              A probability-based metronome for random subdivisions and silent-bar practice.
+            </p>
+            <Link className="text-link" to="/metronome">Go to Metronome</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Sticking Generator</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Generate random hand and foot sticking patterns for four-limb coordination practice.
+            </p>
+            <Link className="text-link" to="/sticking-generator">Go to Sticking Generator</Link>
+          </div>
         </div>
       </section>
 
@@ -490,13 +549,6 @@ function HomePage() {
               A small gallery for favorite photos, side experiments, and visual notes.
             </p>
             <Link className="text-link" to="/photography">Open Gallery</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Book Reviews</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Notes on books, ideas worth keeping, and short reading reflections.
-            </p>
-            <Link className="text-link" to="/books">Open Reviews</Link>
           </div>
         </div>
       </section>
@@ -613,32 +665,29 @@ function PhotographyPage() {
   )
 }
 
-function BooksPage() {
-  return (
-    <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
-
-      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
-        <div style={metaStyle}>Extras</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Book Reviews</h1>
-        <p style={introStyle}>
-          Short reviews, reading notes, and ideas worth returning to.
-        </p>
-        <div className="empty-state surface-card">
-          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Reviews Coming Soon</h2>
-          <p style={mutedTextStyle}>
-            Reading notes and short reviews will live here.
-          </p>
-        </div>
-      </section>
-    </div>
-  )
-}
-
 function randomInt(min, max) {
   const low = Math.ceil(min)
   const high = Math.floor(max)
   return Math.floor(Math.random() * (high - low + 1)) + low
+}
+
+function getRandomSticking(length) {
+  const hands = []
+  const feet = []
+
+  for (let index = 0; index < length; index += 1) {
+    hands.push(Math.random() > 0.5 ? 'R' : 'L')
+    feet.push(Math.random() > 0.5 ? 'R' : 'L')
+  }
+
+  return { hands, feet }
+}
+
+function getDefaultMetronomeProbabilities() {
+  return METRONOME_SUBDIVISIONS.reduce((probabilities, subdivision) => {
+    probabilities[subdivision.id] = subdivision.defaultProbability
+    return probabilities
+  }, {})
 }
 
 function clamp(value, min, max) {
@@ -915,6 +964,570 @@ function TempoGuessrPage() {
   )
 }
 
+function MetronomePage() {
+  const [tempo, setTempo] = useState(96)
+  const [beatsPerMeasure, setBeatsPerMeasure] = useState(4)
+  const [downbeatProbability, setDownbeatProbability] = useState(100)
+  const [silentBarProbability, setSilentBarProbability] = useState(0)
+  const [probabilities, setProbabilities] = useState(() => getDefaultMetronomeProbabilities())
+  const [isPatternLocked, setIsPatternLocked] = useState(false)
+  const [sessionMinutes, setSessionMinutes] = useState(0)
+  const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [activeTick, setActiveTick] = useState(null)
+  const audioContextRef = useRef(null)
+  const schedulerRef = useRef(null)
+  const sessionTimeoutRef = useRef(null)
+  const sessionCountdownRef = useRef(null)
+  const nextTickTimeRef = useRef(0)
+  const absoluteTickRef = useRef(0)
+  const patternCacheRef = useRef({})
+  const silentBarCacheRef = useRef({})
+  const visualTimeoutsRef = useRef([])
+  const settingsRef = useRef({
+    tempo,
+    beatsPerMeasure,
+    downbeatProbability,
+    silentBarProbability,
+    probabilities,
+    isPatternLocked,
+  })
+
+  const beatMarkers = useMemo(() => {
+    return Array.from({ length: beatsPerMeasure }, (_, index) => index + 1)
+  }, [beatsPerMeasure])
+
+  useEffect(() => {
+    settingsRef.current = {
+      tempo: Number(tempo),
+      beatsPerMeasure: Number(beatsPerMeasure),
+      downbeatProbability: Number(downbeatProbability),
+      silentBarProbability: Number(silentBarProbability),
+      probabilities,
+      isPatternLocked,
+    }
+  }, [beatsPerMeasure, downbeatProbability, isPatternLocked, probabilities, silentBarProbability, tempo])
+
+  useEffect(() => {
+    patternCacheRef.current = {}
+    silentBarCacheRef.current = {}
+  }, [beatsPerMeasure, downbeatProbability, isPatternLocked, probabilities, silentBarProbability])
+
+  useEffect(() => {
+    return () => {
+      if (schedulerRef.current) {
+        window.clearInterval(schedulerRef.current)
+      }
+      if (sessionTimeoutRef.current) {
+        window.clearTimeout(sessionTimeoutRef.current)
+      }
+      if (sessionCountdownRef.current) {
+        window.clearInterval(sessionCountdownRef.current)
+      }
+      visualTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
+    }
+  }, [])
+
+  async function getAudioContext() {
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      audioContextRef.current = new AudioContextClass()
+    }
+
+    if (audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume()
+    }
+
+    return audioContextRef.current
+  }
+
+  function playMetronomeClick(ctx, time, frequency, volume, duration = 0.045) {
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    oscillator.type = 'square'
+    oscillator.frequency.value = frequency
+    gain.gain.setValueAtTime(0.0001, time)
+    gain.gain.exponentialRampToValueAtTime(volume, time + 0.001)
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration)
+
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start(time)
+    oscillator.stop(time + duration + 0.01)
+  }
+
+  function playSessionCompleteSound(ctx) {
+    const now = ctx.currentTime + 0.04
+    const notes = [523.25, 659.25, 783.99, 1046.5]
+
+    notes.forEach((frequency, index) => {
+      const time = now + index * 0.12
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      oscillator.type = 'triangle'
+      oscillator.frequency.setValueAtTime(frequency, time)
+      gain.gain.setValueAtTime(0.0001, time)
+      gain.gain.exponentialRampToValueAtTime(0.18, time + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.34)
+
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
+      oscillator.start(time)
+      oscillator.stop(time + 0.38)
+    })
+  }
+
+  function probabilityHit(key, probability) {
+    const safeProbability = clamp(Number(probability), 0, 100)
+    if (safeProbability >= 100) return true
+    if (safeProbability <= 0) return false
+
+    if (settingsRef.current.isPatternLocked) {
+      if (patternCacheRef.current[key] === undefined) {
+        patternCacheRef.current[key] = Math.random() * 100 < safeProbability
+      }
+
+      return patternCacheRef.current[key]
+    }
+
+    return Math.random() * 100 < safeProbability
+  }
+
+  function isBarSilent(barIndex) {
+    const safeProbability = clamp(settingsRef.current.silentBarProbability, 0, 100)
+    if (safeProbability >= 100) return true
+    if (safeProbability <= 0) return false
+
+    if (silentBarCacheRef.current[barIndex] === undefined) {
+      silentBarCacheRef.current[barIndex] = Math.random() * 100 < safeProbability
+    }
+
+    return silentBarCacheRef.current[barIndex]
+  }
+
+  function flashTick(ctx, time, tickInBar) {
+    const delay = Math.max(0, (time - ctx.currentTime) * 1000)
+    const showTimeout = window.setTimeout(() => setActiveTick(tickInBar), delay)
+    const hideTimeout = window.setTimeout(() => setActiveTick(null), delay + 90)
+    visualTimeoutsRef.current.push(showTimeout, hideTimeout)
+  }
+
+  function scheduleTick(ctx, absoluteTick, time) {
+    const {
+      beatsPerMeasure: currentBeatsPerMeasure,
+      downbeatProbability: currentDownbeatProbability,
+      probabilities: currentProbabilities,
+    } = settingsRef.current
+    const currentTicksPerMeasure = currentBeatsPerMeasure * METRONOME_TICKS_PER_BEAT
+    const tickInBar = absoluteTick % currentTicksPerMeasure
+    const tickInBeat = tickInBar % METRONOME_TICKS_PER_BEAT
+    const barIndex = Math.floor(absoluteTick / currentTicksPerMeasure)
+    const barPositionKey = tickInBar
+    let played = false
+
+    if (isBarSilent(barIndex)) {
+      return
+    }
+
+    if (tickInBar === 0 && probabilityHit(`downbeat-${barPositionKey}`, currentDownbeatProbability)) {
+      playMetronomeClick(ctx, time, 1320, 0.36, 0.055)
+      played = true
+    }
+
+    METRONOME_SUBDIVISIONS.forEach((subdivision) => {
+      const isBeatOne = subdivision.id === 'beat' && tickInBar === 0
+      if (isBeatOne || !subdivision.ticks.includes(tickInBeat)) {
+        return
+      }
+
+      const hitKey = `${subdivision.id}-${barPositionKey}`
+      if (probabilityHit(hitKey, currentProbabilities[subdivision.id])) {
+        playMetronomeClick(ctx, time, subdivision.frequency, subdivision.volume)
+        played = true
+      }
+    })
+
+    if (played) {
+      flashTick(ctx, time, tickInBar)
+    }
+  }
+
+  function scheduler(ctx) {
+    while (nextTickTimeRef.current < ctx.currentTime + METRONOME_SCHEDULE_AHEAD_SECONDS) {
+      scheduleTick(ctx, absoluteTickRef.current, nextTickTimeRef.current)
+      const secondsPerBeat = 60 / settingsRef.current.tempo
+      nextTickTimeRef.current += secondsPerBeat / METRONOME_TICKS_PER_BEAT
+      absoluteTickRef.current += 1
+    }
+  }
+
+  async function startMetronome() {
+    if (isPlaying) return
+
+    const ctx = await getAudioContext()
+    const sessionDurationMs = clamp(Number(sessionMinutes), 0, 240) * 60 * 1000
+    patternCacheRef.current = {}
+    silentBarCacheRef.current = {}
+    absoluteTickRef.current = 0
+    nextTickTimeRef.current = ctx.currentTime + 0.08
+    setIsPlaying(true)
+
+    schedulerRef.current = window.setInterval(() => scheduler(ctx), METRONOME_LOOKAHEAD_MS)
+
+    if (sessionDurationMs > 0) {
+      const sessionDurationSeconds = Math.ceil(sessionDurationMs / 1000)
+      setRemainingSessionSeconds(sessionDurationSeconds)
+
+      sessionCountdownRef.current = window.setInterval(() => {
+        setRemainingSessionSeconds((currentSeconds) => {
+          if (currentSeconds === null) return null
+          return Math.max(0, currentSeconds - 1)
+        })
+      }, 1000)
+
+      sessionTimeoutRef.current = window.setTimeout(() => {
+        stopMetronome({ playCompletion: true })
+      }, sessionDurationMs)
+    } else {
+      setRemainingSessionSeconds(null)
+    }
+  }
+
+  function stopMetronome(options = {}) {
+    if (schedulerRef.current) {
+      window.clearInterval(schedulerRef.current)
+      schedulerRef.current = null
+    }
+
+    if (sessionTimeoutRef.current) {
+      window.clearTimeout(sessionTimeoutRef.current)
+      sessionTimeoutRef.current = null
+    }
+
+    if (sessionCountdownRef.current) {
+      window.clearInterval(sessionCountdownRef.current)
+      sessionCountdownRef.current = null
+    }
+
+    visualTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    visualTimeoutsRef.current = []
+    setActiveTick(null)
+    setRemainingSessionSeconds(null)
+    setIsPlaying(false)
+
+    if (options.playCompletion && audioContextRef.current) {
+      playSessionCompleteSound(audioContextRef.current)
+    }
+  }
+
+  function toggleMetronome() {
+    if (isPlaying) {
+      stopMetronome()
+    } else {
+      startMetronome()
+    }
+  }
+
+  function updateProbability(subdivisionId, value) {
+    setProbabilities((currentProbabilities) => ({
+      ...currentProbabilities,
+      [subdivisionId]: clamp(Number(value), 0, 100),
+    }))
+  }
+
+  function formatSessionTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Metronome</h1>
+        <p style={introStyle}>
+          A probability-based metronome for random subdivision patterns and silent-bar practice.
+        </p>
+
+        <div className="metronome-transport surface-card">
+          <div className="metronome-tempo">
+            <label className="control-label" htmlFor="metronome-tempo">Tempo</label>
+            <input
+              id="metronome-tempo"
+              className="control-input metronome-tempo-input"
+              type="number"
+              min="30"
+              max="260"
+              value={tempo}
+              onChange={(event) => setTempo(clamp(Number(event.target.value), 30, 260))}
+            />
+            <span className="metronome-bpm">BPM</span>
+          </div>
+
+          <div className="metronome-session">
+            <label className="control-label" htmlFor="metronome-session-minutes">Timed Session</label>
+            <input
+              id="metronome-session-minutes"
+              className="control-input metronome-session-input"
+              type="number"
+              min="0"
+              max="240"
+              step="0.5"
+              value={sessionMinutes}
+              onChange={(event) => setSessionMinutes(clamp(Number(event.target.value), 0, 240))}
+              disabled={isPlaying}
+            />
+            <span className="metronome-bpm">
+              {remainingSessionSeconds === null ? 'Min' : formatSessionTime(remainingSessionSeconds)}
+            </span>
+          </div>
+
+          <button className="primary-button" type="button" onClick={toggleMetronome}>
+            {isPlaying ? 'Stop' : 'Start'}
+          </button>
+        </div>
+
+        <div className="metronome-beat-strip" aria-label="Current measure">
+          {beatMarkers.map((beat) => {
+            const isActive = activeTick != null && Math.floor(activeTick / METRONOME_TICKS_PER_BEAT) === beat - 1
+            return (
+              <div className={`metronome-beat${isActive ? ' is-active' : ''}`} key={beat}>
+                {beat}
+                <span>{beat === 1 ? 'Downbeat' : 'Beat'}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="metronome-control-grid">
+          <div className="control-card">
+            <label className="control-label" htmlFor="metronome-beats">Beats Per Measure</label>
+            <div className="range-value">{beatsPerMeasure}</div>
+            <input
+              id="metronome-beats"
+              className="range-input"
+              type="range"
+              min="2"
+              max="12"
+              step="1"
+              value={beatsPerMeasure}
+              onChange={(event) => setBeatsPerMeasure(Number(event.target.value))}
+            />
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="metronome-downbeat">Downbeat Probability</label>
+            <div className="probability-value">
+              <input
+                className="control-input probability-input"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={downbeatProbability}
+                onChange={(event) => setDownbeatProbability(clamp(Number(event.target.value), 0, 100))}
+                aria-label="Downbeat probability percent"
+              />
+              <span>%</span>
+            </div>
+            <input
+              id="metronome-downbeat"
+              className="range-input"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={downbeatProbability}
+              onChange={(event) => setDownbeatProbability(clamp(Number(event.target.value), 0, 100))}
+            />
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="metronome-silent-bars">Silent Bar Probability</label>
+            <div className="probability-value">
+              <input
+                className="control-input probability-input"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={silentBarProbability}
+                onChange={(event) => setSilentBarProbability(clamp(Number(event.target.value), 0, 100))}
+                aria-label="Silent bar probability percent"
+              />
+              <span>%</span>
+            </div>
+            <input
+              id="metronome-silent-bars"
+              className="range-input"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={silentBarProbability}
+              onChange={(event) => setSilentBarProbability(clamp(Number(event.target.value), 0, 100))}
+            />
+          </div>
+        </div>
+
+        <div className="metronome-repeat-row surface-card">
+          <label className="toggle-control">
+            <input
+              type="checkbox"
+              checked={isPatternLocked}
+              onChange={(event) => setIsPatternLocked(event.target.checked)}
+            />
+            <span>Lock Pattern</span>
+          </label>
+        </div>
+
+        <div className="metronome-subdivision-grid">
+          {METRONOME_SUBDIVISIONS.map((subdivision) => (
+            <div className="control-card metronome-subdivision-card" key={subdivision.id}>
+              <div>
+                <label className="control-label" htmlFor={`metronome-${subdivision.id}`}>
+                  {subdivision.label}
+                </label>
+                <p className="metronome-subdivision-note">{subdivision.description}</p>
+              </div>
+              <div className="probability-value">
+                <input
+                  className="control-input probability-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={probabilities[subdivision.id]}
+                  onChange={(event) => updateProbability(subdivision.id, event.target.value)}
+                  aria-label={`${subdivision.label} probability percent`}
+                />
+                <span>%</span>
+              </div>
+              <input
+                id={`metronome-${subdivision.id}`}
+                className="range-input"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={probabilities[subdivision.id]}
+                onChange={(event) => updateProbability(subdivision.id, event.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function StickingGeneratorPage() {
+  const [stepCount, setStepCount] = useState(16)
+  const [sticking, setSticking] = useState(() => getRandomSticking(16))
+
+  const groupedSteps = useMemo(() => {
+    const steps = sticking.hands.map((hand, index) => ({
+      id: `${index}-${hand}-${sticking.feet[index]}`,
+      count: index + 1,
+      hand,
+      foot: sticking.feet[index],
+      isDownbeat: index % 4 === 0,
+    }))
+
+    const groups = []
+    for (let index = 0; index < steps.length; index += 4) {
+      groups.push(steps.slice(index, index + 4))
+    }
+
+    return groups
+  }, [sticking])
+
+  function generateSticking(nextLength = stepCount) {
+    setSticking(getRandomSticking(Number(nextLength)))
+  }
+
+  function updateStepCount(event) {
+    const nextStepCount = Number(event.target.value)
+    setStepCount(nextStepCount)
+    generateSticking(nextStepCount)
+  }
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sticking Generator</h1>
+        <p style={introStyle}>
+          Generate a random hand sticking and foot sticking for four-limb coordination practice.
+        </p>
+
+        <div className="sticking-toolbar">
+          <div className="control-card">
+            <label className="control-label" htmlFor="sticking-step-count">Pattern Length</label>
+            <div className="range-value">{stepCount} notes</div>
+            <input
+              id="sticking-step-count"
+              className="range-input"
+              type="range"
+              min="4"
+              max="32"
+              step="4"
+              value={stepCount}
+              onChange={updateStepCount}
+            />
+          </div>
+
+          <button className="primary-button" type="button" onClick={() => generateSticking()}>
+            Generate Sticking
+          </button>
+        </div>
+
+        <div className="sticking-board surface-card">
+          <div className="sticking-labels" aria-hidden="true">
+            <span>Hands</span>
+            <span>Feet</span>
+          </div>
+
+          <div className="sticking-groups">
+            {groupedSteps.map((group, groupIndex) => (
+              <div className="sticking-group" key={`group-${groupIndex}`}>
+                {group.map((step) => (
+                  <div className={`sticking-step${step.isDownbeat ? ' is-downbeat' : ''}`} key={step.id}>
+                    <span className="sticking-count">{step.count}</span>
+                    <span className="sticking-cell sticking-hand">{step.hand}</span>
+                    <span className="sticking-cell sticking-foot">{step.foot}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="sticking-readout">
+          <div className="surface-card" style={cardStyle}>
+            <div className="stat-label">Hands</div>
+            <div className="sticking-line">{sticking.hands.join(' ')}</div>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <div className="stat-label">Feet</div>
+            <div className="sticking-line">{sticking.feet.join(' ')}</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function BeatsPage() {
   return (
     <div style={{ ...pageShellStyle, maxWidth: '1320px' }}>
@@ -1123,11 +1736,12 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/tempo-guessr" element={<TempoGuessrPage />} />
+        <Route path="/metronome" element={<MetronomePage />} />
+        <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
-        <Route path="/books" element={<BooksPage />} />
       </Routes>
     </BrowserRouter>
   )

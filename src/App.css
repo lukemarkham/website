@@ -899,6 +899,272 @@ h3 {
   color: var(--text-soft);
 }
 
+.metronome-transport {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 22px;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: var(--card-surface);
+}
+
+.metronome-tempo {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) auto;
+  align-items: center;
+  gap: 0 10px;
+  text-align: left;
+}
+
+.metronome-tempo .control-label {
+  grid-column: 1 / -1;
+}
+
+.metronome-tempo-input {
+  max-width: 180px;
+  font-size: 1.65rem;
+}
+
+.metronome-bpm {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.metronome-session {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) auto;
+  align-items: center;
+  gap: 0 10px;
+  text-align: left;
+}
+
+.metronome-session .control-label {
+  grid-column: 1 / -1;
+}
+
+.metronome-session-input {
+  max-width: 150px;
+  font-size: 1.2rem;
+}
+
+.metronome-beat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.metronome-beat {
+  display: grid;
+  place-items: center;
+  min-height: 78px;
+  padding: 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: background 90ms ease, border-color 90ms ease, color 90ms ease, transform 90ms ease;
+}
+
+.metronome-beat span {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.metronome-beat.is-active {
+  transform: translateY(-2px);
+  border-color: var(--accent-border);
+  background: rgba(212, 199, 161, 0.13);
+  color: var(--accent-strong);
+}
+
+.metronome-control-grid,
+.metronome-subdivision-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.metronome-repeat-row {
+  padding: 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: var(--card-surface);
+}
+
+.toggle-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.toggle-control input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-warm);
+}
+
+.metronome-subdivision-card {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  min-height: 210px;
+}
+
+.metronome-subdivision-note {
+  min-height: 44px;
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.probability-value {
+  display: inline-grid;
+  grid-template-columns: minmax(76px, 96px) auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--accent-strong);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.probability-input {
+  max-width: 96px;
+  padding: 10px 12px;
+  color: var(--accent-strong);
+  font-size: 1.2rem;
+}
+
+.sticking-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) auto;
+  align-items: end;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.sticking-board {
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: var(--card-surface);
+}
+
+.sticking-labels {
+  display: grid;
+  grid-template-rows: 30px repeat(2, 54px);
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.sticking-labels::before {
+  content: '';
+}
+
+.sticking-groups {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.sticking-group {
+  display: grid;
+  grid-template-columns: repeat(4, 62px);
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.sticking-step {
+  display: grid;
+  grid-template-rows: 30px repeat(2, 54px);
+  gap: 0;
+}
+
+.sticking-count {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.sticking-cell {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  border: 1px solid var(--surface-border);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sticking-hand {
+  border-radius: 7px 7px 0 0;
+  background: rgba(143, 157, 120, 0.12);
+}
+
+.sticking-foot {
+  border-top: 0;
+  border-radius: 0 0 7px 7px;
+  background: rgba(184, 138, 90, 0.12);
+}
+
+.sticking-step.is-downbeat .sticking-cell {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+}
+
+.sticking-readout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.sticking-line {
+  overflow-wrap: anywhere;
+  color: var(--accent-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.7;
+  letter-spacing: 0.06em;
+}
+
 .embed-shell {
   overflow: hidden;
   border-radius: 10px;
@@ -1136,5 +1402,43 @@ code {
 
   .range-input {
     width: 100%;
+  }
+
+  .metronome-transport {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .metronome-tempo {
+    grid-template-columns: 1fr auto;
+  }
+
+  .metronome-session {
+    grid-template-columns: 1fr auto;
+  }
+
+  .metronome-tempo-input {
+    max-width: 100%;
+  }
+
+  .metronome-session-input {
+    max-width: 100%;
+  }
+
+  .sticking-toolbar,
+  .sticking-readout {
+    grid-template-columns: 1fr;
+  }
+
+  .sticking-board {
+    grid-template-columns: 1fr;
+  }
+
+  .sticking-labels {
+    display: none;
+  }
+
+  .sticking-group {
+    grid-template-columns: repeat(4, 54px);
   }
 }
