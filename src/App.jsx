@@ -544,15 +544,6 @@ function PhotographyPage() {
             {photographyShots.map((shot) => (
               <article key={shot.id} className="photo-card surface-card">
                 <img className="photo-image" src={shot.src} alt={shot.alt} />
-                <div className="photo-copy">
-                  <h2 className="photo-title">{shot.title}</h2>
-                  {shot.caption ? <p className="photo-caption">{shot.caption}</p> : null}
-                  {shot.location || shot.year ? (
-                    <p className="photo-meta">
-                      {[shot.location, shot.year].filter(Boolean).join(' • ')}
-                    </p>
-                  ) : null}
-                </div>
               </article>
             ))}
           </div>

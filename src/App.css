@@ -605,33 +605,6 @@ h3 {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.photo-copy {
-  padding: 18px;
-}
-
-.photo-title {
-  margin: 0 0 8px;
-  color: var(--text);
-  font-size: 1.55rem;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.photo-caption {
-  margin: 0 0 12px;
-  color: var(--text-soft);
-  line-height: 1.6;
-}
-
-.photo-meta {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .empty-state {
   padding: clamp(28px, 4vw, 42px);
   border: 1px solid var(--surface-border);
