@@ -87,7 +87,7 @@ const metaStyle = {
   borderRadius: '4px',
   border: '1px solid var(--accent-border)',
   background: 'var(--accent-soft)',
-  color: 'var(--accent-neon)',
+  color: 'var(--accent-quiet)',
   fontSize: '11px',
   textTransform: 'uppercase',
   letterSpacing: 0,

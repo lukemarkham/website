@@ -3,33 +3,32 @@
 :root {
   --font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Manrope', sans-serif;
-  --bg: #060607;
-  --bg-elevated: #101112;
+  --bg: #0b0b0a;
+  --bg-elevated: #151512;
   --surface: linear-gradient(135deg, rgba(16, 17, 18, 0.92), rgba(8, 8, 10, 0.9));
   --card-surface: linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
   --surface-border: rgba(244, 244, 236, 0.14);
   --surface-shadow: 0 26px 80px rgba(0, 0, 0, 0.44);
-  --text: #f7f4ea;
-  --text-soft: rgba(247, 244, 234, 0.82);
-  --text-muted: rgba(247, 244, 234, 0.58);
-  --accent: #2ee8a6;
-  --accent-neon: #a7ff3f;
-  --accent-strong: #fff7c8;
-  --accent-soft: rgba(167, 255, 63, 0.1);
-  --accent-border: rgba(167, 255, 63, 0.34);
-  --accent-warm: #ff8f3f;
-  --accent-hot: #ff4f87;
-  --accent-cool: #36d9ff;
+  --text: #f3efe3;
+  --text-soft: rgba(243, 239, 227, 0.82);
+  --text-muted: rgba(243, 239, 227, 0.58);
+  --accent: #8f9d78;
+  --accent-quiet: #d4c7a1;
+  --accent-strong: #f6edd8;
+  --accent-soft: rgba(212, 199, 161, 0.1);
+  --accent-border: rgba(212, 199, 161, 0.28);
+  --accent-warm: #b88a5a;
+  --accent-clay: #a86c66;
+  --accent-ink: #7f8b9b;
   --grain:
     radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 100%),
     radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 100%);
   font-family: var(--font-body);
   color: var(--text);
   background:
-    radial-gradient(circle at 15% 8%, rgba(54, 217, 255, 0.18), transparent 28%),
-    radial-gradient(circle at 84% 12%, rgba(255, 79, 135, 0.14), transparent 24%),
-    radial-gradient(circle at 56% 0%, rgba(167, 255, 63, 0.09), transparent 34%),
-    linear-gradient(180deg, #101112 0%, #060607 48%, #030304 100%);
+    radial-gradient(circle at 18% 0%, rgba(143, 157, 120, 0.12), transparent 28%),
+    radial-gradient(circle at 82% 10%, rgba(184, 138, 90, 0.08), transparent 26%),
+    linear-gradient(180deg, #151512 0%, #0b0b0a 54%, #070706 100%);
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -52,10 +51,9 @@ body {
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(circle at 15% 8%, rgba(54, 217, 255, 0.18), transparent 28%),
-    radial-gradient(circle at 84% 12%, rgba(255, 79, 135, 0.14), transparent 24%),
-    radial-gradient(circle at 56% 0%, rgba(167, 255, 63, 0.09), transparent 34%),
-    linear-gradient(180deg, #101112 0%, #060607 48%, #030304 100%);
+    radial-gradient(circle at 18% 0%, rgba(143, 157, 120, 0.12), transparent 28%),
+    radial-gradient(circle at 82% 10%, rgba(184, 138, 90, 0.08), transparent 26%),
+    linear-gradient(180deg, #151512 0%, #0b0b0a 54%, #070706 100%);
 }
 
 body.lightbox-open {
@@ -77,7 +75,7 @@ body::before {
   left: -160px;
   width: 360px;
   height: 620px;
-  background: linear-gradient(180deg, rgba(46, 232, 166, 0.14), rgba(54, 217, 255, 0.08), transparent);
+  background: linear-gradient(180deg, rgba(143, 157, 120, 0.08), rgba(127, 139, 155, 0.04), transparent);
   transform: rotate(-18deg);
   animation: floatGlow 14s ease-in-out infinite;
 }
@@ -87,7 +85,7 @@ body::after {
   bottom: 6vh;
   width: 420px;
   height: 420px;
-  background: conic-gradient(from 90deg, rgba(255, 79, 135, 0.12), rgba(167, 255, 63, 0.1), rgba(54, 217, 255, 0.1), rgba(255, 79, 135, 0.12));
+  background: radial-gradient(circle, rgba(184, 138, 90, 0.08), rgba(127, 139, 155, 0.035), transparent 68%);
   animation: floatGlow 18s ease-in-out infinite reverse;
 }
 
@@ -103,11 +101,11 @@ body::after {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(167, 255, 63, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(54, 217, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(rgba(212, 199, 161, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127, 139, 155, 0.018) 1px, transparent 1px),
     var(--grain);
-  background-size: 88px 88px, 88px 88px, 180px 180px;
-  opacity: 0.34;
+  background-size: 104px 104px, 104px 104px, 220px 220px;
+  opacity: 0.22;
   mix-blend-mode: soft-light;
   z-index: -1;
 }
@@ -128,8 +126,8 @@ a {
   padding: 14px 16px;
   border: 1px solid var(--surface-border);
   border-radius: 10px;
-  background: rgba(6, 6, 7, 0.7);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  background: rgba(11, 11, 10, 0.74);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(18px);
   z-index: 40;
   animation: fadeUp 500ms ease both;
@@ -158,7 +156,7 @@ h3 {
   letter-spacing: 0;
   text-transform: uppercase;
   color: var(--accent-strong);
-  text-shadow: 0 0 22px rgba(167, 255, 63, 0.16);
+  text-shadow: none;
 }
 
 .nav-link {
@@ -181,7 +179,7 @@ h3 {
   bottom: -7px;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, var(--accent-neon), var(--accent-cool));
+  background: var(--accent-warm);
   transform: scaleX(0.35);
   opacity: 0;
   transition: transform 160ms ease, opacity 160ms ease;
@@ -273,8 +271,8 @@ h3 {
 }
 
 .dropdown-link:hover {
-  background: rgba(167, 255, 63, 0.1);
-  color: var(--accent-neon);
+  background: rgba(212, 199, 161, 0.08);
+  color: var(--accent-strong);
 }
 
 .hero-shell {
@@ -291,23 +289,22 @@ h3 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(6, 6, 7, 0.96) 0%, rgba(6, 6, 7, 0.7) 46%, rgba(6, 6, 7, 0.14) 100%),
-    radial-gradient(circle at 74% 36%, rgba(167, 255, 63, 0.18), transparent 28%),
+    linear-gradient(90deg, rgba(11, 11, 10, 0.99) 0%, rgba(11, 11, 10, 0.96) 48%, rgba(11, 11, 10, 0.72) 68%, rgba(11, 11, 10, 0.22) 100%),
+    radial-gradient(circle at 74% 36%, rgba(143, 157, 120, 0.1), transparent 30%),
     url('./assets/hero.png') right clamp(18px, 7vw, 82px) center / min(38vw, 360px) auto no-repeat;
   filter: none;
   pointer-events: none;
 }
 
 .hero-shell::after {
-  content: 'LM';
+  content: '';
   position: absolute;
-  right: clamp(18px, 3vw, 34px);
-  bottom: clamp(12px, 2vw, 24px);
-  color: rgba(247, 244, 234, 0.08);
-  font-family: var(--font-display);
-  font-size: clamp(4rem, 16vw, 11rem);
-  font-weight: 700;
-  line-height: 0.8;
+  left: clamp(24px, 4vw, 56px);
+  top: clamp(24px, 4vw, 56px);
+  width: clamp(56px, 8vw, 96px);
+  height: 1px;
+  background: var(--accent-warm);
+  opacity: 0.9;
   pointer-events: none;
 }
 
@@ -328,8 +325,8 @@ h3 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(167, 255, 63, 0.035), transparent 32%),
-    radial-gradient(circle at top right, rgba(54, 217, 255, 0.08), transparent 28%);
+    linear-gradient(135deg, rgba(212, 199, 161, 0.018), transparent 34%),
+    radial-gradient(circle at top right, rgba(127, 139, 155, 0.035), transparent 28%);
   pointer-events: none;
 }
 
@@ -343,16 +340,16 @@ h3 {
   content: '';
   position: absolute;
   inset: 0;
-  border-top: 2px solid rgba(167, 255, 63, 0.32);
-  opacity: 0.72;
+  border-top: 1px solid rgba(212, 199, 161, 0.26);
+  opacity: 0.64;
   pointer-events: none;
 }
 
 .surface-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(167, 255, 63, 0.3) !important;
+  border-color: rgba(212, 199, 161, 0.24) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38) !important;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.095), rgba(167, 255, 63, 0.035)) !important;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(212, 199, 161, 0.025)) !important;
 }
 
 .reviews-header {
@@ -410,7 +407,7 @@ h3 {
 
 .review-stars {
   margin-bottom: 14px;
-  color: var(--accent-neon);
+  color: var(--accent-warm);
   font-size: 1rem;
   letter-spacing: 0;
 }
@@ -477,9 +474,9 @@ h3 {
 }
 
 .review-control:hover {
-  background: rgba(167, 255, 63, 0.1);
+  background: rgba(212, 199, 161, 0.08);
   border-color: var(--accent-border);
-  color: var(--accent-neon);
+  color: var(--accent-strong);
 }
 
 .review-dots {
@@ -500,7 +497,7 @@ h3 {
 }
 
 .review-dot.is-active {
-  background: var(--accent-neon);
+  background: var(--accent-warm);
 }
 
 .map-card {
@@ -616,7 +613,7 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px;
   background: rgba(12, 17, 22, 0.86) !important;
-  color: var(--accent-neon) !important;
+  color: var(--accent-strong) !important;
   font-size: 0.78rem !important;
   font-weight: 800 !important;
   line-height: 1;
@@ -729,9 +726,9 @@ h3 {
 }
 
 .primary-button {
-  color: #050606;
-  background: linear-gradient(135deg, var(--accent-neon), var(--accent-cool));
-  box-shadow: 0 16px 38px rgba(167, 255, 63, 0.18);
+  color: #0b0b0a;
+  background: linear-gradient(135deg, #f0e5c9, #c9b083);
+  box-shadow: 0 16px 38px rgba(184, 138, 90, 0.16);
 }
 
 .primary-button:hover:not(:disabled),
@@ -762,7 +759,7 @@ h3 {
 }
 
 .text-link {
-  color: var(--accent-neon);
+  color: var(--accent-strong);
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -770,7 +767,7 @@ h3 {
 }
 
 .text-link:hover {
-  color: var(--accent-cool);
+  color: var(--accent-warm);
 }
 
 .control-card {
@@ -820,7 +817,7 @@ h3 {
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: 0;
-  color: var(--accent-neon);
+  color: var(--accent-strong);
 }
 
 .range-input {
@@ -834,7 +831,7 @@ h3 {
 .range-input::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent-neon), var(--accent-cool));
+  background: linear-gradient(90deg, #d7c59b, #8f9d78);
 }
 
 .range-input::-webkit-slider-thumb {
@@ -845,7 +842,7 @@ h3 {
   margin-top: -6px;
   border-radius: 3px;
   border: 2px solid rgba(16, 22, 29, 0.95);
-  background: #f7f4ea;
+  background: #f3efe3;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
@@ -853,7 +850,7 @@ h3 {
   height: 8px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent-neon), var(--accent-cool));
+  background: linear-gradient(90deg, #d7c59b, #8f9d78);
 }
 
 .range-input::-moz-range-thumb {
@@ -861,7 +858,7 @@ h3 {
   height: 20px;
   border: 2px solid rgba(16, 22, 29, 0.95);
   border-radius: 3px;
-  background: #f7f4ea;
+  background: #f3efe3;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
@@ -1103,10 +1100,10 @@ code {
 
   .hero-shell::before {
     background:
-      linear-gradient(180deg, rgba(6, 6, 7, 0.64) 0%, rgba(6, 6, 7, 0.96) 64%),
-      radial-gradient(circle at 50% 12%, rgba(167, 255, 63, 0.16), transparent 34%),
+      linear-gradient(180deg, rgba(11, 11, 10, 0.72) 0%, rgba(11, 11, 10, 0.98) 64%),
+      radial-gradient(circle at 50% 12%, rgba(212, 199, 161, 0.08), transparent 34%),
       url('./assets/hero.png') center top 16px / 190px auto no-repeat;
-    opacity: 0.78;
+    opacity: 0.86;
   }
 
   .hero-shell::after {
