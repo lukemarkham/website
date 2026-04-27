@@ -1,12 +1,17 @@
 import './App.css'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
 
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
 const SOUNDBETTER_MAP_URL = 'https://soundbetter.com/profiles/45761-luke-markham/map'
+const REVERB_SHOP_SLUG = import.meta.env.VITE_REVERB_SHOP_SLUG || 'lukes-gear-emporium-220'
+const REVERB_SHOP_URL = import.meta.env.VITE_REVERB_SHOP_URL || `https://reverb.com/shop/${REVERB_SHOP_SLUG}`
+const REVERB_EMBED_SCRIPT_URL = 'https://d1g5417jjjo7sf.cloudfront.net/assets/embed/reverb.js'
+const JQUERY_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'
 
 const pageShellStyle = {
   width: '100%',
@@ -127,7 +132,31 @@ function SiteNav({ showHomeLink = false }) {
             </Link>
           </div>
         </div>
+        <div className="nav-dropdown">
+          <button
+            type="button"
+            className="nav-link nav-trigger"
+            aria-haspopup="menu"
+          >
+            Extras
+          </button>
+          <div className="nav-dropdown-menu" role="menu">
+            <Link className="dropdown-link" to="/extras">
+              Overview
+            </Link>
+            <Link className="dropdown-link" to="/photography">
+              Photography
+            </Link>
+            <Link className="dropdown-link" to="/books">
+              Book Reviews
+            </Link>
+            <Link className="dropdown-link" to="/ramblings">
+              Ramblings
+            </Link>
+          </div>
+        </div>
         <a className="nav-link" href="/#store">Beat Store</a>
+        <a className="nav-link" href="/#gear-shop">Gear Shop</a>
         <a className="nav-link" href="/#contact">Contact</a>
       </div>
     </nav>
@@ -155,7 +184,7 @@ function ReviewGallery() {
     return 'is-large'
   }
 
-  function showReview(nextIndex) {
+  const showReview = useCallback((nextIndex) => {
     if (nextIndex === currentIndex) {
       return
     }
@@ -170,7 +199,7 @@ function ReviewGallery() {
       setIsReviewVisible(true)
       transitionTimeoutRef.current = null
     }, 180)
-  }
+  }, [currentIndex])
 
   useEffect(() => {
     if (totalReviews <= 1) {
@@ -187,7 +216,7 @@ function ReviewGallery() {
         window.clearTimeout(transitionTimeoutRef.current)
       }
     }
-  }, [currentIndex, totalReviews])
+  }, [currentIndex, showReview, totalReviews])
 
   if (totalReviews === 0) {
     return (
@@ -292,6 +321,82 @@ function SoundBetterSection() {
   )
 }
 
+function appendScript(src) {
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(`script[src="${src}"]`)
+
+    if (existingScript) {
+      if (existingScript.dataset.loaded === 'true') {
+        resolve()
+        return
+      }
+
+      existingScript.addEventListener('load', resolve, { once: true })
+      existingScript.addEventListener('error', reject, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = src
+    script.async = true
+    script.onload = () => {
+      script.dataset.loaded = 'true'
+      resolve()
+    }
+    script.onerror = reject
+
+    document.body.appendChild(script)
+  })
+}
+
+function ReverbShopSection() {
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadReverbEmbed() {
+      try {
+        await appendScript(JQUERY_SCRIPT_URL)
+        if (!cancelled) {
+          await appendScript(REVERB_EMBED_SCRIPT_URL)
+        }
+      } catch {
+        // The direct shop link remains available if the third-party embed script fails.
+      }
+    }
+
+    loadReverbEmbed()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return (
+    <section id="gear-shop" className="surface-panel" style={sectionStyle}>
+      <div className="reverb-shop-header">
+        <div style={metaStyle}>Reverb</div>
+        <h2 style={sectionHeadingStyle}>Gear Shop</h2>
+        <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto 22px' }}>
+          Browse available instruments, drums, recording gear, and other listings through Luke's Reverb shop.
+        </p>
+      </div>
+
+      <div className="reverb-shop-card surface-card">
+        <div
+          className="reverb-embed-host"
+          data-reverb-embed-listings
+          data-reverb-search-shop={REVERB_SHOP_SLUG}
+          data-reverb-search-per-page="6"
+          data-reverb-currency="USD"
+        />
+        <a className="text-link reverb-shop-link" href={REVERB_SHOP_URL} target="_blank" rel="noreferrer">
+          Open Reverb Shop
+        </a>
+      </div>
+    </section>
+  )
+}
+
 function HomePage() {
   return (
     <div style={pageShellStyle}>
@@ -381,6 +486,34 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      <section id="extras" className="surface-panel" style={sectionStyle}>
+        <h2 style={sectionHeadingStyle}>Extras</h2>
+        <div style={gridStyle}>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Photography</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              A small gallery for favorite photos, side experiments, and visual notes.
+            </p>
+            <Link className="text-link" to="/photography">Open Gallery</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Book Reviews</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Notes on books, ideas worth keeping, and short reading reflections.
+            </p>
+            <Link className="text-link" to="/books">Open Reviews</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Ramblings</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              A loose home for essays, process notes, and anything that does not need a formal category.
+            </p>
+            <Link className="text-link" to="/ramblings">Open Ramblings</Link>
+          </div>
+        </div>
+      </section>
+
       <section id="store" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Beat Store</h2>
         <div style={gridStyle}>
@@ -394,12 +527,134 @@ function HomePage() {
         </div>
       </section>
 
+      <ReverbShopSection />
+
       <section id="contact" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Contact</h2>
         <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
           Reach out about recording sessions, private lessons, live work, production support, or custom music.
         </p>
         <a className="text-link" href="mailto:luke@lukemarkham.com">Email Me</a>
+      </section>
+    </div>
+  )
+}
+
+function ExtrasPage() {
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+        <div style={metaStyle}>Extras</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Side Notes</h1>
+        <p style={introStyle}>
+          A quieter corner for photography, reading notes, and other loose thoughts.
+        </p>
+
+        <div className="extras-grid">
+          <Link className="extras-card surface-card" to="/photography">
+            <span className="extras-card-kicker">Gallery</span>
+            <span className="extras-card-title">Photography</span>
+            <span className="extras-card-copy">Favorite shots and visual experiments.</span>
+          </Link>
+          <Link className="extras-card surface-card" to="/books">
+            <span className="extras-card-kicker">Reading</span>
+            <span className="extras-card-title">Book Reviews</span>
+            <span className="extras-card-copy">Short reviews and notes from the shelf.</span>
+          </Link>
+          <Link className="extras-card surface-card" to="/ramblings">
+            <span className="extras-card-kicker">Notes</span>
+            <span className="extras-card-title">Ramblings</span>
+            <span className="extras-card-copy">Essays, fragments, and stray observations.</span>
+          </Link>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function PhotographyPage() {
+  return (
+    <div style={{ ...pageShellStyle, maxWidth: '1280px' }}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+        <div style={metaStyle}>Extras</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Photography</h1>
+        <p style={introStyle}>
+          A small gallery of favorite shots from outside the music work.
+        </p>
+
+        {photographyShots.length > 0 ? (
+          <div className="photo-grid">
+            {photographyShots.map((shot) => (
+              <article key={shot.id} className="photo-card surface-card">
+                <img className="photo-image" src={shot.src} alt={shot.alt} />
+                <div className="photo-copy">
+                  <h2 className="photo-title">{shot.title}</h2>
+                  {shot.caption ? <p className="photo-caption">{shot.caption}</p> : null}
+                  {shot.location || shot.year ? (
+                    <p className="photo-meta">
+                      {[shot.location, shot.year].filter(Boolean).join(' • ')}
+                    </p>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state surface-card">
+            <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Gallery Coming Soon</h2>
+            <p style={mutedTextStyle}>
+              Favorite shots will appear here once photo files are added to the site.
+            </p>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function BooksPage() {
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+        <div style={metaStyle}>Extras</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Book Reviews</h1>
+        <p style={introStyle}>
+          Short reviews, reading notes, and ideas worth returning to.
+        </p>
+        <div className="empty-state surface-card">
+          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Reviews Coming Soon</h2>
+          <p style={mutedTextStyle}>
+            Reading notes and short reviews will live here.
+          </p>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function RamblingsPage() {
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
+        <div style={metaStyle}>Extras</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Ramblings</h1>
+        <p style={introStyle}>
+          Loose essays, process notes, and stray thoughts.
+        </p>
+        <div className="empty-state surface-card">
+          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Notes Coming Soon</h2>
+          <p style={mutedTextStyle}>
+            Longer thoughts and informal writing will live here.
+          </p>
+        </div>
       </section>
     </div>
   )
@@ -417,10 +672,6 @@ function clamp(value, min, max) {
 
 function scoreFromDifference(diff) {
   return Math.max(0, 100 - diff * 5)
-}
-
-function buildYouTubeEmbedUrl(videoId) {
-  return `https://www.youtube.com/embed/${videoId}?rel=0`
 }
 
 function buildYouTubePlaylistEmbedUrl(playlistId) {
@@ -900,6 +1151,10 @@ function App() {
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />
+        <Route path="/extras" element={<ExtrasPage />} />
+        <Route path="/photography" element={<PhotographyPage />} />
+        <Route path="/books" element={<BooksPage />} />
+        <Route path="/ramblings" element={<RamblingsPage />} />
       </Routes>
     </BrowserRouter>
   )
