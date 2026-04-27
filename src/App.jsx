@@ -141,17 +141,11 @@ function SiteNav({ showHomeLink = false }) {
             Extras
           </button>
           <div className="nav-dropdown-menu" role="menu">
-            <Link className="dropdown-link" to="/extras">
-              Overview
-            </Link>
             <Link className="dropdown-link" to="/photography">
               Photography
             </Link>
             <Link className="dropdown-link" to="/books">
               Book Reviews
-            </Link>
-            <Link className="dropdown-link" to="/ramblings">
-              Ramblings
             </Link>
           </div>
         </div>
@@ -504,13 +498,6 @@ function HomePage() {
             </p>
             <Link className="text-link" to="/books">Open Reviews</Link>
           </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Ramblings</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A loose home for essays, process notes, and anything that does not need a formal category.
-            </p>
-            <Link className="text-link" to="/ramblings">Open Ramblings</Link>
-          </div>
         </div>
       </section>
 
@@ -535,40 +522,6 @@ function HomePage() {
           Reach out about recording sessions, private lessons, live work, production support, or custom music.
         </p>
         <a className="text-link" href="mailto:luke@lukemarkham.com">Email Me</a>
-      </section>
-    </div>
-  )
-}
-
-function ExtrasPage() {
-  return (
-    <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
-
-      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
-        <div style={metaStyle}>Extras</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Side Notes</h1>
-        <p style={introStyle}>
-          A quieter corner for photography, reading notes, and other loose thoughts.
-        </p>
-
-        <div className="extras-grid">
-          <Link className="extras-card surface-card" to="/photography">
-            <span className="extras-card-kicker">Gallery</span>
-            <span className="extras-card-title">Photography</span>
-            <span className="extras-card-copy">Favorite shots and visual experiments.</span>
-          </Link>
-          <Link className="extras-card surface-card" to="/books">
-            <span className="extras-card-kicker">Reading</span>
-            <span className="extras-card-title">Book Reviews</span>
-            <span className="extras-card-copy">Short reviews and notes from the shelf.</span>
-          </Link>
-          <Link className="extras-card surface-card" to="/ramblings">
-            <span className="extras-card-kicker">Notes</span>
-            <span className="extras-card-title">Ramblings</span>
-            <span className="extras-card-copy">Essays, fragments, and stray observations.</span>
-          </Link>
-        </div>
       </section>
     </div>
   )
@@ -631,28 +584,6 @@ function BooksPage() {
           <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Reviews Coming Soon</h2>
           <p style={mutedTextStyle}>
             Reading notes and short reviews will live here.
-          </p>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function RamblingsPage() {
-  return (
-    <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
-
-      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
-        <div style={metaStyle}>Extras</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Ramblings</h1>
-        <p style={introStyle}>
-          Loose essays, process notes, and stray thoughts.
-        </p>
-        <div className="empty-state surface-card">
-          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Notes Coming Soon</h2>
-          <p style={mutedTextStyle}>
-            Longer thoughts and informal writing will live here.
           </p>
         </div>
       </section>
@@ -1151,10 +1082,8 @@ function App() {
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />
-        <Route path="/extras" element={<ExtrasPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
         <Route path="/books" element={<BooksPage />} />
-        <Route path="/ramblings" element={<RamblingsPage />} />
       </Routes>
     </BrowserRouter>
   )
