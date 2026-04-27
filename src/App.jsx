@@ -132,6 +132,9 @@ function SiteNav({ showHomeLink = false }) {
             </Link>
           </div>
         </div>
+        <a className="nav-link" href="/#store">Beat Store</a>
+        <a className="nav-link" href="/#gear-shop">Gear Shop</a>
+        <a className="nav-link" href="/#contact">Contact</a>
         <div className="nav-dropdown">
           <button
             type="button"
@@ -149,9 +152,6 @@ function SiteNav({ showHomeLink = false }) {
             </Link>
           </div>
         </div>
-        <a className="nav-link" href="/#store">Beat Store</a>
-        <a className="nav-link" href="/#gear-shop">Gear Shop</a>
-        <a className="nav-link" href="/#contact">Contact</a>
       </div>
     </nav>
   )
