@@ -528,6 +528,28 @@ function HomePage() {
 }
 
 function PhotographyPage() {
+  const [selectedShot, setSelectedShot] = useState(null)
+
+  useEffect(() => {
+    if (!selectedShot) {
+      return
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setSelectedShot(null)
+      }
+    }
+
+    document.body.classList.add('lightbox-open')
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.body.classList.remove('lightbox-open')
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [selectedShot])
+
   return (
     <div style={{ ...pageShellStyle, maxWidth: '1280px' }}>
       <SiteNav showHomeLink />
@@ -542,9 +564,15 @@ function PhotographyPage() {
         {photographyShots.length > 0 ? (
           <div className="photo-grid">
             {photographyShots.map((shot) => (
-              <article key={shot.id} className="photo-card surface-card">
+              <button
+                key={shot.id}
+                type="button"
+                className="photo-card surface-card"
+                onClick={() => setSelectedShot(shot)}
+                aria-label={`View ${shot.alt} full size`}
+              >
                 <img className="photo-image" src={shot.src} alt={shot.alt} />
-              </article>
+              </button>
             ))}
           </div>
         ) : (
@@ -555,6 +583,31 @@ function PhotographyPage() {
             </p>
           </div>
         )}
+
+        {selectedShot ? (
+          <div
+            className="photo-lightbox"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Expanded photo"
+            onClick={() => setSelectedShot(null)}
+          >
+            <button
+              type="button"
+              className="photo-lightbox-close"
+              onClick={() => setSelectedShot(null)}
+              aria-label="Close expanded photo"
+            >
+              Close
+            </button>
+            <img
+              className="photo-lightbox-image"
+              src={selectedShot.src}
+              alt={selectedShot.alt}
+              onClick={(event) => event.stopPropagation()}
+            />
+          </div>
+        ) : null}
       </section>
     </div>
   )

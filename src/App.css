@@ -53,6 +53,10 @@ body {
     linear-gradient(180deg, #131a22 0%, #0b0f13 52%, #080b0f 100%);
 }
 
+body.lightbox-open {
+  overflow: hidden;
+}
+
 body::before,
 body::after {
   content: '';
@@ -588,21 +592,76 @@ h3 {
 }
 
 .photo-card {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-block;
   overflow: hidden;
   width: 100%;
   margin: 0 0 18px;
+  padding: 0;
   border: 1px solid var(--surface-border);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.03);
   text-align: left;
+  cursor: zoom-in;
   break-inside: avoid;
+}
+
+.photo-card:focus-visible {
+  outline: 2px solid rgba(237, 243, 250, 0.72);
+  outline-offset: 4px;
 }
 
 .photo-image {
   display: block;
   width: 100%;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 44px);
+  background: rgba(3, 5, 8, 0.9);
+  backdrop-filter: blur(16px);
+  cursor: zoom-out;
+}
+
+.photo-lightbox-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.photo-lightbox-close {
+  appearance: none;
+  -webkit-appearance: none;
+  position: fixed;
+  top: clamp(16px, 3vw, 28px);
+  right: clamp(16px, 3vw, 28px);
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(12, 17, 22, 0.86);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.photo-lightbox-close:hover,
+.photo-lightbox-close:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .empty-state {
