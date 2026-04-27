@@ -4,9 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/optimize-photography.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/optimize-photography.mjs",
     "build": "vite build",
     "lint": "eslint .",
+    "photography:optimize": "node scripts/optimize-photography.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,6 +26,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "sharp": "^0.34.5",
     "vite": "^8.0.1"
   }
 }

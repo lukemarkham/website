@@ -1,5 +1,5 @@
 const photoModules = import.meta.glob(
-  '../assets/photography/**/*.{png,PNG,jpg,JPG,jpeg,JPEG,webp,WEBP,avif,AVIF}',
+  '../assets/photography-optimized/**/*.webp',
   { eager: true, import: 'default' },
 )
 
@@ -18,7 +18,7 @@ function titleFromFilename(path) {
 
 function collectionFromPath(path) {
   const parts = path.split('/')
-  const photographyIndex = parts.indexOf('photography')
+  const photographyIndex = parts.indexOf('photography-optimized')
   const collectionParts = parts.slice(photographyIndex + 1, -1)
 
   return collectionParts.map(formatLabel).filter(Boolean).join(' / ')
