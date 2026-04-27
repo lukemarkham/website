@@ -284,13 +284,19 @@ h3 {
   text-align: left;
 }
 
+.hero-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
 .hero-shell::before {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 0;
   background:
-    linear-gradient(90deg, rgba(11, 11, 10, 0.99) 0%, rgba(11, 11, 10, 0.96) 48%, rgba(11, 11, 10, 0.72) 68%, rgba(11, 11, 10, 0.22) 100%),
-    radial-gradient(circle at 74% 36%, rgba(143, 157, 120, 0.1), transparent 30%),
+    linear-gradient(90deg, rgba(11, 11, 10, 0.12) 0%, rgba(11, 11, 10, 0.04) 54%, rgba(11, 11, 10, 0) 100%),
+    radial-gradient(circle at 76% 42%, rgba(143, 157, 120, 0.14), transparent 34%),
     url('./assets/hero.png') right clamp(18px, 7vw, 82px) center / min(38vw, 360px) auto no-repeat;
   filter: none;
   pointer-events: none;
@@ -299,12 +305,11 @@ h3 {
 .hero-shell::after {
   content: '';
   position: absolute;
-  left: clamp(24px, 4vw, 56px);
-  top: clamp(24px, 4vw, 56px);
-  width: clamp(56px, 8vw, 96px);
-  height: 1px;
-  background: var(--accent-warm);
-  opacity: 0.9;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: min(66%, 760px);
+  background:
+    linear-gradient(90deg, rgba(11, 11, 10, 0.96) 0%, rgba(11, 11, 10, 0.9) 68%, rgba(11, 11, 10, 0) 100%);
   pointer-events: none;
 }
 
@@ -1100,14 +1105,16 @@ code {
 
   .hero-shell::before {
     background:
-      linear-gradient(180deg, rgba(11, 11, 10, 0.72) 0%, rgba(11, 11, 10, 0.98) 64%),
+      linear-gradient(180deg, rgba(11, 11, 10, 0.08) 0%, rgba(11, 11, 10, 0.36) 42%, rgba(11, 11, 10, 0.94) 82%),
       radial-gradient(circle at 50% 12%, rgba(212, 199, 161, 0.08), transparent 34%),
       url('./assets/hero.png') center top 16px / 190px auto no-repeat;
-    opacity: 0.86;
   }
 
   .hero-shell::after {
-    display: none;
+    inset: auto 0 0;
+    width: 100%;
+    height: 74%;
+    background: linear-gradient(180deg, rgba(11, 11, 10, 0) 0%, rgba(11, 11, 10, 0.94) 36%, rgba(11, 11, 10, 0.98) 100%);
   }
 
   .photo-grid {
