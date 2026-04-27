@@ -23,19 +23,19 @@ const pageShellStyle = {
 }
 
 const sectionStyle = {
-  marginBottom: '28px',
-  padding: 'clamp(26px, 3vw, 38px)',
+  marginBottom: '22px',
+  padding: 'clamp(24px, 3vw, 38px)',
   border: '1px solid var(--surface-border)',
-  borderRadius: '30px',
+  borderRadius: '10px',
   background: 'var(--surface)',
   boxShadow: 'var(--surface-shadow)',
-  backdropFilter: 'blur(14px)',
+  backdropFilter: 'blur(18px)',
 }
 
 const titleStyle = {
-  fontSize: 'clamp(38px, 7vw, 72px)',
-  lineHeight: 0.96,
-  letterSpacing: '-0.045em',
+  fontSize: 'clamp(42px, 8vw, 86px)',
+  lineHeight: 0.92,
+  letterSpacing: 0,
   margin: '0 0 20px',
 }
 
@@ -48,8 +48,8 @@ const introStyle = {
 }
 
 const sectionHeadingStyle = {
-  fontSize: 'clamp(24px, 4vw, 34px)',
-  letterSpacing: '-0.035em',
+  fontSize: 'clamp(26px, 4vw, 40px)',
+  letterSpacing: 0,
   margin: '0 0 14px',
 }
 
@@ -67,10 +67,10 @@ const gridStyle = {
 
 const cardStyle = {
   padding: '26px',
-  borderRadius: '24px',
+  borderRadius: '10px',
   border: '1px solid var(--surface-border)',
-  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03))',
-  boxShadow: '0 16px 40px rgba(3, 6, 10, 0.18)',
+  background: 'var(--card-surface)',
+  boxShadow: '0 16px 44px rgba(0, 0, 0, 0.26)',
 }
 
 const buttonRowStyle = {
@@ -83,14 +83,14 @@ const buttonRowStyle = {
 const metaStyle = {
   display: 'inline-block',
   marginBottom: '18px',
-  padding: '9px 16px',
-  borderRadius: '999px',
-  border: '1px solid rgba(205, 168, 116, 0.28)',
-  background: 'rgba(205, 168, 116, 0.08)',
-  color: 'var(--accent-strong)',
+  padding: '7px 11px',
+  borderRadius: '4px',
+  border: '1px solid var(--accent-border)',
+  background: 'var(--accent-soft)',
+  color: 'var(--accent-neon)',
   fontSize: '11px',
   textTransform: 'uppercase',
-  letterSpacing: '0.22em',
+  letterSpacing: 0,
 }
 
 function SiteNav({ showHomeLink = false }) {
