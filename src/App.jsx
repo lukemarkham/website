@@ -21,14 +21,14 @@ const METRONOME_SUBDIVISIONS = [
     id: 'beat',
     label: 'Beat',
     description: 'Quarter-note pulse after beat 1',
-    defaultProbability: 0,
+    defaultProbability: 100,
     ticks: [0],
     frequency: 920,
     volume: 0.26,
   },
   {
     id: 'eighth',
-    label: 'Eighth Upbeats',
+    label: '8th Offbeats',
     description: 'The “and” of each beat',
     defaultProbability: 0,
     ticks: [6],
@@ -37,7 +37,7 @@ const METRONOME_SUBDIVISIONS = [
   },
   {
     id: 'sixteenth',
-    label: 'Sixteenth Inner Notes',
+    label: '16th Offbeats',
     description: 'The e and a partials',
     defaultProbability: 0,
     ticks: [3, 9],
@@ -969,7 +969,7 @@ function TempoGuessrPage() {
 }
 
 function MetronomePage() {
-  const [tempo, setTempo] = useState(96)
+  const [tempo, setTempo] = useState(120)
   const [beatsPerMeasure, setBeatsPerMeasure] = useState(4)
   const [downbeatProbability, setDownbeatProbability] = useState(100)
   const [silentBarProbability, setSilentBarProbability] = useState(0)
@@ -1244,6 +1244,17 @@ function MetronomePage() {
     }))
   }
 
+  function randomizeProbabilities() {
+    setDownbeatProbability(randomInt(0, 100))
+    setSilentBarProbability(randomInt(0, 100))
+    setProbabilities(
+      METRONOME_SUBDIVISIONS.reduce((nextProbabilities, subdivision) => {
+        nextProbabilities[subdivision.id] = randomInt(0, 100)
+        return nextProbabilities
+      }, {}),
+    )
+  }
+
   function formatSessionTime(totalSeconds) {
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
@@ -1391,6 +1402,9 @@ function MetronomePage() {
             />
             <span>Lock Pattern</span>
           </label>
+          <button className="secondary-button" type="button" onClick={randomizeProbabilities}>
+            Randomize
+          </button>
         </div>
 
         <div className="metronome-subdivision-grid">

@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Megrim&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
   --font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Manrope', sans-serif;
+  --font-wordmark: 'Megrim', 'Space Grotesk', sans-serif;
   --bg: #0b0b0a;
   --bg-elevated: #151512;
   --surface: linear-gradient(135deg, rgba(16, 17, 18, 0.92), rgba(8, 8, 10, 0.9));
@@ -151,8 +152,9 @@ h3 {
 }
 
 .wordmark {
-  font-size: 0.98rem;
-  font-weight: 700;
+  font-family: var(--font-wordmark);
+  font-size: 1.28rem;
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: uppercase;
   color: var(--accent-strong);
@@ -1000,6 +1002,11 @@ h3 {
 }
 
 .metronome-repeat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
   padding: 18px;
   margin-bottom: 18px;
   border: 1px solid var(--surface-border);
