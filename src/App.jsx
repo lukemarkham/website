@@ -21,7 +21,7 @@ const METRONOME_SUBDIVISIONS = [
     id: 'beat',
     label: 'Beat',
     description: 'Quarter-note pulse after beat 1',
-    defaultProbability: 100,
+    defaultProbability: 0,
     ticks: [0],
     frequency: 920,
     volume: 0.26,
@@ -30,7 +30,7 @@ const METRONOME_SUBDIVISIONS = [
     id: 'eighth',
     label: 'Eighth Upbeats',
     description: 'The “and” of each beat',
-    defaultProbability: 60,
+    defaultProbability: 0,
     ticks: [6],
     frequency: 720,
     volume: 0.18,
@@ -39,7 +39,7 @@ const METRONOME_SUBDIVISIONS = [
     id: 'sixteenth',
     label: 'Sixteenth Inner Notes',
     description: 'The e and a partials',
-    defaultProbability: 35,
+    defaultProbability: 0,
     ticks: [3, 9],
     frequency: 580,
     volume: 0.14,
@@ -694,6 +694,10 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
 
+function clampWholeNumber(value, min, max) {
+  return clamp(Math.round(Number(value)), min, max)
+}
+
 function scoreFromDifference(diff) {
   return Math.max(0, 100 - diff * 5)
 }
@@ -1170,7 +1174,7 @@ function MetronomePage() {
     if (isPlaying) return
 
     const ctx = await getAudioContext()
-    const sessionDurationMs = clamp(Number(sessionMinutes), 0, 240) * 60 * 1000
+    const sessionDurationMs = clampWholeNumber(sessionMinutes, 0, 240) * 60 * 1000
     patternCacheRef.current = {}
     silentBarCacheRef.current = {}
     absoluteTickRef.current = 0
@@ -1280,9 +1284,9 @@ function MetronomePage() {
               type="number"
               min="0"
               max="240"
-              step="0.5"
+              step="1"
               value={sessionMinutes}
-              onChange={(event) => setSessionMinutes(clamp(Number(event.target.value), 0, 240))}
+              onChange={(event) => setSessionMinutes(clampWholeNumber(event.target.value, 0, 240))}
               disabled={isPlaying}
             />
             <span className="metronome-bpm">
