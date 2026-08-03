@@ -17,22 +17,25 @@ If you are developing a production application, we recommend using TypeScript wi
 
 ## Photography
 
-Full-resolution originals are **not** committed. They live on the local machine in:
+Drop full-resolution originals into `src/assets/photography/`. That folder is **gitignored** — the originals stay on your machine and never bloat the repo.
 
-```
-~/Pictures/Website Photography/
-```
+`scripts/optimize-photography.mjs` reads it and writes resized WebPs (max 1800px wide, quality 78) to `src/assets/photography-optimized/`, which **is** committed — that is what Netlify builds and what the site serves. `src/data/photography.js` globs the optimized folder, deriving each photo's title from its filename and its collection from any subfolder.
 
-`scripts/optimize-photography.mjs` reads that folder and writes resized WebPs (max 1800px wide, quality 78) to `src/assets/photography-optimized/`, which **is** committed — that is what Netlify builds and what the site serves. `src/data/photography.js` globs the optimized folder, deriving each photo's title from its filename and its collection from any subfolder.
+### Adding a photo
 
-### Adding or removing photos
+1. Drop the full-res file into `src/assets/photography/` (subfolders become collection labels).
+2. Run `npm run dev` — the `predev` hook optimizes it automatically.
+3. Commit the new `.webp` in `src/assets/photography-optimized/` and push.
 
-1. Drop the full-res file into `~/Pictures/Website Photography/` (subfolders become collection labels).
-2. Run `npm run photography:optimize` — or just `npm run dev`, which runs it first.
-3. Commit the new `.webp` files in `src/assets/photography-optimized/`.
+Step 3 needs `git add -A` (or a GUI). The new WebP is an untracked file, so `git commit -am` will silently skip it and the photo will never reach the site.
 
-Deleting an original and re-running the script removes its WebP too. Unchanged photos are skipped, so repeat runs are fast.
+### Removing a photo
 
-Point the script at a different folder with `PHOTO_SOURCE=/path/to/photos npm run photography:optimize`.
+Delete the original and re-run the script — it prunes the orphaned WebP, which shows up as a normal tracked deletion. Removing the *last* photo is the exception: the script treats an empty source folder as "nothing to do" (see below), so delete its WebP by hand.
 
-When the source folder is missing — on Netlify, or a fresh clone — the script no-ops and leaves the committed WebPs alone, so the build still succeeds.
+### Notes
+
+- Unchanged photos are skipped by timestamp, so repeat runs are fast.
+- `PHOTO_SOURCE=/path/to/photos npm run photography:optimize` points the script somewhere else, e.g. an external drive.
+- When the source folder is empty or missing — on Netlify, or any fresh clone — the script no-ops and leaves the committed WebPs alone, so the build still succeeds.
+- Because the originals are gitignored, git is **not** backing them up, and `git clean -xfd` would delete them. Keep them somewhere else too.

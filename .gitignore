@@ -10,9 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-# Full-res photography originals live in ~/Pictures/Website Photography, never
-# in the repo. Only src/assets/photography-optimized (WebP) is committed.
-src/assets/photography
+# Drop full-res photography originals in src/assets/photography. They stay
+# local; only the generated src/assets/photography-optimized WebPs are committed.
+src/assets/photography/*
+!src/assets/photography/.gitkeep
 *.local
 
 # Editor directories and files

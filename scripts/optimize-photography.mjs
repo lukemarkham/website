@@ -1,13 +1,13 @@
 import { mkdir, readdir, rm, stat } from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 import sharp from 'sharp'
 
-// Full-resolution originals live outside the repo so they never get committed.
+// Drop full-resolution originals here, the same way review screenshots go into
+// src/assets/reviews. The folder is gitignored, so the originals stay local.
 // Override with PHOTO_SOURCE=/some/other/folder npm run photography:optimize
 const sourceRoot = process.env.PHOTO_SOURCE
   ? path.resolve(process.env.PHOTO_SOURCE)
-  : path.join(os.homedir(), 'Pictures', 'Website Photography')
+  : path.resolve('src/assets/photography')
 
 // The optimized WebPs *are* committed — that is what Netlify builds and ships.
 const outputRoot = path.resolve('src/assets/photography-optimized')
@@ -90,17 +90,19 @@ async function pruneOrphans(expectedPaths) {
 
 async function main() {
   const sourceExists = await stat(sourceRoot).then((entry) => entry.isDirectory()).catch(() => false)
+  const images = sourceExists ? await findImages(sourceRoot) : []
 
-  // Netlify (and any fresh clone) has no originals — the committed WebPs are
-  // already correct, so leave them untouched rather than wiping the gallery.
-  if (!sourceExists) {
-    console.log(`No photography source at ${sourceRoot} — using the committed optimized images.`)
+  // Netlify (and any fresh clone) checks out an empty source folder, since the
+  // originals are gitignored. Bail out before pruning so the committed WebPs
+  // survive — otherwise a deploy would ship an empty gallery. It also means the
+  // last photo can only be removed from the site by deleting its WebP directly.
+  if (images.length === 0) {
+    console.log(`No photography originals in ${sourceRoot} — using the committed optimized images.`)
     return
   }
 
   await mkdir(outputRoot, { recursive: true })
 
-  const images = await findImages(sourceRoot)
   const results = await Promise.all(images.map(optimizeImage))
   const pruned = await pruneOrphans(results.map((result) => result.destinationPath))
 
