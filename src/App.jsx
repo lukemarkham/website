@@ -610,7 +610,7 @@ function PhotographyPage() {
         <div style={metaStyle}>Extras</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Photography</h1>
         <p style={introStyle}>
-          A small gallery of favorite shots from outside the music work.
+          Some of my favorite personal shots from outside the music world.
         </p>
 
         {photographyShots.length > 0 ? (
@@ -970,6 +970,7 @@ function TempoGuessrPage() {
 
 function MetronomePage() {
   const [tempo, setTempo] = useState(120)
+  const [tempoDraft, setTempoDraft] = useState('120')
   const [beatsPerMeasure, setBeatsPerMeasure] = useState(4)
   const [downbeatProbability, setDownbeatProbability] = useState(100)
   const [silentBarProbability, setSilentBarProbability] = useState(0)
@@ -1237,6 +1238,30 @@ function MetronomePage() {
     }
   }
 
+  // Keep whatever is typed in the tempo field as-is. Clamping mid-keystroke would
+  // rewrite "9" to "30" on the way to typing "93", making two-digit tempos
+  // impossible to enter.
+  function updateTempo(event) {
+    const { value } = event.target
+    setTempoDraft(value)
+
+    const parsed = Number(value)
+    if (value.trim() !== '' && Number.isFinite(parsed) && parsed >= 30 && parsed <= 300) {
+      setTempo(parsed)
+    }
+  }
+
+  // Once the field loses focus the entry is finished, so snap it into range.
+  function commitTempo() {
+    const parsed = Number(tempoDraft)
+    const nextTempo = tempoDraft.trim() === '' || !Number.isFinite(parsed)
+      ? tempo
+      : clamp(parsed, 30, 300)
+
+    setTempo(nextTempo)
+    setTempoDraft(String(nextTempo))
+  }
+
   function updateProbability(subdivisionId, value) {
     setProbabilities((currentProbabilities) => ({
       ...currentProbabilities,
@@ -1280,9 +1305,15 @@ function MetronomePage() {
               className="control-input metronome-tempo-input"
               type="number"
               min="30"
-              max="260"
-              value={tempo}
-              onChange={(event) => setTempo(clamp(Number(event.target.value), 30, 260))}
+              max="300"
+              value={tempoDraft}
+              onChange={updateTempo}
+              onBlur={commitTempo}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.currentTarget.blur()
+                }
+              }}
             />
             <span className="metronome-bpm">BPM</span>
           </div>
