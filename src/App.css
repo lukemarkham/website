@@ -1292,6 +1292,130 @@ code {
   color: var(--text);
 }
 
+.twitch-card {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 60;
+  /* Wide enough that Twitch's own player controls are not clipped. */
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 14px;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: rgba(11, 11, 10, 0.9);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(18px);
+  animation: fadeUp 420ms ease both;
+}
+
+.twitch-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.twitch-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e05a4f;
+  box-shadow: 0 0 0 0 rgba(224, 90, 79, 0.55);
+  animation: livePulse 2s ease-out infinite;
+}
+
+.twitch-live-label {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.twitch-dismiss {
+  appearance: none;
+  margin-left: auto;
+  padding: 0;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.twitch-dismiss:hover,
+.twitch-dismiss:focus-visible {
+  color: var(--text);
+  border-color: var(--surface-border);
+}
+
+.twitch-player {
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #000;
+  background-position: center;
+  background-size: cover;
+}
+
+.twitch-player iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.twitch-title {
+  margin: 10px 0 4px;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  /* Long stream titles must not stretch the card. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.twitch-meta {
+  margin: 0 0 12px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.twitch-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.twitch-action {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+@keyframes livePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(224, 90, 79, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 7px rgba(224, 90, 79, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(224, 90, 79, 0);
+  }
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -1318,6 +1442,8 @@ code {
 @media (prefers-reduced-motion: reduce) {
   .site-nav,
   .surface-panel,
+  .twitch-card,
+  .twitch-live-dot,
   body::before,
   body::after {
     animation: none;
@@ -1363,6 +1489,14 @@ code {
   .nav-dropdown:focus-within .nav-dropdown-menu {
     display: block;
     transform: none;
+  }
+
+  .twitch-card {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    max-width: none;
   }
 
   .map-card {

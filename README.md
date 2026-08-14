@@ -15,6 +15,49 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Twitch "live now" card
+
+When the Twitch channel is streaming, a dismissible card appears in the bottom
+corner of every page with the live player (muted), the stream title, game and
+viewer count. It is hidden the rest of the time.
+
+Twitch's Helix API needs an app access token, and minting one needs the client
+secret — so this **cannot** run in the browser like the YouTube section does.
+The lookup lives in `netlify/lib/twitch.mjs` and is served two ways:
+
+- **Production:** `netlify/functions/twitch-status.mjs` at
+  `/.netlify/functions/twitch-status`.
+- **Local dev:** the same module, served by a small middleware in
+  `vite.config.js`, so `npm run dev` behaves like production.
+
+### Setup
+
+1. Create an app at <https://dev.twitch.tv/console/apps>. The OAuth redirect URL
+   can be `http://localhost` — the client credentials flow never uses it.
+2. Copy the Client ID and generate a Client Secret.
+3. Locally: put both in `.env` (gitignored — see `.env.example`).
+4. On Netlify: **Site configuration → Environment variables**, add
+   `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`, then redeploy so the function
+   picks them up.
+
+The channel defaults to `slywalker_sound` in `netlify/lib/twitch.mjs`; set
+`TWITCH_CHANNEL` to override it.
+
+### Notes
+
+- With no credentials set the endpoint returns `{"live": false,
+  "configured": false}` and the card never renders, so a fresh clone and the
+  local dev server both work untouched.
+- Only the channel name, title, game, viewer count and thumbnail reach the
+  browser. The token and secret never leave the server, and upstream failures
+  come back as a generic `twitch_unavailable`.
+- Results are cached for 30s server-side and the page re-checks every 90s, so
+  going live shows up within a couple of minutes on an already-open tab.
+- Dismissal is remembered per stream id in `localStorage`, so the card stays
+  gone for the rest of that broadcast and returns for the next one.
+- The player embed passes `parent=<current hostname>`, which Twitch requires;
+  that works on localhost and on any deploy domain without configuration.
+
 ## Photography
 
 Drop full-resolution originals into `src/assets/photography/`. That folder is **gitignored** — the originals stay on your machine and never bloat the repo.

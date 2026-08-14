@@ -12,6 +12,9 @@ const REVERB_SHOP_SLUG = import.meta.env.VITE_REVERB_SHOP_SLUG || 'lukes-gear-em
 const REVERB_SHOP_URL = import.meta.env.VITE_REVERB_SHOP_URL || `https://reverb.com/shop/${REVERB_SHOP_SLUG}`
 const REVERB_EMBED_SCRIPT_URL = 'https://d1g5417jjjo7sf.cloudfront.net/assets/embed/reverb.js'
 const JQUERY_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'
+const TWITCH_STATUS_ENDPOINT = '/.netlify/functions/twitch-status'
+const TWITCH_POLL_INTERVAL_MS = 90_000
+const TWITCH_DISMISSED_STREAM_KEY = 'lm-twitch-dismissed-stream'
 const METRONOME_TICKS_PER_BEAT = 12
 const METRONOME_LOOKAHEAD_MS = 25
 const METRONOME_SCHEDULE_AHEAD_SECONDS = 0.12
@@ -133,6 +136,144 @@ const metaStyle = {
   fontSize: '11px',
   textTransform: 'uppercase',
   letterSpacing: 0,
+}
+
+// localStorage throws in private browsing on some browsers, and a live card is
+// never worth taking the page down for.
+function readDismissedStreamId() {
+  try {
+    return window.localStorage.getItem(TWITCH_DISMISSED_STREAM_KEY)
+  } catch {
+    return null
+  }
+}
+
+function TwitchLiveCard() {
+  const [stream, setStream] = useState(null)
+  const [dismissedStreamId, setDismissedStreamId] = useState(readDismissedStreamId)
+  const [muted, setMuted] = useState(true)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function checkLiveStatus() {
+      try {
+        const response = await fetch(TWITCH_STATUS_ENDPOINT, { signal: controller.signal })
+        if (!response.ok) {
+          setStream(null)
+          return
+        }
+
+        const data = await response.json()
+        setStream(data.live ? data : null)
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return
+        }
+
+        // Offline, blocked, or the endpoint is not deployed yet — stay hidden.
+        setStream(null)
+      }
+    }
+
+    checkLiveStatus()
+
+    // Poll so the card appears mid-visit when the stream starts, and clears
+    // itself when it ends.
+    const intervalId = setInterval(checkLiveStatus, TWITCH_POLL_INTERVAL_MS)
+
+    return () => {
+      controller.abort()
+      clearInterval(intervalId)
+    }
+  }, [])
+
+  const playerSrc = useMemo(() => {
+    if (!stream) {
+      return ''
+    }
+
+    const url = new URL('https://player.twitch.tv/')
+    url.searchParams.set('channel', stream.channel)
+    // Twitch refuses to embed unless the embedding host is declared.
+    url.searchParams.set('parent', window.location.hostname)
+    url.searchParams.set('muted', muted ? 'true' : 'false')
+    url.searchParams.set('autoplay', 'true')
+
+    return url.toString()
+  }, [stream, muted])
+
+  const dismiss = useCallback(() => {
+    if (!stream) {
+      return
+    }
+
+    setDismissedStreamId(stream.streamId)
+
+    try {
+      window.localStorage.setItem(TWITCH_DISMISSED_STREAM_KEY, stream.streamId)
+    } catch {
+      // Dismissal still holds for this page view; it just will not persist.
+    }
+  }, [stream])
+
+  // Dismissal is remembered per stream id, so the card stays gone for the rest
+  // of this broadcast but returns for the next one.
+  if (!stream || stream.streamId === dismissedStreamId) {
+    return null
+  }
+
+  return (
+    <aside className="twitch-card" aria-label="Live on Twitch">
+      <div className="twitch-card-header">
+        <span className="twitch-live-dot" aria-hidden="true" />
+        <span className="twitch-live-label">Live now</span>
+        <button
+          type="button"
+          className="twitch-dismiss"
+          onClick={dismiss}
+          aria-label="Dismiss the live stream notice"
+        >
+          ×
+        </button>
+      </div>
+      <div
+        className="twitch-player"
+        style={stream.thumbnail ? { backgroundImage: `url(${stream.thumbnail})` } : undefined}
+      >
+        <iframe
+          // Remounting on mute change is what actually applies the new setting.
+          key={muted ? 'muted' : 'unmuted'}
+          src={playerSrc}
+          title={`${stream.channel} live on Twitch`}
+          allow="autoplay; fullscreen"
+          allowFullScreen
+        />
+      </div>
+      {stream.title ? <p className="twitch-title">{stream.title}</p> : null}
+      <p className="twitch-meta">
+        {stream.game ? `${stream.game} · ` : ''}
+        {stream.viewers.toLocaleString()} watching
+      </p>
+      <div className="twitch-actions">
+        <button
+          type="button"
+          className="secondary-button twitch-action"
+          onClick={() => setMuted((value) => !value)}
+        >
+          {muted ? 'Unmute' : 'Mute'}
+        </button>
+        <a
+          className="primary-button twitch-action"
+          href={`https://www.twitch.tv/${stream.channel}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Watch on Twitch
+        </a>
+      </div>
+    </aside>
+  )
 }
 
 function SiteNav({ showHomeLink = false }) {
@@ -1792,6 +1933,7 @@ function App() {
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
       </Routes>
+      <TwitchLiveCard />
     </BrowserRouter>
   )
 }

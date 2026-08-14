@@ -26,4 +26,17 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Build config, build scripts and Netlify functions run in Node, not the
+    // browser, so they get Node globals (process, console) instead.
+    files: ['vite.config.js', 'eslint.config.js', 'scripts/**/*.{js,mjs}', 'netlify/**/*.{js,mjs}'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+  },
 ])

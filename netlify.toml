@@ -1,0 +1,6 @@
+# Build command and publish directory stay configured in the Netlify UI.
+# This only pins the functions directory (which is also Netlify's default) so
+# the Twitch endpoint is explicit in the repo rather than implied.
+# SPA routing lives in public/_redirects.
+[build]
+  functions = "netlify/functions"

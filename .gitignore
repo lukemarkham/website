@@ -16,6 +16,15 @@ src/assets/photography/*
 !src/assets/photography/.gitkeep
 *.local
 
+# Local secrets. The Twitch client secret lives here in dev and in the Netlify
+# UI in production — it must never be committed.
+.env
+.env.*
+!.env.example
+
+# Netlify CLI state
+.netlify
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
