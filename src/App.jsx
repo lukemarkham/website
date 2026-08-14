@@ -812,16 +812,31 @@ function randomInt(min, max) {
   return Math.floor(Math.random() * (high - low + 1)) + low
 }
 
-function getRandomSticking(length) {
-  const hands = []
-  const feet = []
+function oppositeLimb(limb) {
+  return limb === 'R' ? 'L' : 'R'
+}
+
+// A limb may never be used three times in a row, so once the previous two
+// strokes match, the next one has to switch. Hands and feet are separate
+// voices, so each is generated under the rule independently.
+function getRandomLimbSequence(length) {
+  const sequence = []
 
   for (let index = 0; index < length; index += 1) {
-    hands.push(Math.random() > 0.5 ? 'R' : 'L')
-    feet.push(Math.random() > 0.5 ? 'R' : 'L')
+    const previous = sequence[index - 1]
+    const mustSwitch = previous !== undefined && previous === sequence[index - 2]
+
+    sequence.push(mustSwitch ? oppositeLimb(previous) : Math.random() > 0.5 ? 'R' : 'L')
   }
 
-  return { hands, feet }
+  return sequence
+}
+
+function getRandomSticking(length) {
+  return {
+    hands: getRandomLimbSequence(length),
+    feet: getRandomLimbSequence(length),
+  }
 }
 
 function getDefaultMetronomeProbabilities() {
