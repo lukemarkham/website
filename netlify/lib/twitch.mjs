@@ -68,7 +68,21 @@ export async function getLiveStatus(env) {
   // Not set up yet (or running a local checkout without a .env): stay quiet
   // rather than erroring, so the site behaves exactly as it did before.
   if (!clientId || !clientSecret) {
-    return { statusCode: 200, payload: { live: false, configured: false } }
+    const missing = []
+    if (!clientId) missing.push('TWITCH_CLIENT_ID')
+    if (!clientSecret) missing.push('TWITCH_CLIENT_SECRET')
+
+    return {
+      statusCode: 200,
+      payload: {
+        live: false,
+        configured: false,
+        // TEMPORARY diagnostic while wiring up the Netlify env vars. Variable
+        // NAMES only — values are never included. Remove once confirmed.
+        missing,
+        seen: Object.keys(env).filter((key) => key.toUpperCase().includes('TWITCH')),
+      },
+    }
   }
 
   if (cachedStatus && cachedStatus.expiresAt > Date.now()) {
