@@ -43,6 +43,30 @@ The lookup lives in `netlify/lib/twitch.mjs` and is served two ways:
 The channel defaults to `slywalker_sound` in `netlify/lib/twitch.mjs`; set
 `TWITCH_CHANNEL` to override it.
 
+### Pointing the card at a different channel
+
+The credentials belong to the Twitch **app**, not to a channel — the app token
+reads any channel's public status. So switching channels (e.g. to a practice
+account) needs no new app, secret, or code:
+
+1. Set `TWITCH_CHANNEL` in Netlify to the channel name.
+2. Redeploy — environment variables are only picked up at deploy time.
+
+To go back, set it to `slywalker_sound` or delete the variable, then redeploy.
+The endpoint's `channel` field always reports which one is actually in effect,
+which is the quickest way to confirm a switch landed.
+
+Two things that fail quietly rather than loudly:
+
+- A channel that does not exist returns `live: false`, not an error — so the
+  variable can be set before the account is created.
+- A **blank** value falls back to the default channel. If the card is watching
+  `slywalker_sound` when you expected the alt, check the value actually saved.
+
+While `TWITCH_CHANNEL` points at a practice channel, anyone visiting the site
+during a stream sees that channel and a link to it. Switch it back before the
+site goes public.
+
 ### Notes
 
 - With no credentials set the endpoint returns `{"live": false,
