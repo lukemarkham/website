@@ -1592,6 +1592,27 @@ code {
   background: rgba(255, 255, 255, 0.045);
 }
 
+.ear-chord-result.is-given {
+  color: var(--text-soft);
+  opacity: 0.72;
+}
+
+.ear-chord-result.is-blank {
+  border-style: dashed;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.ear-chord-result.is-blank .ear-chord-roman {
+  font-size: 1.7rem;
+}
+
+.ear-chord-result.is-revealed {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
 .ear-chord-result.is-correct {
   border-color: rgba(143, 157, 120, 0.55);
   background: rgba(143, 157, 120, 0.14);

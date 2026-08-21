@@ -680,7 +680,7 @@ function HomePage() {
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Progression Ear Trainer</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Jazz and neo-soul chord progressions played on rotating instruments — name what you hear.
+              Hear a jazz or neo-soul progression, then name the one chord missing from the chart.
             </p>
             <Link className="text-link" to="/ear-training">Go to Ear Trainer</Link>
           </div>
@@ -1972,10 +1972,10 @@ function beatsPerChordFor(progression) {
 }
 
 function describeChordResult(item) {
-  if (item.status === 'correct') return 'Nailed it'
+  if (item.status === 'correct') return 'Correct'
   if (item.status === 'rootOnly') return `Right root — it was a ${FAMILY_LABELS[item.family]}`
-  if (item.status === 'quality') return `Root right, but it was a ${FAMILY_LABELS[item.family]}`
-  if (item.status === 'missing') return 'Nothing typed here'
+  if (item.status === 'quality') return `Right root, but it was a ${FAMILY_LABELS[item.family]}`
+  if (item.status === 'missing') return 'Nothing typed'
   return `You typed ${item.typed}`
 }
 
@@ -2064,6 +2064,7 @@ function EarTrainerPage() {
     const next = {
       progression,
       key,
+      blankIndex: Math.floor(Math.random() * progression.chords.length),
       instrumentId: chordInstrument.id,
       pattern,
       tempo: questionTempo,
@@ -2090,14 +2091,15 @@ function EarTrainerPage() {
   function submitAnswer() {
     if (!question || result || revealed || answer.trim() === '') return
 
-    const graded = gradeAnswer(answer, question.progression.chords, question.key)
-    setResult(graded)
+    const missingChord = question.progression.chords[question.blankIndex]
+    const graded = gradeAnswer(answer, [missingChord], question.key)
+    setResult(graded.results[0])
     setHistory((previous) => [
       {
         id: Date.now(),
         name: question.progression.name,
         keyName: question.key.name,
-        instrument: CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId)?.name ?? '',
+        chord: showKey ? chordSymbol(missingChord, question.key) : romanLabel(missingChord),
         score: graded.score,
       },
       ...previous,
@@ -2116,7 +2118,6 @@ function EarTrainerPage() {
     ? CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId)
     : null
   const activePattern = question ? PATTERNS.find((item) => item.id === question.pattern) : null
-  const answerChords = result ? result.results : null
   const showAnswerKey = revealed || Boolean(result)
 
   return (
@@ -2127,8 +2128,8 @@ function EarTrainerPage() {
         <div style={metaStyle}>Practice Tools</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Progression Ear Trainer</h1>
         <p style={introStyle}>
-          Jazz and neo-soul progressions played back on a rotating cast of instruments, in a random key,
-          with a different feel every question. Listen, then type what you heard.
+          Jazz and neo-soul progressions played on a rotating cast of instruments, in a random key, with a
+          different feel every question. You get every chord but one — listen, then name the missing one.
         </p>
 
         <div className="ear-level-chips">
@@ -2193,7 +2194,7 @@ function EarTrainerPage() {
                 checked={showKey}
                 onChange={(event) => setShowKey(event.target.checked)}
               />
-              <span>Show the key</span>
+              <span>Show chord names</span>
             </label>
           </div>
 
@@ -2215,14 +2216,14 @@ function EarTrainerPage() {
         </div>
 
         <div style={{ ...buttonRowStyle, marginBottom: '22px' }}>
-          <button className="primary-button" type="button" onClick={startQuestion} disabled={isPlaying}>
+          <button className="primary-button" type="button" onClick={startQuestion} disabled={pool.length === 0}>
             {question ? 'Next Progression' : 'Start Practising'}
           </button>
           <button
             className="secondary-button"
             type="button"
             onClick={() => playQuestion(question)}
-            disabled={!question || isPlaying}
+            disabled={!question}
           >
             Replay
           </button>
@@ -2230,7 +2231,7 @@ function EarTrainerPage() {
             className="secondary-button"
             type="button"
             onClick={() => playQuestion(question, 0.72)}
-            disabled={!question || isPlaying}
+            disabled={!question}
           >
             Replay Slower
           </button>
@@ -2245,14 +2246,89 @@ function EarTrainerPage() {
         </div>
 
         <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
-          <label className="control-label" htmlFor="ear-answer">Your Answer</label>
+          {!question ? (
+            <p style={mutedTextStyle}>
+              Press Start Practising. Every question picks a fresh progression, key, instrument and feel,
+              then hides one chord for you to name.
+            </p>
+          ) : (
+            <>
+              <div className="ear-question-meta">
+                <span>{showKey ? `Key of ${question.key.name}` : 'Key hidden'}</span>
+                <span>{activeInstrument ? activeInstrument.name : ''}</span>
+                <span>{activePattern ? activePattern.name : ''}</span>
+                <span>{question.tempo} BPM</span>
+              </div>
+
+              <div className="ear-answer-grid" style={{ marginTop: '18px' }}>
+                {question.progression.chords.map((chord, index) => {
+                  const isBlank = index === question.blankIndex
+                  const roman = romanLabel(chord)
+
+                  if (!isBlank) {
+                    return (
+                      <div className="ear-chord-result is-given" key={`${roman}-${index}`}>
+                        <span className="ear-chord-roman">{roman}</span>
+                        {showKey ? (
+                          <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
+                        ) : null}
+                      </div>
+                    )
+                  }
+
+                  if (!showAnswerKey) {
+                    return (
+                      <div className="ear-chord-result is-blank" key={`blank-${index}`}>
+                        <span className="ear-chord-roman">?</span>
+                        <span className="ear-chord-note">Name this chord</span>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div
+                      className={`ear-chord-result is-${result ? result.status : 'revealed'}`}
+                      key={`answer-${index}`}
+                    >
+                      <span className="ear-chord-roman">{roman}</span>
+                      {showKey ? (
+                        <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
+                      ) : null}
+                      <span className="ear-chord-note">
+                        {result ? describeChordResult(result) : 'Revealed'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {showAnswerKey ? (
+                <>
+                  <h2 style={{ ...sectionHeadingStyle, margin: '22px 0 6px' }}>
+                    {question.progression.name}
+                  </h2>
+                  {question.progression.note ? (
+                    <p style={mutedTextStyle}>{question.progression.note}</p>
+                  ) : null}
+                </>
+              ) : (
+                <p style={{ ...mutedTextStyle, marginTop: '16px' }}>
+                  {isPlaying ? 'Playing…' : `Chord ${question.blankIndex + 1} of ${question.progression.chords.length} is missing.`}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
+          <label className="control-label" htmlFor="ear-answer">The Missing Chord</label>
           <div className="ear-answer-row">
             <input
               id="ear-answer"
               ref={answerInputRef}
               className="control-input ear-answer-input"
               type="text"
-              placeholder="ii7 V7 Imaj7"
+              placeholder={showKey ? 'V7 or G7' : 'V7'}
               autoComplete="off"
               autoCapitalize="off"
               spellCheck="false"
@@ -2272,73 +2348,10 @@ function EarTrainerPage() {
             </button>
           </div>
           <p className="ear-hint">
-            Roman numerals (<code>ii7 V7 Imaj7</code>, <code>bVII7 I</code>) or chord symbols
-            (<code>Dm7 G7 Cmaj7</code>). Case carries the quality, so <code>ii7</code> is minor and
-            <code> V7</code> is dominant — suffixes are optional, but naming the quality scores full marks.
+            One chord only — a roman numeral (<code>ii7</code>, <code>V7</code>, <code>bVII7</code>) or a
+            chord symbol (<code>Dm7</code>, <code>G7</code>). Case carries the quality, so <code>ii7</code> is
+            minor and <code>V7</code> is dominant; naming the quality scores full marks.
           </p>
-        </div>
-
-        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
-          {!question ? (
-            <p style={mutedTextStyle}>
-              Press Start Practising. Every question picks a fresh progression, key, instrument and feel.
-            </p>
-          ) : (
-            <>
-              <div className="ear-question-meta">
-                <span>{showKey ? `Key of ${question.key.name}` : 'Key hidden'}</span>
-                <span>{activeInstrument ? activeInstrument.name : ''}</span>
-                <span>{activePattern ? activePattern.name : ''}</span>
-                <span>{question.tempo} BPM</span>
-                <span>{question.progression.chords.length} chords</span>
-              </div>
-
-              {!showAnswerKey ? (
-                <p style={{ ...mutedTextStyle, marginTop: '16px' }}>
-                  {isPlaying ? 'Playing…' : 'Type the progression, then hit Enter.'}
-                </p>
-              ) : (
-                <>
-                  <h2 style={{ ...sectionHeadingStyle, margin: '18px 0 6px' }}>
-                    {question.progression.name}
-                  </h2>
-                  {question.progression.note ? (
-                    <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>{question.progression.note}</p>
-                  ) : null}
-
-                  {result ? (
-                    <div className="ear-score">{result.score}% — {result.perfect ? 'perfect' : 'keep going'}</div>
-                  ) : null}
-
-                  <div className="ear-answer-grid">
-                    {(answerChords ?? question.progression.chords).map((item, index) => {
-                      const isGraded = Boolean(answerChords)
-                      const roman = isGraded ? item.roman : romanLabel(item)
-                      const symbol = isGraded ? item.symbol : chordSymbol(item, question.key)
-                      return (
-                        <div
-                          key={`${roman}-${index}`}
-                          className={`ear-chord-result${isGraded ? ` is-${item.status}` : ''}`}
-                        >
-                          <span className="ear-chord-roman">{roman}</span>
-                          <span className="ear-chord-symbol">{symbol}</span>
-                          {isGraded ? (
-                            <span className="ear-chord-note">{describeChordResult(item)}</span>
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {result && result.extraChords > 0 ? (
-                    <p className="ear-hint" style={{ marginTop: '14px' }}>
-                      You typed {result.extraChords} more chord{result.extraChords === 1 ? '' : 's'} than were played.
-                    </p>
-                  ) : null}
-                </>
-              )}
-            </>
-          )}
         </div>
 
         <div className="surface-card" style={cardStyle}>
@@ -2355,7 +2368,7 @@ function EarTrainerPage() {
                 <div key={item.id} className="history-row">
                   <span>{item.name}</span>
                   <span>Key of {item.keyName}</span>
-                  <span>{item.instrument}</span>
+                  <span>Missing: {item.chord}</span>
                   <span>{item.score}%</span>
                 </div>
               ))

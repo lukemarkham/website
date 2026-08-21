@@ -45,6 +45,7 @@ export function createEngine() {
   reverbTone.connect(master)
 
   const cleanups = []
+  const activeBuses = []
 
   return {
     ctx,
@@ -65,6 +66,7 @@ export function createEngine() {
       dry.connect(master)
       input.connect(wet)
       wet.connect(reverb)
+      activeBuses.push(input)
       return input
     },
     scheduleCleanup(node, when) {
@@ -77,12 +79,25 @@ export function createEngine() {
       }, Math.max(0, when) * 1000)
       cleanups.push(timer)
     },
+    // Voices are scheduled ahead of time and cannot be unscheduled, so cutting
+    // a phrase short means muting and dropping the bus they all play into.
     stopAll() {
       cleanups.forEach((timer) => window.clearTimeout(timer))
       cleanups.length = 0
-      master.gain.cancelScheduledValues(ctx.currentTime)
-      master.gain.setValueAtTime(0.0001, ctx.currentTime)
-      master.gain.linearRampToValueAtTime(0.85, ctx.currentTime + 0.25)
+      const now = ctx.currentTime
+      activeBuses.forEach((bus) => {
+        bus.gain.cancelScheduledValues(now)
+        bus.gain.setValueAtTime(bus.gain.value, now)
+        bus.gain.linearRampToValueAtTime(0.0001, now + 0.08)
+        window.setTimeout(() => {
+          try {
+            bus.disconnect()
+          } catch {
+            // Already torn down.
+          }
+        }, 200)
+      })
+      activeBuses.length = 0
     },
     close() {
       cleanups.forEach((timer) => window.clearTimeout(timer))
@@ -614,6 +629,8 @@ export function buildArrangement({ chords, key, tempo, beatsPerChord, pattern, p
 
 export function playArrangement(engine, arrangement, chordInstrument, bassInstrument) {
   const { ctx } = engine
+  // Whatever is still ringing belongs to the last question.
+  engine.stopAll()
   const startTime = ctx.currentTime + 0.12
   const chordBus = engine.createBus(chordInstrument.reverb)
   const bassBus = engine.createBus(bassInstrument.reverb)
