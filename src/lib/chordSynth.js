@@ -517,10 +517,13 @@ function approachNote(current, target) {
 
 // Turns a progression into a flat list of timed notes: chord voices with voice
 // leading, plus a bass part that walks when the pattern calls for it.
-export function buildArrangement({ chords, key, tempo, beatsPerChord, pattern, playReference }) {
+export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pattern, playReference }) {
   const beat = 60 / tempo
   const chordSeconds = beat * beatsPerChord
   const events = []
+  // Which chord is sounding when, so the chart can follow the playback.
+  const timeline = []
+  let reference = null
   let cursor = 0
   let previousVoicing = null
 
@@ -529,14 +532,17 @@ export function buildArrangement({ chords, key, tempo, beatsPerChord, pattern, p
 
   if (playReference) {
     // A quick tonic chord so the ear has a key centre before the question.
-    const referenceQuality = chords.some((chord) => chord.root === 0 && chord.quality.startsWith('m'))
-      ? 'm9'
-      : 'maj9'
-    const voicing = voiceChord(key.pc, referenceQuality, null)
+    reference = tonic === 'minor'
+      ? { numeral: 'i', root: 0, quality: 'm9' }
+      : { numeral: 'I', root: 0, quality: 'maj9' }
+    const voicing = voiceChord(key.pc, reference.quality, null)
     voicing.forEach((midi, index) => {
       events.push({ kind: 'chord', midi, time: cursor + index * 0.02, duration: beat * 1.6, velocity: 0.62 })
     })
     events.push({ kind: 'bass', midi: bassNote(key.pc), time: cursor, duration: beat * 1.6, velocity: 0.6 })
+    // Voice the first chord away from the reference rather than from nothing.
+    previousVoicing = voicing
+    timeline.push({ index: -1, start: cursor, end: cursor + beat * 2.4 })
     cursor += beat * 2.4
   }
 
@@ -544,6 +550,7 @@ export function buildArrangement({ chords, key, tempo, beatsPerChord, pattern, p
     const voicing = voiceChord(rootPitches[chordIndex], chord.quality, previousVoicing)
     previousVoicing = voicing
     const start = cursor
+    timeline.push({ index: chordIndex, start, end: start + chordSeconds })
     const bassMidi = bassPitches[chordIndex]
     const nextBass = bassPitches[(chordIndex + 1) % bassPitches.length]
 
@@ -624,7 +631,7 @@ export function buildArrangement({ chords, key, tempo, beatsPerChord, pattern, p
     cursor += chordSeconds
   })
 
-  return { events, duration: cursor + 1.6 }
+  return { events, timeline, reference, duration: cursor + 1.6 }
 }
 
 export function playArrangement(engine, arrangement, chordInstrument, bassInstrument) {
@@ -651,5 +658,5 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
 
   engine.scheduleCleanup(chordBus, arrangement.duration + 2)
   engine.scheduleCleanup(bassBus, arrangement.duration + 2)
-  return arrangement.duration
+  return { startTime, duration: arrangement.duration }
 }

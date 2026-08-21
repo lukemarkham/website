@@ -1444,6 +1444,7 @@ code {
   .surface-panel,
   .twitch-card,
   .twitch-live-dot,
+  .ear-chord-result,
   body::before,
   body::after {
     animation: none;
@@ -1453,8 +1454,13 @@ code {
   .video-grid-card,
   .primary-button,
   .secondary-button,
-  .nav-dropdown-menu {
+  .nav-dropdown-menu,
+  .ear-chord-result {
     transition: none;
+  }
+
+  .ear-chord-result.is-playing {
+    transform: none;
   }
 }
 
@@ -1585,11 +1591,35 @@ code {
 
 .ear-chord-result {
   display: grid;
+  align-content: center;
   gap: 6px;
   padding: 16px 14px;
   border-radius: 8px;
   border: 1px solid var(--surface-border);
   background: rgba(255, 255, 255, 0.045);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.ear-chord-result.is-reference {
+  border-style: dashed;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.ear-chord-result.is-playing {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgba(246, 237, 216, 0.32), 0 12px 30px rgba(0, 0, 0, 0.35);
+  opacity: 1;
+  transform: translateY(-3px);
+}
+
+.ear-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .ear-chord-result.is-given {
@@ -1614,8 +1644,32 @@ code {
 }
 
 .ear-chord-result.is-correct {
-  border-color: rgba(143, 157, 120, 0.55);
-  background: rgba(143, 157, 120, 0.14);
+  border-color: rgba(122, 199, 118, 0.75);
+  background: rgba(122, 199, 118, 0.18);
+  box-shadow: 0 0 24px rgba(122, 199, 118, 0.22);
+  animation: ear-correct-pop 0.5s ease-out;
+}
+
+.ear-chord-result.is-correct .ear-chord-roman {
+  color: #b7e8ac;
+}
+
+.ear-chord-result.is-correct .ear-chord-note {
+  color: rgba(183, 232, 172, 0.85);
+}
+
+@keyframes ear-correct-pop {
+  0% {
+    transform: scale(0.94);
+  }
+
+  55% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .ear-chord-result.is-rootOnly {

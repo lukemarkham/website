@@ -906,8 +906,8 @@ function TempoGuessrPage() {
   const [bars, setBars] = useState(2)
   const [targetBpm, setTargetBpm] = useState(null)
   const [guess, setGuess] = useState('')
-  const [isPlaying, setIsPlaying] = useState(false)
   const [roundActive, setRoundActive] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [result, setResult] = useState(null)
   const [history, setHistory] = useState([])
   const audioContextRef = useRef(null)
@@ -1961,6 +1961,85 @@ function AudioPage() {
   )
 }
 
+const CONFETTI_COLORS = ['#8f9d78', '#b88a5a', '#d4c7a1', '#f6edd8', '#7fbf7a', '#7f8b9b']
+
+// Fires from whichever chord chip came back correct, so the celebration lands
+// where the eye already is.
+function ConfettiBurst({ trigger }) {
+  const canvasRef = useRef(null)
+  const frameRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!trigger || !canvas) return undefined
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
+
+    const context = canvas.getContext('2d')
+    const ratio = window.devicePixelRatio || 1
+    const width = window.innerWidth
+    const height = window.innerHeight
+    canvas.width = width * ratio
+    canvas.height = height * ratio
+    context.scale(ratio, ratio)
+
+    const target = document.querySelector('.ear-chord-result.is-correct')
+    const rect = target ? target.getBoundingClientRect() : null
+    const originX = rect ? rect.left + rect.width / 2 : width / 2
+    const originY = rect ? rect.top + rect.height / 2 : height / 3
+
+    const pieces = Array.from({ length: 90 }, () => {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 3 + Math.random() * 7
+      return {
+        x: originX,
+        y: originY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3.5,
+        size: 4 + Math.random() * 5,
+        rotation: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 0.4,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        life: 0,
+      }
+    })
+
+    const lifespan = 110
+    const draw = () => {
+      context.clearRect(0, 0, width, height)
+      let alive = false
+      pieces.forEach((piece) => {
+        piece.life += 1
+        const fade = 1 - piece.life / lifespan
+        if (fade <= 0) return
+        alive = true
+        piece.vy += 0.28
+        piece.vx *= 0.99
+        piece.x += piece.vx
+        piece.y += piece.vy
+        piece.rotation += piece.spin
+        context.save()
+        context.globalAlpha = fade
+        context.translate(piece.x, piece.y)
+        context.rotate(piece.rotation)
+        context.fillStyle = piece.color
+        context.fillRect(-piece.size / 2, -piece.size / 2, piece.size, piece.size * 0.62)
+        context.restore()
+      })
+      frameRef.current = alive ? window.requestAnimationFrame(draw) : null
+      if (!alive) context.clearRect(0, 0, width, height)
+    }
+    frameRef.current = window.requestAnimationFrame(draw)
+
+    return () => {
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
+      context.clearRect(0, 0, width, height)
+    }
+  }, [trigger])
+
+  return <canvas ref={canvasRef} className="ear-confetti" aria-hidden="true" />
+}
+
 const EAR_TRAINER_DEFAULT_LEVELS = { core: true, intermediate: true, advanced: false }
 
 function pickRandom(items) {
@@ -1986,15 +2065,20 @@ function EarTrainerPage() {
   const [instrumentId, setInstrumentId] = useState(CHORD_INSTRUMENTS[0].id)
   const [useRandomKey, setUseRandomKey] = useState(true)
   const [playReference, setPlayReference] = useState(true)
+  const [loopPlayback, setLoopPlayback] = useState(true)
   const [showKey, setShowKey] = useState(true)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState(null)
   const [revealed, setRevealed] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [activeChordIndex, setActiveChordIndex] = useState(null)
+  const [celebration, setCelebration] = useState(0)
   const [history, setHistory] = useState([])
   const engineRef = useRef(null)
   const playTimeoutRef = useRef(null)
+  const frameRef = useRef(null)
+  const loopRef = useRef({ enabled: true, answered: false })
+  const currentQuestionRef = useRef(null)
   const answerInputRef = useRef(null)
 
   const pool = useMemo(() => progressions.filter((item) => levels[item.level]), [levels])
@@ -2008,6 +2092,7 @@ function EarTrainerPage() {
   useEffect(() => {
     return () => {
       if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
       if (engineRef.current) engineRef.current.close()
     }
   }, [])
@@ -2020,28 +2105,60 @@ function EarTrainerPage() {
     return engineRef.current
   }
 
-  async function playQuestion(target, tempoScale = 1) {
+  // The tonic reference is a way in to the key, so it plays once at the top of
+  // a question rather than on every time round the loop.
+  async function playQuestion(target, tempoScale = 1, isLoopPass = false) {
     if (!target) return
     const engine = await getEngine()
     const chordInstrument =
       CHORD_INSTRUMENTS.find((item) => item.id === target.instrumentId) ?? CHORD_INSTRUMENTS[0]
     const bassInstrument = BASS_INSTRUMENTS[chordInstrument.bass]
+    const withReference = target.playReference && !isLoopPass
     const arrangement =
       tempoScale === 1
-        ? target.arrangement
+        ? (withReference ? target.arrangement : target.loopArrangement)
         : buildArrangement({
             chords: target.progression.chords,
             key: target.key,
+            tonic: target.progression.tonic,
             tempo: target.tempo * tempoScale,
             beatsPerChord: target.beatsPerChord,
             pattern: target.pattern,
-            playReference: target.playReference,
+            playReference: withReference,
           })
 
-    const duration = playArrangement(engine, arrangement, chordInstrument, bassInstrument)
-    setIsPlaying(true)
+    const { startTime, duration } = playArrangement(engine, arrangement, chordInstrument, bassInstrument)
+
+    // Follow the audio clock rather than a chain of timers, so the chart stays
+    // in step with what is actually sounding.
+    const followPlayback = () => {
+      const elapsed = engine.ctx.currentTime - startTime
+      const segment = arrangement.timeline.find((item) => elapsed >= item.start && elapsed < item.end)
+      setActiveChordIndex(segment ? segment.index : null)
+      frameRef.current = elapsed < duration ? window.requestAnimationFrame(followPlayback) : null
+    }
+    if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
+    frameRef.current = window.requestAnimationFrame(followPlayback)
+
+    // A background tab stops firing animation frames, so the transport state is
+    // cleared on a timer as well.
     if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
-    playTimeoutRef.current = window.setTimeout(() => setIsPlaying(false), duration * 1000)
+    playTimeoutRef.current = window.setTimeout(() => {
+      setActiveChordIndex(null)
+      const { enabled, answered } = loopRef.current
+      if (enabled && !answered && currentQuestionRef.current === target) {
+        playQuestion(target, tempoScale, true)
+      }
+    }, duration * 1000)
+  }
+
+  function stopPlayback() {
+    if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
+    if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
+    playTimeoutRef.current = null
+    frameRef.current = null
+    if (engineRef.current) engineRef.current.stopAll()
+    setActiveChordIndex(null)
   }
 
   async function startQuestion() {
@@ -2073,12 +2190,24 @@ function EarTrainerPage() {
       arrangement: buildArrangement({
         chords: progression.chords,
         key,
+        tonic: progression.tonic,
         tempo: questionTempo,
         beatsPerChord,
         pattern,
         playReference,
       }),
+      loopArrangement: buildArrangement({
+        chords: progression.chords,
+        key,
+        tonic: progression.tonic,
+        tempo: questionTempo,
+        beatsPerChord,
+        pattern,
+        playReference: false,
+      }),
     }
+
+    currentQuestionRef.current = next
 
     setQuestion(next)
     setAnswer('')
@@ -2093,7 +2222,11 @@ function EarTrainerPage() {
 
     const missingChord = question.progression.chords[question.blankIndex]
     const graded = gradeAnswer(answer, [missingChord], question.key)
+    stopPlayback()
     setResult(graded.results[0])
+    if (graded.results[0].status === 'correct') {
+      setCelebration((previous) => previous + 1)
+    }
     setHistory((previous) => [
       {
         id: Date.now(),
@@ -2120,9 +2253,15 @@ function EarTrainerPage() {
   const activePattern = question ? PATTERNS.find((item) => item.id === question.pattern) : null
   const showAnswerKey = revealed || Boolean(result)
 
+  // The loop is scheduled from a timer, so it reads the live settings off a ref.
+  useEffect(() => {
+    loopRef.current = { enabled: loopPlayback, answered: showAnswerKey }
+  }, [loopPlayback, showAnswerKey])
+
   return (
     <div style={pageShellStyle}>
       <SiteNav showHomeLink />
+      <ConfettiBurst trigger={celebration} />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
@@ -2191,6 +2330,14 @@ function EarTrainerPage() {
             <label className="toggle-control">
               <input
                 type="checkbox"
+                checked={loopPlayback}
+                onChange={(event) => setLoopPlayback(event.target.checked)}
+              />
+              <span>Loop until answered</span>
+            </label>
+            <label className="toggle-control">
+              <input
+                type="checkbox"
                 checked={showKey}
                 onChange={(event) => setShowKey(event.target.checked)}
               />
@@ -2238,7 +2385,10 @@ function EarTrainerPage() {
           <button
             className="secondary-button"
             type="button"
-            onClick={() => setRevealed(true)}
+            onClick={() => {
+              stopPlayback()
+              setRevealed(true)
+            }}
             disabled={!question || showAnswerKey}
           >
             Reveal Answer
@@ -2261,13 +2411,28 @@ function EarTrainerPage() {
               </div>
 
               <div className="ear-answer-grid" style={{ marginTop: '18px' }}>
+                {question.arrangement.reference ? (
+                  <div
+                    className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}
+                  >
+                    <span className="ear-chord-roman">{romanLabel(question.arrangement.reference)}</span>
+                    {showKey ? (
+                      <span className="ear-chord-symbol">
+                        {chordSymbol(question.arrangement.reference, question.key)}
+                      </span>
+                    ) : null}
+                    <span className="ear-chord-note">Key centre</span>
+                  </div>
+                ) : null}
+
                 {question.progression.chords.map((chord, index) => {
                   const isBlank = index === question.blankIndex
+                  const playing = activeChordIndex === index ? ' is-playing' : ''
                   const roman = romanLabel(chord)
 
                   if (!isBlank) {
                     return (
-                      <div className="ear-chord-result is-given" key={`${roman}-${index}`}>
+                      <div className={`ear-chord-result is-given${playing}`} key={`${roman}-${index}`}>
                         <span className="ear-chord-roman">{roman}</span>
                         {showKey ? (
                           <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
@@ -2278,7 +2443,7 @@ function EarTrainerPage() {
 
                   if (!showAnswerKey) {
                     return (
-                      <div className="ear-chord-result is-blank" key={`blank-${index}`}>
+                      <div className={`ear-chord-result is-blank${playing}`} key={`blank-${index}`}>
                         <span className="ear-chord-roman">?</span>
                         <span className="ear-chord-note">Name this chord</span>
                       </div>
@@ -2287,7 +2452,7 @@ function EarTrainerPage() {
 
                   return (
                     <div
-                      className={`ear-chord-result is-${result ? result.status : 'revealed'}`}
+                      className={`ear-chord-result is-${result ? result.status : 'revealed'}${playing}`}
                       key={`answer-${index}`}
                     >
                       <span className="ear-chord-roman">{roman}</span>
@@ -2313,7 +2478,8 @@ function EarTrainerPage() {
                 </>
               ) : (
                 <p style={{ ...mutedTextStyle, marginTop: '16px' }}>
-                  {isPlaying ? 'Playing…' : `Chord ${question.blankIndex + 1} of ${question.progression.chords.length} is missing.`}
+                  {`Chord ${question.blankIndex + 1} of ${question.progression.chords.length} is missing.`}
+                  {loopPlayback ? ' Looping until you answer.' : ''}
                 </p>
               )}
             </>
