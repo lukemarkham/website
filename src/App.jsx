@@ -2467,7 +2467,7 @@ function EarTrainerPage() {
                           <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
                         ) : null}
                         {chord.secondary ? (
-                          <span className="ear-chord-secondary">V7 of {chord.secondary}</span>
+                          <span className="ear-chord-secondary">V/{chord.secondary}</span>
                         ) : null}
                       </div>
                     )
@@ -2492,7 +2492,7 @@ function EarTrainerPage() {
                         <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
                       ) : null}
                       {chord.secondary ? (
-                        <span className="ear-chord-secondary">V7 of {chord.secondary}</span>
+                        <span className="ear-chord-secondary">V/{chord.secondary}</span>
                       ) : null}
                       <span className="ear-chord-note">
                         {result ? describeChordResult(result) : 'Revealed'}
@@ -2550,8 +2550,8 @@ function EarTrainerPage() {
           </div>
           <p className="ear-hint">
             One chord only — a roman numeral (<code>ii7</code>, <code>V13sus</code>, <code>bVII7</code>), a
-            chord symbol (<code>Dm7</code>, <code>G7</code>), or a secondary dominant written either way:
-            <code> V7/ii</code>, <code>V7 of ii</code>, <code>V7 of Dm</code>. Case carries the quality, so{' '}
+            chord symbol (<code>Dm7</code>, <code>G7</code>), or a secondary dominant — <code>V/ii</code>,{' '}
+            <code>V7/ii</code> and <code>V7 of ii</code> all work. Case carries the quality, so{' '}
             <code>ii7</code> is minor and <code>V7</code> is dominant; naming the quality scores full marks.
           </p>
         </div>

@@ -7,7 +7,7 @@
 // and the sounding chord can never drift apart.
 
 // `secondary` marks a secondary dominant with the degree it resolves to, so the
-// chart can print "V7 of ii" alongside the numeral.
+// chart can print "V/ii" alongside the numeral.
 function chord(numeral, root, quality, secondary) {
   return secondary ? { numeral, root, quality, secondary } : { numeral, root, quality }
 }
