@@ -113,13 +113,46 @@ export function noteName(pc, accidental) {
   return names[((pc % 12) + 12) % 12]
 }
 
+// Minor keys are not spelled like their major namesakes: F♯ minor, C♯ minor and
+// G♯ minor are what players read, never G♭, D♭ or A♭ minor.
+const MINOR_SHARP_KEYS = new Set([1, 6, 8])
+
+export function keyForMode(key, tonic) {
+  if (tonic !== 'minor') {
+    return { ...key, label: `${key.name} major` }
+  }
+  const accidental = MINOR_SHARP_KEYS.has(key.pc) ? 'sharp' : key.accidental
+  const name = noteName(key.pc, accidental)
+  return { ...key, accidental, name, label: `${name} minor` }
+}
+
 export function romanLabel(chord) {
   return `${chord.numeral}${ROMAN_SUFFIX[chord.quality] ?? ''}`
 }
 
-export function chordSymbol(chord, key) {
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+const LETTER_PITCHES = [0, 2, 4, 5, 7, 9, 11]
+// Theoretically correct but unread in a chord chart: nobody writes F♭maj7.
+const AWKWARD_SPELLINGS = new Set(['F♭', 'C♭', 'E♯', 'B♯'])
+
+// The roman numeral, not the key signature, decides the letter: ♭II in A major
+// is B♭, never A♯, and ♯i°7 in C is C♯°7, never D♭°7.
+function rootName(chord, key) {
   const pc = (key.pc + chord.root) % 12
-  return `${noteName(pc, key.accidental)}${SYMBOL_SUFFIX[chord.quality] ?? ''}`
+  const degree = ROMAN_DEGREES[chord.numeral.replace(/[^IViv]/g, '').toLowerCase()]
+  if (degree === undefined) return noteName(pc, key.accidental)
+
+  const letterIndex = (LETTERS.indexOf(key.name[0]) + degree) % 7
+  const natural = LETTER_PITCHES[letterIndex]
+  const offset = (((pc - natural + 18) % 12)) - 6
+  if (Math.abs(offset) > 1) return noteName(pc, key.accidental)
+
+  const spelled = `${LETTERS[letterIndex]}${offset === 1 ? '♯' : offset === -1 ? '♭' : ''}`
+  return AWKWARD_SPELLINGS.has(spelled) ? noteName(pc, key.accidental) : spelled
+}
+
+export function chordSymbol(chord, key) {
+  return `${rootName(chord, key)}${SYMBOL_SUFFIX[chord.quality] ?? ''}`
 }
 
 export function familyOf(quality) {

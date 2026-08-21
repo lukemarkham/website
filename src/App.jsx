@@ -9,6 +9,7 @@ import {
   KEYS,
   chordSymbol,
   gradeAnswer,
+  keyForMode,
   romanLabel,
 } from './lib/harmony'
 import {
@@ -2167,7 +2168,9 @@ function EarTrainerPage() {
     // Never ask the same progression twice in a row unless it is the only one left.
     const candidates = pool.filter((item) => !question || item.id !== question.progression.id)
     const progression = pickRandom(candidates.length > 0 ? candidates : pool)
-    const key = useRandomKey ? pickRandom(KEYS) : KEYS[0]
+    // Spelling and the printed label both depend on whether the progression is
+    // major or minor, so the key is resolved against the progression's tonic.
+    const key = keyForMode(useRandomKey ? pickRandom(KEYS) : KEYS[0], progression.tonic)
     const chordInstrument = varySounds
       ? pickRandom(CHORD_INSTRUMENTS)
       : CHORD_INSTRUMENTS.find((item) => item.id === instrumentId) ?? CHORD_INSTRUMENTS[0]
@@ -2231,8 +2234,8 @@ function EarTrainerPage() {
       {
         id: Date.now(),
         name: question.progression.name,
-        keyName: question.key.name,
         chord: showKey ? chordSymbol(missingChord, question.key) : romanLabel(missingChord),
+        keyLabel: question.key.label,
         score: graded.score,
       },
       ...previous,
@@ -2404,7 +2407,7 @@ function EarTrainerPage() {
           ) : (
             <>
               <div className="ear-question-meta">
-                <span>{showKey ? `Key of ${question.key.name}` : 'Key hidden'}</span>
+                <span>{showKey ? `Key of ${question.key.label}` : 'Key hidden'}</span>
                 <span>{activeInstrument ? activeInstrument.name : ''}</span>
                 <span>{activePattern ? activePattern.name : ''}</span>
                 <span>{question.tempo} BPM</span>
@@ -2533,7 +2536,7 @@ function EarTrainerPage() {
               history.map((item) => (
                 <div key={item.id} className="history-row">
                   <span>{item.name}</span>
-                  <span>Key of {item.keyName}</span>
+                  <span>Key of {item.keyLabel}</span>
                   <span>Missing: {item.chord}</span>
                   <span>{item.score}%</span>
                 </div>
