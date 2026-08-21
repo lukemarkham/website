@@ -3,6 +3,22 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
+import { PROGRESSION_LEVELS, progressions } from './data/progressions'
+import {
+  FAMILY_LABELS,
+  KEYS,
+  chordSymbol,
+  gradeAnswer,
+  romanLabel,
+} from './lib/harmony'
+import {
+  BASS_INSTRUMENTS,
+  CHORD_INSTRUMENTS,
+  PATTERNS,
+  buildArrangement,
+  createEngine,
+  playArrangement,
+} from './lib/chordSynth'
 
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
@@ -318,6 +334,9 @@ function SiteNav({ showHomeLink = false }) {
             </Link>
             <Link className="dropdown-link" to="/sticking-generator">
               Sticking Generator
+            </Link>
+            <Link className="dropdown-link" to="/ear-training">
+              Ear Trainer
             </Link>
           </div>
         </div>
@@ -657,6 +676,13 @@ function HomePage() {
               Generate random hand and foot sticking patterns for four-limb coordination practice.
             </p>
             <Link className="text-link" to="/sticking-generator">Go to Sticking Generator</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Progression Ear Trainer</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Jazz and neo-soul chord progressions played on rotating instruments — name what you hear.
+            </p>
+            <Link className="text-link" to="/ear-training">Go to Ear Trainer</Link>
           </div>
         </div>
       </section>
@@ -1935,6 +1961,412 @@ function AudioPage() {
   )
 }
 
+const EAR_TRAINER_DEFAULT_LEVELS = { core: true, intermediate: true, advanced: false }
+
+function pickRandom(items) {
+  return items[Math.floor(Math.random() * items.length)]
+}
+
+function beatsPerChordFor(progression) {
+  return progression.chords.length >= 6 ? 2 : 4
+}
+
+function describeChordResult(item) {
+  if (item.status === 'correct') return 'Nailed it'
+  if (item.status === 'rootOnly') return `Right root — it was a ${FAMILY_LABELS[item.family]}`
+  if (item.status === 'quality') return `Root right, but it was a ${FAMILY_LABELS[item.family]}`
+  if (item.status === 'missing') return 'Nothing typed here'
+  return `You typed ${item.typed}`
+}
+
+function EarTrainerPage() {
+  const [levels, setLevels] = useState(EAR_TRAINER_DEFAULT_LEVELS)
+  const [tempo, setTempo] = useState(78)
+  const [varySounds, setVarySounds] = useState(true)
+  const [instrumentId, setInstrumentId] = useState(CHORD_INSTRUMENTS[0].id)
+  const [useRandomKey, setUseRandomKey] = useState(true)
+  const [playReference, setPlayReference] = useState(true)
+  const [showKey, setShowKey] = useState(true)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [result, setResult] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [history, setHistory] = useState([])
+  const engineRef = useRef(null)
+  const playTimeoutRef = useRef(null)
+  const answerInputRef = useRef(null)
+
+  const pool = useMemo(() => progressions.filter((item) => levels[item.level]), [levels])
+
+  const averageScore = useMemo(() => {
+    if (history.length === 0) return null
+    const total = history.reduce((sum, item) => sum + item.score, 0)
+    return Math.round(total / history.length)
+  }, [history])
+
+  useEffect(() => {
+    return () => {
+      if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
+      if (engineRef.current) engineRef.current.close()
+    }
+  }, [])
+
+  async function getEngine() {
+    if (!engineRef.current) {
+      engineRef.current = createEngine()
+    }
+    await engineRef.current.ensure()
+    return engineRef.current
+  }
+
+  async function playQuestion(target, tempoScale = 1) {
+    if (!target) return
+    const engine = await getEngine()
+    const chordInstrument =
+      CHORD_INSTRUMENTS.find((item) => item.id === target.instrumentId) ?? CHORD_INSTRUMENTS[0]
+    const bassInstrument = BASS_INSTRUMENTS[chordInstrument.bass]
+    const arrangement =
+      tempoScale === 1
+        ? target.arrangement
+        : buildArrangement({
+            chords: target.progression.chords,
+            key: target.key,
+            tempo: target.tempo * tempoScale,
+            beatsPerChord: target.beatsPerChord,
+            pattern: target.pattern,
+            playReference: target.playReference,
+          })
+
+    const duration = playArrangement(engine, arrangement, chordInstrument, bassInstrument)
+    setIsPlaying(true)
+    if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
+    playTimeoutRef.current = window.setTimeout(() => setIsPlaying(false), duration * 1000)
+  }
+
+  async function startQuestion() {
+    if (pool.length === 0) return
+
+    // Never ask the same progression twice in a row unless it is the only one left.
+    const candidates = pool.filter((item) => !question || item.id !== question.progression.id)
+    const progression = pickRandom(candidates.length > 0 ? candidates : pool)
+    const key = useRandomKey ? pickRandom(KEYS) : KEYS[0]
+    const chordInstrument = varySounds
+      ? pickRandom(CHORD_INSTRUMENTS)
+      : CHORD_INSTRUMENTS.find((item) => item.id === instrumentId) ?? CHORD_INSTRUMENTS[0]
+    const pattern = varySounds ? pickRandom(PATTERNS).id : 'block'
+    // A little tempo drift stops the ear from anchoring on one groove.
+    const questionTempo = varySounds
+      ? Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
+      : Number(tempo)
+    const beatsPerChord = beatsPerChordFor(progression)
+
+    const next = {
+      progression,
+      key,
+      instrumentId: chordInstrument.id,
+      pattern,
+      tempo: questionTempo,
+      beatsPerChord,
+      playReference,
+      arrangement: buildArrangement({
+        chords: progression.chords,
+        key,
+        tempo: questionTempo,
+        beatsPerChord,
+        pattern,
+        playReference,
+      }),
+    }
+
+    setQuestion(next)
+    setAnswer('')
+    setResult(null)
+    setRevealed(false)
+    await playQuestion(next)
+    if (answerInputRef.current) answerInputRef.current.focus()
+  }
+
+  function submitAnswer() {
+    if (!question || result || revealed || answer.trim() === '') return
+
+    const graded = gradeAnswer(answer, question.progression.chords, question.key)
+    setResult(graded)
+    setHistory((previous) => [
+      {
+        id: Date.now(),
+        name: question.progression.name,
+        keyName: question.key.name,
+        instrument: CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId)?.name ?? '',
+        score: graded.score,
+      },
+      ...previous,
+    ].slice(0, 10))
+  }
+
+  function toggleLevel(levelId) {
+    setLevels((previous) => {
+      const next = { ...previous, [levelId]: !previous[levelId] }
+      // Leaving every level off would leave nothing to ask.
+      return Object.values(next).some(Boolean) ? next : previous
+    })
+  }
+
+  const activeInstrument = question
+    ? CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId)
+    : null
+  const activePattern = question ? PATTERNS.find((item) => item.id === question.pattern) : null
+  const answerChords = result ? result.results : null
+  const showAnswerKey = revealed || Boolean(result)
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Progression Ear Trainer</h1>
+        <p style={introStyle}>
+          Jazz and neo-soul progressions played back on a rotating cast of instruments, in a random key,
+          with a different feel every question. Listen, then type what you heard.
+        </p>
+
+        <div className="ear-level-chips">
+          {PROGRESSION_LEVELS.map((level) => (
+            <button
+              key={level.id}
+              type="button"
+              className={`ear-level-chip${levels[level.id] ? ' is-active' : ''}`}
+              onClick={() => toggleLevel(level.id)}
+              aria-pressed={levels[level.id]}
+            >
+              {level.label}
+            </button>
+          ))}
+          <span className="ear-pool-count">{pool.length} progressions in the pool</span>
+        </div>
+
+        <div className="ear-toolbar">
+          <div className="control-card">
+            <label className="control-label" htmlFor="ear-tempo">Tempo</label>
+            <div className="range-value">{tempo} BPM</div>
+            <input
+              id="ear-tempo"
+              className="range-input"
+              type="range"
+              min="50"
+              max="140"
+              step="1"
+              value={tempo}
+              onChange={(event) => setTempo(Number(event.target.value))}
+            />
+          </div>
+
+          <div className="control-card ear-options-card">
+            <label className="toggle-control">
+              <input
+                type="checkbox"
+                checked={varySounds}
+                onChange={(event) => setVarySounds(event.target.checked)}
+              />
+              <span>New sound each question</span>
+            </label>
+            <label className="toggle-control">
+              <input
+                type="checkbox"
+                checked={useRandomKey}
+                onChange={(event) => setUseRandomKey(event.target.checked)}
+              />
+              <span>Random key</span>
+            </label>
+            <label className="toggle-control">
+              <input
+                type="checkbox"
+                checked={playReference}
+                onChange={(event) => setPlayReference(event.target.checked)}
+              />
+              <span>Play tonic first</span>
+            </label>
+            <label className="toggle-control">
+              <input
+                type="checkbox"
+                checked={showKey}
+                onChange={(event) => setShowKey(event.target.checked)}
+              />
+              <span>Show the key</span>
+            </label>
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="ear-instrument">Instrument</label>
+            <select
+              id="ear-instrument"
+              className="control-input ear-select"
+              value={varySounds ? 'random' : instrumentId}
+              disabled={varySounds}
+              onChange={(event) => setInstrumentId(event.target.value)}
+            >
+              {varySounds ? <option value="random">Random each question</option> : null}
+              {CHORD_INSTRUMENTS.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ ...buttonRowStyle, marginBottom: '22px' }}>
+          <button className="primary-button" type="button" onClick={startQuestion} disabled={isPlaying}>
+            {question ? 'Next Progression' : 'Start Practising'}
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => playQuestion(question)}
+            disabled={!question || isPlaying}
+          >
+            Replay
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => playQuestion(question, 0.72)}
+            disabled={!question || isPlaying}
+          >
+            Replay Slower
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setRevealed(true)}
+            disabled={!question || showAnswerKey}
+          >
+            Reveal Answer
+          </button>
+        </div>
+
+        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
+          <label className="control-label" htmlFor="ear-answer">Your Answer</label>
+          <div className="ear-answer-row">
+            <input
+              id="ear-answer"
+              ref={answerInputRef}
+              className="control-input ear-answer-input"
+              type="text"
+              placeholder="ii7 V7 Imaj7"
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              value={answer}
+              onChange={(event) => setAnswer(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') submitAnswer()
+              }}
+            />
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={submitAnswer}
+              disabled={!question || showAnswerKey || answer.trim() === ''}
+            >
+              Check Answer
+            </button>
+          </div>
+          <p className="ear-hint">
+            Roman numerals (<code>ii7 V7 Imaj7</code>, <code>bVII7 I</code>) or chord symbols
+            (<code>Dm7 G7 Cmaj7</code>). Case carries the quality, so <code>ii7</code> is minor and
+            <code> V7</code> is dominant — suffixes are optional, but naming the quality scores full marks.
+          </p>
+        </div>
+
+        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
+          {!question ? (
+            <p style={mutedTextStyle}>
+              Press Start Practising. Every question picks a fresh progression, key, instrument and feel.
+            </p>
+          ) : (
+            <>
+              <div className="ear-question-meta">
+                <span>{showKey ? `Key of ${question.key.name}` : 'Key hidden'}</span>
+                <span>{activeInstrument ? activeInstrument.name : ''}</span>
+                <span>{activePattern ? activePattern.name : ''}</span>
+                <span>{question.tempo} BPM</span>
+                <span>{question.progression.chords.length} chords</span>
+              </div>
+
+              {!showAnswerKey ? (
+                <p style={{ ...mutedTextStyle, marginTop: '16px' }}>
+                  {isPlaying ? 'Playing…' : 'Type the progression, then hit Enter.'}
+                </p>
+              ) : (
+                <>
+                  <h2 style={{ ...sectionHeadingStyle, margin: '18px 0 6px' }}>
+                    {question.progression.name}
+                  </h2>
+                  {question.progression.note ? (
+                    <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>{question.progression.note}</p>
+                  ) : null}
+
+                  {result ? (
+                    <div className="ear-score">{result.score}% — {result.perfect ? 'perfect' : 'keep going'}</div>
+                  ) : null}
+
+                  <div className="ear-answer-grid">
+                    {(answerChords ?? question.progression.chords).map((item, index) => {
+                      const isGraded = Boolean(answerChords)
+                      const roman = isGraded ? item.roman : romanLabel(item)
+                      const symbol = isGraded ? item.symbol : chordSymbol(item, question.key)
+                      return (
+                        <div
+                          key={`${roman}-${index}`}
+                          className={`ear-chord-result${isGraded ? ` is-${item.status}` : ''}`}
+                        >
+                          <span className="ear-chord-roman">{roman}</span>
+                          <span className="ear-chord-symbol">{symbol}</span>
+                          {isGraded ? (
+                            <span className="ear-chord-note">{describeChordResult(item)}</span>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {result && result.extraChords > 0 ? (
+                    <p className="ear-hint" style={{ marginTop: '14px' }}>
+                      You typed {result.extraChords} more chord{result.extraChords === 1 ? '' : 's'} than were played.
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="surface-card" style={cardStyle}>
+          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Session Stats</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+            Answered: {history.length} • Average score: {averageScore === null ? '—' : `${averageScore}%`}
+          </p>
+
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {history.length === 0 ? (
+              <p style={mutedTextStyle}>No answers yet.</p>
+            ) : (
+              history.map((item) => (
+                <div key={item.id} className="history-row">
+                  <span>{item.name}</span>
+                  <span>Key of {item.keyName}</span>
+                  <span>{item.instrument}</span>
+                  <span>{item.score}%</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -1943,6 +2375,7 @@ function App() {
         <Route path="/tempo-guessr" element={<TempoGuessrPage />} />
         <Route path="/metronome" element={<MetronomePage />} />
         <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
+        <Route path="/ear-training" element={<EarTrainerPage />} />
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />
