@@ -38,6 +38,7 @@ export const CHORD_INTERVALS = {
   '7b9': [0, 4, 7, 10, 13],
   '7alt': [0, 4, 8, 10, 13],
   '7sus4': [0, 5, 7, 10, 14],
+  '13sus4': [0, 5, 7, 10, 14, 21],
   'ø7': [0, 3, 6, 10],
   dim7: [0, 3, 6, 9],
 }
@@ -60,6 +61,7 @@ const ROMAN_SUFFIX = {
   '7b9': '7♭9',
   '7alt': '7alt',
   '7sus4': '7sus4',
+  '13sus4': '13sus',
   'ø7': 'ø7',
   dim7: '°7',
 }
@@ -91,6 +93,7 @@ const QUALITY_FAMILY = {
   '7b9': 'dominant',
   '7alt': 'dominant',
   '7sus4': 'sus',
+  '13sus4': 'sus',
   'ø7': 'halfDim',
   dim7: 'dim',
 }
@@ -278,7 +281,48 @@ function familyFromSuffix(raw, numeralIsLower) {
   return null
 }
 
+// The right-hand side of a slash: a roman numeral or a named chord makes this a
+// secondary dominant, while a bare letter is just a bass note under a slash
+// chord and leaves the chord itself to be graded.
+function parseSecondaryTarget(text, tonicPc) {
+  const roman = text.match(ROMAN_PATTERN)
+  if (roman) {
+    const degree = ROMAN_DEGREES[roman[2].toLowerCase()]
+    if (degree !== undefined) {
+      return (((MAJOR_SCALE[degree] + accidentalShift(roman[1])) % 12) + 12) % 12
+    }
+  }
+
+  const arabic = text.match(ARABIC_PATTERN)
+  if (arabic) {
+    return (((MAJOR_SCALE[Number(arabic[2]) - 1] + accidentalShift(arabic[1])) % 12) + 12) % 12
+  }
+
+  const symbol = text.match(SYMBOL_PATTERN)
+  if (symbol && symbol[3] !== '') {
+    const pc = LETTER_PITCH[symbol[1].toLowerCase()] + accidentalShift(symbol[2])
+    return ((((pc - tonicPc) % 12) + 12) % 12)
+  }
+
+  return null
+}
+
 function parseToken(token, tonicPc) {
+  const slash = token.match(/^([^/]+)\/(.+)$/)
+  if (slash) {
+    const target = parseSecondaryTarget(slash[2], tonicPc)
+    const chord = parseToken(slash[1], tonicPc)
+    if (target === null || chord.root === null) {
+      return { ...chord, token }
+    }
+    return {
+      token,
+      root: (chord.root + target) % 12,
+      // "V/ii" names a dominant even without the 7 written in.
+      family: chord.family ?? 'dominant',
+    }
+  }
+
   const roman = token.match(ROMAN_PATTERN)
   if (roman) {
     const degree = ROMAN_DEGREES[roman[2].toLowerCase()]
@@ -306,6 +350,8 @@ function parseToken(token, tonicPc) {
 
 export function parseAnswer(text, tonicPc) {
   return text
+    // "V7 of ii" is the spoken form of "V7/ii".
+    .replace(/\s*\bof\b\s*/gi, '/')
     .replace(/[|→>–—]+/g, ' ')
     .split(/[\s,]+/)
     .map((part) => part.trim())

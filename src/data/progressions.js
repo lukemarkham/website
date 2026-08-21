@@ -6,8 +6,10 @@
 // printed label is built from `numeral` + the quality suffix, so the answer key
 // and the sounding chord can never drift apart.
 
-function chord(numeral, root, quality) {
-  return { numeral, root, quality }
+// `secondary` marks a secondary dominant with the degree it resolves to, so the
+// chart can print "V7 of ii" alongside the numeral.
+function chord(numeral, root, quality, secondary) {
+  return secondary ? { numeral, root, quality, secondary } : { numeral, root, quality }
 }
 
 export const PROGRESSION_LEVELS = [
@@ -78,7 +80,7 @@ export const progressions = [
     level: 'core',
     tonic: 'major',
     note: 'Turnaround with a dominant VI kicking back round.',
-    chords: [chord('ii', 2, 'm9'), chord('V', 7, '13'), chord('I', 0, 'maj9'), chord('VI', 9, '7b9')],
+    chords: [chord('ii', 2, 'm9'), chord('V', 7, '13'), chord('I', 0, 'maj9'), chord('VI', 9, '7b9', 'ii')],
   },
   {
     id: 'iii-vi-ii-v',
@@ -94,6 +96,23 @@ export const progressions = [
     level: 'core',
     tonic: 'major',
     chords: [chord('I', 0, 'maj9'), chord('IV', 5, 'maj9'), chord('iii', 4, 'm7'), chord('vi', 9, 'm9')],
+  },
+
+  {
+    id: 'sus-v-i',
+    name: 'V13sus–I',
+    level: 'core',
+    tonic: 'major',
+    note: 'The suspended dominant, straight home — no third to give the V away.',
+    chords: [chord('V', 7, '13sus4'), chord('I', 0, 'maj9')],
+  },
+  {
+    id: 'ii-v-sus-i',
+    name: 'ii–V13sus–I',
+    level: 'core',
+    tonic: 'major',
+    note: 'The everyday ii–V with a suspended V.',
+    chords: [chord('ii', 2, 'm9'), chord('V', 7, '13sus4'), chord('I', 0, 'maj9')],
   },
 
   // -------------------------------------------------------- intermediate ---
@@ -159,7 +178,7 @@ export const progressions = [
     level: 'intermediate',
     tonic: 'major',
     note: 'Tonic turns dominant to pull to IV, then IV goes minor.',
-    chords: [chord('I', 0, 'maj9'), chord('I', 0, '13'), chord('IV', 5, 'maj9'), chord('iv', 5, 'm9')],
+    chords: [chord('I', 0, 'maj9'), chord('I', 0, '13', 'IV'), chord('IV', 5, 'maj9'), chord('iv', 5, 'm9')],
   },
   {
     id: 'ii-v-of-vi',
@@ -167,7 +186,7 @@ export const progressions = [
     level: 'intermediate',
     tonic: 'major',
     note: 'A ii–V–i aimed at the relative minor.',
-    chords: [chord('vii', 11, 'ø7'), chord('III', 4, '7b9'), chord('vi', 9, 'm9')],
+    chords: [chord('vii', 11, 'ø7'), chord('III', 4, '7b9', 'vi'), chord('vi', 9, 'm9')],
   },
   {
     id: 'minor-i-flat6-flat7',
@@ -221,7 +240,58 @@ export const progressions = [
     name: 'iii–VI7♭9–ii–V7alt',
     level: 'intermediate',
     tonic: 'major',
-    chords: [chord('iii', 4, 'm7'), chord('VI', 9, '7b9'), chord('ii', 2, 'm9'), chord('V', 7, '7alt')],
+    chords: [chord('iii', 4, 'm7'), chord('VI', 9, '7b9', 'ii'), chord('ii', 2, 'm9'), chord('V', 7, '7alt')],
+  },
+
+  {
+    id: 'sus-planing',
+    name: 'I13sus–♭VII13sus',
+    level: 'intermediate',
+    tonic: 'major',
+    note: 'Suspended chords sliding down a whole step — Maiden Voyage territory.',
+    chords: [chord('I', 0, '13sus4'), chord('♭VII', 10, '13sus4')],
+  },
+  {
+    id: 'minor-sus-v',
+    name: 'iv–V13sus–i',
+    level: 'intermediate',
+    tonic: 'minor',
+    note: 'A suspended V holding off the resolution into minor.',
+    chords: [chord('iv', 5, 'm9'), chord('V', 7, '13sus4'), chord('i', 0, 'm9')],
+  },
+  {
+    id: 'secondary-dominant-vi',
+    name: 'I–III7–vi–IV',
+    level: 'intermediate',
+    tonic: 'major',
+    note: 'III7 is the V of vi, dragging the tonic towards the relative minor.',
+    chords: [
+      chord('I', 0, 'maj9'),
+      chord('III', 4, '7b9', 'vi'),
+      chord('vi', 9, 'm9'),
+      chord('IV', 5, 'maj9'),
+    ],
+  },
+  {
+    id: 'secondary-dominant-chain',
+    name: 'I–VI7–II7–V7',
+    level: 'intermediate',
+    tonic: 'major',
+    note: 'A chain of secondary dominants, each one the V of the next chord.',
+    chords: [
+      chord('I', 0, 'maj9'),
+      chord('VI', 9, '7b9', 'ii'),
+      chord('II', 2, '13', 'V'),
+      chord('V', 7, '13'),
+    ],
+  },
+  {
+    id: 'minor-v-of-iv',
+    name: 'i–I7–iv',
+    level: 'intermediate',
+    tonic: 'minor',
+    note: 'The minor tonic turns dominant to pull across to iv.',
+    chords: [chord('i', 0, 'm9'), chord('I', 0, '13', 'iv'), chord('iv', 5, 'm9')],
   },
 
   // ------------------------------------------------------------ advanced ---
@@ -315,7 +385,7 @@ export const progressions = [
     level: 'advanced',
     tonic: 'major',
     note: 'A bright major II7 on the way to a lydian IV.',
-    chords: [chord('I', 0, 'maj9'), chord('II', 2, '13'), chord('IV', 5, 'maj7#11')],
+    chords: [chord('I', 0, 'maj9'), chord('II', 2, '13', 'V'), chord('IV', 5, 'maj7#11')],
   },
   {
     id: 'six-nine-ending',

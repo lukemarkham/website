@@ -1654,7 +1654,14 @@ code {
   color: #b7e8ac;
 }
 
-.ear-chord-result.is-correct .ear-chord-note {
+.ear-chord-result.is-correct .ear-chord-secondary {
+  color: var(--accent-quiet);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ear-chord-note {
   color: rgba(183, 232, 172, 0.85);
 }
 
