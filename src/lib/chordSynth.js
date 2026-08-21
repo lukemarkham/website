@@ -509,12 +509,6 @@ function humanize(amount) {
   return (Math.random() - 0.5) * amount
 }
 
-function approachNote(current, target) {
-  const below = target - 1
-  const above = target + 1
-  return Math.abs(below - current) <= Math.abs(above - current) ? below : above
-}
-
 // Turns a progression into a flat list of timed notes: chord voices with voice
 // leading, plus a bass part that walks when the pattern calls for it.
 export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pattern, playReference }) {
@@ -535,15 +529,16 @@ export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pat
     reference = tonic === 'minor'
       ? { numeral: 'i', root: 0, quality: 'm9' }
       : { numeral: 'I', root: 0, quality: 'maj9' }
+    const referenceSlot = chordSeconds
     const voicing = voiceChord(key.pc, reference.quality, null)
     voicing.forEach((midi, index) => {
-      events.push({ kind: 'chord', midi, time: cursor + index * 0.02, duration: beat * 1.6, velocity: 0.62 })
+      events.push({ kind: 'chord', midi, time: cursor + index * 0.02, duration: referenceSlot * 0.8, velocity: 0.62 })
     })
-    events.push({ kind: 'bass', midi: bassNote(key.pc), time: cursor, duration: beat * 1.6, velocity: 0.6 })
+    events.push({ kind: 'bass', midi: bassNote(key.pc), time: cursor, duration: referenceSlot * 0.8, velocity: 0.6 })
     // Voice the first chord away from the reference rather than from nothing.
     previousVoicing = voicing
-    timeline.push({ index: -1, start: cursor, end: cursor + beat * 2.4 })
-    cursor += beat * 2.4
+    timeline.push({ index: -1, start: cursor, end: cursor + referenceSlot })
+    cursor += referenceSlot
   }
 
   chords.forEach((chord, chordIndex) => {
@@ -552,7 +547,6 @@ export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pat
     const start = cursor
     timeline.push({ index: chordIndex, start, end: start + chordSeconds })
     const bassMidi = bassPitches[chordIndex]
-    const nextBass = bassPitches[(chordIndex + 1) % bassPitches.length]
 
     const pushChord = (time, duration, velocity, spread) => {
       voicing.forEach((midi, voice) => {
@@ -584,14 +578,9 @@ export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pat
         pushChord(start + offset * beat, beat * 1.3, index === 0 ? 0.82 : 0.66, 0.01)
       })
       for (let step = 0; step < beatsPerChord; step += 1) {
-        const isLast = step === beatsPerChord - 1
-        let midi = bassMidi
-        if (step === 1) midi = bassMidi + 7 > 50 ? bassMidi - 5 : bassMidi + 7
-        if (step === 2) midi = bassMidi + 12 <= 52 ? bassMidi + 12 : bassMidi
-        if (isLast) midi = approachNote(midi, nextBass)
         events.push({
           kind: 'bass',
-          midi,
+          midi: bassMidi,
           time: start + step * beat + humanize(0.014),
           duration: beat * 0.92,
           velocity: step === 0 ? 0.9 : 0.72,
@@ -614,8 +603,8 @@ export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pat
       if (beatsPerChord >= 4) {
         events.push({
           kind: 'bass',
-          midi: approachNote(bassMidi, nextBass),
-          time: start + beat * 3,
+          midi: bassMidi,
+          time: start + beat * 2,
           duration: beat * 0.9,
           velocity: 0.6,
         })
@@ -631,14 +620,14 @@ export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pat
     cursor += chordSeconds
   })
 
-  return { events, timeline, reference, duration: cursor + 1.6 }
+  return { events, timeline, reference, loopLength: cursor, duration: cursor + 1.6 }
 }
 
-export function playArrangement(engine, arrangement, chordInstrument, bassInstrument) {
+// `at` pins the phrase to an exact point on the audio clock, which is how a
+// repeat lands in time instead of drifting by however long the timer took.
+export function playArrangement(engine, arrangement, chordInstrument, bassInstrument, at) {
   const { ctx } = engine
-  // Whatever is still ringing belongs to the last question.
-  engine.stopAll()
-  const startTime = ctx.currentTime + 0.12
+  const startTime = Math.max(at ?? ctx.currentTime + 0.12, ctx.currentTime + 0.02)
   const chordBus = engine.createBus(chordInstrument.reverb)
   const bassBus = engine.createBus(bassInstrument.reverb)
 
@@ -656,7 +645,8 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
     }
   })
 
-  engine.scheduleCleanup(chordBus, arrangement.duration + 2)
-  engine.scheduleCleanup(bassBus, arrangement.duration + 2)
+  const tail = startTime - ctx.currentTime + arrangement.duration + 2
+  engine.scheduleCleanup(chordBus, tail)
+  engine.scheduleCleanup(bassBus, tail)
   return { startTime, duration: arrangement.duration }
 }

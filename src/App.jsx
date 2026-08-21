@@ -2079,6 +2079,7 @@ function EarTrainerPage() {
   const playTimeoutRef = useRef(null)
   const frameRef = useRef(null)
   const loopRef = useRef({ enabled: true, answered: false })
+  const passesRef = useRef([])
   const currentQuestionRef = useRef(null)
   const answerInputRef = useRef(null)
 
@@ -2106,11 +2107,32 @@ function EarTrainerPage() {
     return engineRef.current
   }
 
+  // The chart follows the audio clock: whichever scheduled pass is sounding
+  // right now decides which chip is lit.
+  function trackHighlight() {
+    const engine = engineRef.current
+    if (!engine) return
+    const now = engine.ctx.currentTime
+    passesRef.current = passesRef.current.filter((pass) => now < pass.startTime + pass.length)
+    if (passesRef.current.length === 0) {
+      setActiveChordIndex(null)
+      frameRef.current = null
+      return
+    }
+    const pass = passesRef.current.find((item) => now >= item.startTime)
+    if (pass) {
+      const elapsed = now - pass.startTime
+      const segment = pass.timeline.find((item) => elapsed >= item.start && elapsed < item.end)
+      setActiveChordIndex(segment ? segment.index : null)
+    }
+    frameRef.current = window.requestAnimationFrame(trackHighlight)
+  }
+
   // The tonic reference is a way in to the key, so it plays once at the top of
   // a question rather than on every time round the loop.
-  async function playQuestion(target, tempoScale = 1, isLoopPass = false) {
-    if (!target) return
-    const engine = await getEngine()
+  function schedulePass(target, tempoScale, isLoopPass, at) {
+    const engine = engineRef.current
+    if (!engine) return
     const chordInstrument =
       CHORD_INSTRUMENTS.find((item) => item.id === target.instrumentId) ?? CHORD_INSTRUMENTS[0]
     const bassInstrument = BASS_INSTRUMENTS[chordInstrument.bass]
@@ -2128,29 +2150,32 @@ function EarTrainerPage() {
             playReference: withReference,
           })
 
-    const { startTime, duration } = playArrangement(engine, arrangement, chordInstrument, bassInstrument)
-
-    // Follow the audio clock rather than a chain of timers, so the chart stays
-    // in step with what is actually sounding.
-    const followPlayback = () => {
-      const elapsed = engine.ctx.currentTime - startTime
-      const segment = arrangement.timeline.find((item) => elapsed >= item.start && elapsed < item.end)
-      setActiveChordIndex(segment ? segment.index : null)
-      frameRef.current = elapsed < duration ? window.requestAnimationFrame(followPlayback) : null
+    const { startTime } = playArrangement(engine, arrangement, chordInstrument, bassInstrument, at)
+    passesRef.current.push({
+      startTime,
+      timeline: arrangement.timeline,
+      length: arrangement.loopLength,
+    })
+    if (!frameRef.current) {
+      frameRef.current = window.requestAnimationFrame(trackHighlight)
     }
-    if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
-    frameRef.current = window.requestAnimationFrame(followPlayback)
 
-    // A background tab stops firing animation frames, so the transport state is
-    // cleared on a timer as well.
+    // Queue the repeat before this pass ends and pin it to the exact bar line,
+    // so the loop carries straight on rather than pausing for a fresh count-in.
+    const boundary = startTime + arrangement.loopLength
     if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
     playTimeoutRef.current = window.setTimeout(() => {
-      setActiveChordIndex(null)
       const { enabled, answered } = loopRef.current
-      if (enabled && !answered && currentQuestionRef.current === target) {
-        playQuestion(target, tempoScale, true)
-      }
-    }, duration * 1000)
+      if (!enabled || answered || currentQuestionRef.current !== target) return
+      schedulePass(target, tempoScale, true, boundary)
+    }, Math.max(0, boundary - 0.35 - engine.ctx.currentTime) * 1000)
+  }
+
+  async function playQuestion(target, tempoScale = 1) {
+    if (!target) return
+    await getEngine()
+    stopPlayback()
+    schedulePass(target, tempoScale, false, null)
   }
 
   function stopPlayback() {
@@ -2159,6 +2184,7 @@ function EarTrainerPage() {
     playTimeoutRef.current = null
     frameRef.current = null
     if (engineRef.current) engineRef.current.stopAll()
+    passesRef.current = []
     setActiveChordIndex(null)
   }
 
