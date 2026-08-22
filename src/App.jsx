@@ -2064,6 +2064,23 @@ function describeChordResult(item) {
   return `You typed ${item.typed}`
 }
 
+// A chord chip is a button when there is something to hear and a plain panel
+// when there is not — the blank chord stays inert until it has been answered,
+// since playing it would be handing over the answer.
+function ChordCard({ className, onPlay, children }) {
+  if (!onPlay) return <div className={className}>{children}</div>
+  return (
+    <button
+      className={`${className} is-clickable`}
+      type="button"
+      onClick={onPlay}
+      title="Play this chord on its own"
+    >
+      {children}
+    </button>
+  )
+}
+
 function EarTrainerPage() {
   const [levels, setLevels] = useState(EAR_TRAINER_DEFAULT_LEVELS)
   const [tempo, setTempo] = useState(78)
@@ -2079,6 +2096,8 @@ function EarTrainerPage() {
   const [result, setResult] = useState(null)
   const [revealed, setRevealed] = useState(false)
   const [activeChordIndex, setActiveChordIndex] = useState(null)
+  const [playing, setPlaying] = useState(false)
+  const [paused, setPaused] = useState(false)
   const [celebration, setCelebration] = useState(0)
   const [history, setHistory] = useState([])
   // Every answer graded this session. The Recent list keeps only the last ten,
@@ -2091,6 +2110,9 @@ function EarTrainerPage() {
   const [sessionPoints, setSessionPoints] = useState(0)
   const engineRef = useRef(null)
   const playTimeoutRef = useRef(null)
+  // What the loop is waiting to play next, kept so a pause can drop the timer
+  // and a resume can put it back against the clock as it stands then.
+  const pendingRepeatRef = useRef(null)
   const frameRef = useRef(null)
   const loopRef = useRef({ enabled: true, answered: false })
   const passesRef = useRef([])
@@ -2124,6 +2146,7 @@ function EarTrainerPage() {
     passesRef.current = passesRef.current.filter((pass) => now < pass.startTime + pass.length)
     if (passesRef.current.length === 0) {
       setActiveChordIndex(null)
+      setPlaying(false)
       frameRef.current = null
       return
     }
@@ -2171,13 +2194,73 @@ function EarTrainerPage() {
 
     // Queue the repeat before this pass ends and pin it to the exact bar line,
     // so the loop carries straight on rather than pausing for a fresh count-in.
-    const boundary = startTime + arrangement.loopLength
+    pendingRepeatRef.current = { target, tempoScale, boundary: startTime + arrangement.loopLength }
+    armRepeat()
+  }
+
+  // The repeat is a wall-clock timer pointing at a moment on the audio clock,
+  // so it has to be measured against that clock every time it is set — after a
+  // pause the two are further apart than they were.
+  function armRepeat() {
+    const engine = engineRef.current
+    const pending = pendingRepeatRef.current
+    if (!engine || !pending) return
     if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
     playTimeoutRef.current = window.setTimeout(() => {
       const { enabled, answered } = loopRef.current
-      if (!enabled || answered || currentQuestionRef.current !== target) return
-      schedulePass(target, tempoScale, true, boundary)
-    }, Math.max(0, boundary - 0.35 - engine.ctx.currentTime) * 1000)
+      if (!enabled || answered || currentQuestionRef.current !== pending.target) return
+      schedulePass(pending.target, pending.tempoScale, true, pending.boundary)
+    }, Math.max(0, pending.boundary - 0.35 - engine.ctx.currentTime) * 1000)
+  }
+
+  // Every voice is scheduled ahead on the audio clock and cannot be taken back,
+  // so pausing means stopping that clock: the notes still to sound stay where
+  // they are relative to it, and the chart, which reads the same clock, holds
+  // its place with them.
+  async function togglePause() {
+    const engine = engineRef.current
+    if (!engine || !playing) return
+    if (paused) {
+      await engine.ctx.resume()
+      setPaused(false)
+      if (!frameRef.current) frameRef.current = window.requestAnimationFrame(trackHighlight)
+      armRepeat()
+      return
+    }
+    if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
+    if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
+    playTimeoutRef.current = null
+    frameRef.current = null
+    await engine.ctx.suspend()
+    setPaused(true)
+  }
+
+  // One chord on its own, lifted out of the pass the question is playing: the
+  // same voicing and the same rhythm it has in the progression, so clicking a
+  // chip is a closer listen rather than a different arrangement of it.
+  async function playChordAlone(index) {
+    if (!question) return
+    const source = index === -1 ? question.arrangement : question.loopArrangement
+    const slot = source.timeline.find((item) => item.index === index)
+    if (!slot) return
+    const events = source.events
+      .filter((event) => event.kind !== 'drum' && event.time >= slot.start - 0.001 && event.time < slot.end - 0.001)
+      .map((event) => ({ ...event, time: event.time - slot.start }))
+    if (events.length === 0) return
+    const engine = await getEngine()
+    stopPlayback()
+    const chordInstrument =
+      CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId) ?? CHORD_INSTRUMENTS[0]
+    const span = slot.end - slot.start
+    const single = { events, duration: span + 1.2 }
+    const { startTime } = playArrangement(
+      engine, single, chordInstrument, BASS_INSTRUMENTS[chordInstrument.bass], null,
+    )
+    // The chip that was clicked is the one that lights, whatever its place in
+    // the progression the slice came from.
+    passesRef.current.push({ startTime, timeline: [{ index, start: 0, end: span }], length: span })
+    setPlaying(true)
+    if (!frameRef.current) frameRef.current = window.requestAnimationFrame(trackHighlight)
   }
 
   async function playQuestion(target, tempoScale = 1) {
@@ -2185,6 +2268,7 @@ function EarTrainerPage() {
     await getEngine()
     stopPlayback()
     schedulePass(target, tempoScale, false, null)
+    setPlaying(true)
   }
 
   function stopPlayback() {
@@ -2192,9 +2276,17 @@ function EarTrainerPage() {
     if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
     playTimeoutRef.current = null
     frameRef.current = null
-    if (engineRef.current) engineRef.current.stopAll()
+    pendingRepeatRef.current = null
+    if (engineRef.current) {
+      // Cutting a phrase short is a quick fade on the audio clock, which only
+      // runs once that clock does — so a paused engine is started again first.
+      if (engineRef.current.ctx.state === 'suspended') engineRef.current.ctx.resume()
+      engineRef.current.stopAll()
+    }
     passesRef.current = []
     setActiveChordIndex(null)
+    setPlaying(false)
+    setPaused(false)
   }
 
   // The MIDI is the loop pass: the progression itself, without the tonic
@@ -2436,6 +2528,14 @@ function EarTrainerPage() {
               <button
                 className="secondary-button"
                 type="button"
+                onClick={togglePause}
+                disabled={!playing}
+              >
+                {paused ? 'Resume' : 'Pause'}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
                 onClick={() => {
                   stopPlayback()
                   setRevealed(true)
@@ -2472,7 +2572,10 @@ function EarTrainerPage() {
 
                   <div className="ear-answer-grid">
                     {question.arrangement.reference ? (
-                      <div className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}>
+                      <ChordCard
+                        className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}
+                        onPlay={() => playChordAlone(-1)}
+                      >
                         <span className="ear-chord-roman">{romanLabel(question.arrangement.reference)}</span>
                         {showKey ? (
                           <span className="ear-chord-symbol">
@@ -2480,17 +2583,21 @@ function EarTrainerPage() {
                           </span>
                         ) : null}
                         <span className="ear-chord-note">Key centre</span>
-                      </div>
+                      </ChordCard>
                     ) : null}
 
                     {question.chords.map((chord, index) => {
                       const isBlank = index === question.blankIndex
-                      const playing = activeChordIndex === index ? ' is-playing' : ''
+                      const isSounding = activeChordIndex === index ? ' is-playing' : ''
                       const roman = romanLabel(chord)
 
                       if (!isBlank) {
                         return (
-                          <div className={`ear-chord-result is-given${playing}`} key={`${roman}-${index}`}>
+                          <ChordCard
+                            className={`ear-chord-result is-given${isSounding}`}
+                            onPlay={() => playChordAlone(index)}
+                            key={`${roman}-${index}`}
+                          >
                             <span className="ear-chord-roman">{roman}</span>
                             {showKey ? (
                               <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
@@ -2498,13 +2605,13 @@ function EarTrainerPage() {
                             {chord.secondary ? (
                               <span className="ear-chord-secondary">V/{chord.secondary}</span>
                             ) : null}
-                          </div>
+                          </ChordCard>
                         )
                       }
 
                       if (!showAnswerKey) {
                         return (
-                          <div className={`ear-chord-result is-blank${playing}`} key={`blank-${index}`}>
+                          <div className={`ear-chord-result is-blank${isSounding}`} key={`blank-${index}`}>
                             <span className="ear-chord-roman">?</span>
                             <span className="ear-chord-note">Name this chord</span>
                           </div>
@@ -2512,8 +2619,9 @@ function EarTrainerPage() {
                       }
 
                       return (
-                        <div
-                          className={`ear-chord-result is-${result ? result.status : 'revealed'}${playing}`}
+                        <ChordCard
+                          className={`ear-chord-result is-${result ? result.status : 'revealed'}${isSounding}`}
+                          onPlay={() => playChordAlone(index)}
                           key={`answer-${index}`}
                         >
                           <span className="ear-chord-roman">{roman}</span>
@@ -2531,7 +2639,7 @@ function EarTrainerPage() {
                               {`+${result.points}`}
                             </span>
                           ) : null}
-                        </div>
+                        </ChordCard>
                       )
                     })}
                   </div>

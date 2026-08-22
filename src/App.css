@@ -1614,6 +1614,28 @@ code {
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 
+/* A chip you can hear on its own is a real button, which brings a handful of
+   browser defaults a div never had. No lift on hover: the chip that is
+   sounding is already raised, and the two would argue. */
+button.ear-chord-result {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.ear-chord-result:hover {
+  border-color: var(--accent-border);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
+button.ear-chord-result:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
 .ear-chord-result.is-reference {
   border-style: dashed;
   color: var(--text-muted);
