@@ -2465,12 +2465,7 @@ function EarTrainerPage() {
                     <span>{question.tempo} BPM</span>
                   </div>
 
-                  <div
-                    className="ear-answer-grid"
-                    // The chart is one row whatever the progression's length:
-                    // a second row of chips is what pushes the tool off screen.
-                    style={{ '--chip-count': question.chords.length + (question.arrangement.reference ? 1 : 0) }}
-                  >
+                  <div className="ear-answer-grid">
                     {question.arrangement.reference ? (
                       <div className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}>
                         <span className="ear-chord-roman">{romanLabel(question.arrangement.reference)}</span>
@@ -2591,10 +2586,15 @@ function EarTrainerPage() {
           <aside className="ear-sidebar">
             <div className="surface-card ear-score-card">
               <span className="control-label">Session</span>
-              <div className="ear-score-big">{sessionPoints}</div>
-              <span className="ear-score-unit">
-                {history.length === 0 ? 'points' : `of ${history.length * POINTS_PER_CHORD} points`}
-              </span>
+              <div className="ear-score-big">
+                {sessionPoints}
+                {history.length > 0 ? (
+                  <span className="ear-score-percent">
+                    {`(${Math.round((sessionPoints / (history.length * POINTS_PER_CHORD)) * 100)}%)`}
+                  </span>
+                ) : null}
+              </div>
+              <span className="ear-score-unit">points</span>
               <div className="ear-stat-grid">
                 <div className={`ear-stat${streak >= 3 ? ' is-hot' : ''}`}>
                   <strong>{streak}</strong>

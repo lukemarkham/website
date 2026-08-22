@@ -1885,18 +1885,30 @@ code {
   flex-direction: column;
   margin-bottom: 0;
   padding: clamp(16px, 2vw, 24px);
-  /* Fills whatever is left below the nav, so spare room on a tall screen goes
-     to the chart rather than leaving the panel floating in the middle. On a
-     short screen the content is already taller than this and nothing changes. */
-  min-height: calc(100vh - 96px);
+  /* Exactly the room left below the nav — a height rather than a minimum, so
+     it both fills a tall screen and caps a long chart, which is what lets the
+     chart scroll inside itself instead of pushing the page. The floor keeps a
+     very short window from crushing the controls; below that the page scrolls
+     as normal. */
+  height: calc(100vh - 96px);
+  min-height: 520px;
 }
 
+/* min-height: 0 on both, or the flex item and the grid item each refuse to
+   shrink below their content and the chart spills out of the panel instead of
+   scrolling inside it. */
 .ear-layout {
   flex: 1;
+  min-height: 0;
 }
 
 .ear-main {
   grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.ear-stage {
+  min-height: 0;
 }
 
 .ear-stage {
@@ -2006,8 +2018,20 @@ code {
   font-size: 0.7rem;
 }
 
+/* The chart wraps freely and carries its own overflow, so a long progression
+   makes the chart scroll rather than the page. `safe center` keeps the rows
+   centred when they fit without hiding the first row above the top edge when
+   they don't. */
 .ear-stage .ear-answer-grid {
-  grid-template-columns: repeat(var(--chip-count, 4), minmax(0, 1fr));
+  /* Sized to its content so the chart, its key line and its caption stay one
+     group, but free to shrink and scroll when the chart is longer than the
+     room left for it. */
+  flex: 0 1 auto;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: safe center;
+  overflow-y: auto;
   gap: 8px;
 }
 
@@ -2057,10 +2081,19 @@ code {
 }
 
 .ear-score-big {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
   font-family: var(--font-display);
   font-size: 3rem;
   line-height: 1;
   color: var(--accent-strong);
+}
+
+.ear-score-percent {
+  font-size: 1.4rem;
+  color: var(--text-muted);
 }
 
 .ear-score-unit {
@@ -2164,13 +2197,18 @@ code {
 }
 
 @media (max-width: 900px) {
+  /* Stacked, and back to an ordinary scrolling page. */
+  .ear-panel {
+    height: auto;
+    min-height: 0;
+  }
+
   .ear-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Narrow enough that one row of chips would be unreadable — let them wrap. */
   .ear-stage .ear-answer-grid {
-    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    overflow-y: visible;
   }
 
   .ear-panel .ear-toolbar {
