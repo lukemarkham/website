@@ -286,23 +286,40 @@ function stackFrom(pitchClasses, lowest) {
   return notes
 }
 
+// Voice leading is voice by voice: the top note of one chord moves to the top
+// note of the next, and the ear follows that line whatever happens underneath.
+// Measuring nearest neighbours instead flatters a voicing that keeps a couple
+// of common tones while hurling the melody an octave, which is most of what
+// makes a computed voicing sound computed.
 function voiceLeadingCost(previous, candidate) {
   if (!previous || previous.length === 0) return 0
-  let cost = 0
-  candidate.forEach((note) => {
-    cost += Math.min(...previous.map((old) => Math.abs(old - note)))
-  })
-  previous.forEach((old) => {
-    cost += Math.min(...candidate.map((note) => Math.abs(old - note)))
-  })
-  return cost / (candidate.length + previous.length)
+  const paired = Math.min(previous.length, candidate.length)
+  let movement = 0
+  let widest = 0
+  for (let voice = 1; voice <= paired; voice += 1) {
+    const step = Math.abs(previous[previous.length - voice] - candidate[candidate.length - voice])
+    // A pianist steps the melody and leaps only on purpose, so the top voice is
+    // held to a tighter line than the inner parts.
+    movement += voice === 1 && step > 4 ? step + (step - 4) * 2 : step
+    widest = Math.max(widest, step)
+  }
+  // A voice arriving or leaving is a change of texture rather than a move, and
+  // one part leaping while the others hold is the other giveaway.
+  const texture = Math.abs(previous.length - candidate.length) * 1.5
+  const leap = widest > 7 ? (widest - 7) * 2 : 0
+  return (movement + texture + leap) / paired
 }
 
 // Try every inversion at every sensible starting octave and keep whichever
 // voicing moves least from the previous chord while staying in a warm register.
 export function voiceChord(rootPc, quality, previous) {
   const intervals = CHORD_INTERVALS[quality] ?? CHORD_INTERVALS.maj7
+  // Sorted, so that rotating gives the chord's inversions in close position.
+  // Stacking the intervals in the order they are written instead spreads a
+  // voicing over an octave and a half — every rotation of it is wide, so no
+  // compact shape is ever considered.
   const pitchClasses = [...new Set(upperStructure(intervals).map((i) => (rootPc + i) % 12))]
+    .sort((a, b) => a - b)
   const center = 65
   let best = null
   let bestCost = Infinity
@@ -313,7 +330,16 @@ export function voiceChord(rootPc, quality, previous) {
       const candidate = stackFrom(rotated, lowest)
       if (candidate[candidate.length - 1] > 84) continue
       const mean = candidate.reduce((sum, note) => sum + note, 0) / candidate.length
-      const cost = voiceLeadingCost(previous, candidate) + Math.abs(mean - center) * 0.35
+      // Once a chord has somewhere to move from, the line matters more than the
+      // register: a strong pull to the middle of the keyboard is what makes a
+      // voicing jump back to where it started rather than carry on.
+      const anchor = previous ? 0.12 : 0.35
+      // A hand covers a tenth at a stretch. Past that a voicing stops being
+      // something a player would reach for and starts sounding spread out.
+      const span = candidate[candidate.length - 1] - candidate[0]
+      const spread = span > 12 ? (span - 12) * 1.1 : 0
+      const cost =
+        voiceLeadingCost(previous, candidate) + Math.abs(mean - center) * anchor + spread
       if (cost < bestCost) {
         bestCost = cost
         best = candidate
@@ -322,6 +348,45 @@ export function voiceChord(rootPc, quality, previous) {
   }
 
   return best ?? stackFrom(pitchClasses, 60)
+}
+
+// A loop has no first chord: every time round but the first, the opening chord
+// follows the closing one. Voicing the progression twice — once to find where it
+// ends, then again with that ending as the chord before the first — settles the
+// seam, and repeating until nothing moves keeps the two ends agreeing. It also
+// means the run-in and the repeats use the same voicings, instead of the first
+// chord quietly changing shape once the loop comes round.
+export function voiceProgression(rootPitches, chords) {
+  const chain = (seed) => {
+    let previous = seed
+    return chords.map((chord, index) => {
+      previous = voiceChord(rootPitches[index], chord.quality, previous)
+      return previous
+    })
+  }
+  const same = (a, b) => a.every((voicing, index) => voicing.join() === b[index].join())
+  // Movement all the way round, seam included, so a progression whose voicings
+  // never settle is judged on the whole cycle rather than taken as it comes.
+  const cycleCost = (voicings) => voicings.reduce(
+    (sum, voicing, index) =>
+      sum + voiceLeadingCost(voicings[(index + voicings.length - 1) % voicings.length], voicing),
+    0,
+  )
+
+  let voicings = chain(null)
+  let best = voicings
+  let bestCost = cycleCost(voicings)
+  for (let pass = 0; pass < 4; pass += 1) {
+    const next = chain(voicings[voicings.length - 1])
+    const cost = cycleCost(next)
+    if (cost < bestCost) {
+      best = next
+      bestCost = cost
+    }
+    if (same(next, voicings)) break
+    voicings = next
+  }
+  return best
 }
 
 export function bassNote(rootPc, low = 36) {

@@ -4,7 +4,7 @@
 // electric pianos, a plucked string model for the guitar, and a generated
 // convolution reverb so the chords sit in a room instead of in a browser.
 
-import { bassNote, midiToFreq, voiceChord } from './harmony'
+import { bassNote, midiToFreq, voiceChord, voiceProgression } from './harmony'
 
 function impulseResponse(ctx, seconds, decay) {
   const length = Math.floor(ctx.sampleRate * seconds)
@@ -675,10 +675,11 @@ export function buildArrangement({
   const timeline = []
   let reference = null
   let cursor = 0
-  let previousVoicing = null
 
   const rootPitches = chords.map((chord) => (key.pc + chord.root) % 12)
   const bassPitches = rootPitches.map((pc) => bassNote(pc))
+  // Settled as a cycle, so the last chord leads back into the first.
+  const voicings = voiceProgression(rootPitches, chords)
 
   if (playReference) {
     // A quick tonic chord so the ear has a key centre before the question.
@@ -686,13 +687,13 @@ export function buildArrangement({
       ? { numeral: 'i', root: 0, quality: 'm9' }
       : { numeral: 'I', root: 0, quality: 'maj9' }
     const referenceSlot = chordSeconds
-    const voicing = voiceChord(key.pc, reference.quality, null)
+    // Voiced towards the chord it introduces rather than from nothing, so the
+    // way in is a step rather than a jump.
+    const voicing = voiceChord(key.pc, reference.quality, voicings[0])
     voicing.forEach((midi, index) => {
       events.push({ kind: 'chord', midi, time: cursor + index * 0.02, duration: referenceSlot * 0.8, velocity: 0.62 })
     })
     events.push({ kind: 'bass', midi: bassNote(key.pc), time: cursor, duration: referenceSlot * 0.8, velocity: 0.6 })
-    // Voice the first chord away from the reference rather than from nothing.
-    previousVoicing = voicing
     timeline.push({ index: -1, start: cursor, end: cursor + referenceSlot })
     cursor += referenceSlot
   }
@@ -705,8 +706,7 @@ export function buildArrangement({
   }
 
   chords.forEach((chord, chordIndex) => {
-    const voicing = voiceChord(rootPitches[chordIndex], chord.quality, previousVoicing)
-    previousVoicing = voicing
+    const voicing = voicings[chordIndex]
     const start = cursor
     timeline.push({ index: chordIndex, start, end: start + chordSeconds })
     const bassMidi = bassPitches[chordIndex]
