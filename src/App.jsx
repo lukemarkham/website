@@ -7,6 +7,7 @@ import { PROGRESSION_LEVELS, progressions } from './data/progressions'
 import { arrangementToMidi, midiFilename } from './lib/midi'
 import {
   FAMILY_LABELS,
+  POINTS_PER_CHORD,
   KEYS,
   chordSymbol,
   gradeAnswer,
@@ -2081,6 +2082,9 @@ function EarTrainerPage() {
   const [celebration, setCelebration] = useState(0)
   const [history, setHistory] = useState([])
   const [bonuses, setBonuses] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [bestStreak, setBestStreak] = useState(0)
+  const [sessionPoints, setSessionPoints] = useState(0)
   const engineRef = useRef(null)
   const playTimeoutRef = useRef(null)
   const frameRef = useRef(null)
@@ -2090,12 +2094,6 @@ function EarTrainerPage() {
   const answerInputRef = useRef(null)
 
   const pool = useMemo(() => progressions.filter((item) => levels[item.level]), [levels])
-
-  const averageScore = useMemo(() => {
-    if (history.length === 0) return null
-    const total = history.reduce((sum, item) => sum + item.score, 0)
-    return Math.round(total / history.length)
-  }, [history])
 
   useEffect(() => {
     return () => {
@@ -2293,20 +2291,29 @@ function EarTrainerPage() {
     const graded = gradeAnswer(answer, [missingChord], question.key)
     stopPlayback()
     setResult(graded.results[0])
-    if (graded.results[0].status === 'correct') {
+    // A streak is answers running that named what the chord does; a revealed
+    // answer breaks it just as a wrong one does.
+    const named = graded.results[0].status === 'correct'
+    const nextStreak = named ? streak + 1 : 0
+    setStreak(nextStreak)
+    setBestStreak((best) => Math.max(best, nextStreak))
+    setSessionPoints((previous) => previous + graded.points)
+    if (named) {
       setCelebration((previous) => previous + 1)
     }
     if (graded.bonus > 0) {
       setBonuses((previous) => previous + graded.bonus)
     }
+    // Checking with the mouse moves focus to the button, which is then
+    // disabled — putting it back keeps Enter working for the next question.
+    if (answerInputRef.current) answerInputRef.current.focus()
     setHistory((previous) => [
       {
         id: Date.now(),
         name: question.progression.name,
         chord: showKey ? chordSymbol(missingChord, question.key) : romanLabel(missingChord),
         keyLabel: question.key.label,
-        score: graded.score,
-        exact: graded.bonus > 0,
+        points: graded.points,
       },
       ...previous,
     ].slice(0, 10))
@@ -2332,314 +2339,299 @@ function EarTrainerPage() {
   }, [loopPlayback, showAnswerKey])
 
   return (
-    <div style={pageShellStyle}>
+    // Padding is set here rather than in the stylesheet because the shared page
+    // style is inline, and a class cannot outrank it.
+    <div
+      style={{ ...pageShellStyle, maxWidth: '1340px', padding: '12px clamp(14px, 2.5vw, 30px) 16px' }}
+      className="ear-shell"
+    >
       <SiteNav showHomeLink />
       <ConfettiBurst trigger={celebration} />
 
-      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Progression Ear Trainer</h1>
-        <p style={introStyle}>
-          Jazz and neo-soul progressions played on a rotating cast of instruments, in a random key, with a
-          different feel every question. You get every chord but one — listen, then name the missing one.
-        </p>
-
-        <div className="ear-level-chips">
-          {PROGRESSION_LEVELS.map((level) => (
-            <button
-              key={level.id}
-              type="button"
-              className={`ear-level-chip${levels[level.id] ? ' is-active' : ''}`}
-              onClick={() => toggleLevel(level.id)}
-              aria-pressed={levels[level.id]}
-            >
-              {level.label}
-            </button>
-          ))}
-          <span className="ear-pool-count">{pool.length} progressions in the pool</span>
-        </div>
-
-        <div className="ear-toolbar">
-          <div className="control-card">
-            <label className="control-label" htmlFor="ear-tempo">Tempo</label>
-            <div className="range-value">{tempo} BPM</div>
-            <input
-              id="ear-tempo"
-              className="range-input"
-              type="range"
-              min="50"
-              max="140"
-              step="1"
-              value={tempo}
-              onChange={(event) => setTempo(Number(event.target.value))}
-            />
-          </div>
-
-          <div className="control-card ear-options-card">
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={varySounds}
-                onChange={(event) => setVarySounds(event.target.checked)}
-              />
-              <span>New sound each question</span>
-            </label>
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={useRandomKey}
-                onChange={(event) => setUseRandomKey(event.target.checked)}
-              />
-              <span>Random key</span>
-            </label>
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={playReference}
-                onChange={(event) => setPlayReference(event.target.checked)}
-              />
-              <span>Play tonic first</span>
-            </label>
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={loopPlayback}
-                onChange={(event) => setLoopPlayback(event.target.checked)}
-              />
-              <span>Loop until answered</span>
-            </label>
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={drums}
-                onChange={(event) => setDrums(event.target.checked)}
-              />
-              <span>Drums</span>
-            </label>
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={showKey}
-                onChange={(event) => setShowKey(event.target.checked)}
-              />
-              <span>Show chord names</span>
-            </label>
-          </div>
-
-          <div className="control-card">
-            <label className="control-label" htmlFor="ear-instrument">Instrument</label>
-            <select
-              id="ear-instrument"
-              className="control-input ear-select"
-              value={varySounds ? 'random' : instrumentId}
-              disabled={varySounds}
-              onChange={(event) => setInstrumentId(event.target.value)}
-            >
-              {varySounds ? <option value="random">Random each question</option> : null}
-              {CHORD_INSTRUMENTS.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
+      <section className="surface-panel ear-panel">
+        <div className="ear-topbar">
+          <h1 className="ear-title">Progression Ear Trainer</h1>
+          <div className="ear-level-chips">
+            {PROGRESSION_LEVELS.map((level) => (
+              <button
+                key={level.id}
+                type="button"
+                className={`ear-level-chip${levels[level.id] ? ' is-active' : ''}`}
+                onClick={() => toggleLevel(level.id)}
+                aria-pressed={levels[level.id]}
+              >
+                {level.label}
+              </button>
+            ))}
+            <span className="ear-pool-count">{pool.length} in the pool</span>
           </div>
         </div>
 
-        <div style={{ ...buttonRowStyle, marginBottom: '22px' }}>
-          <button className="primary-button" type="button" onClick={startQuestion} disabled={pool.length === 0}>
-            {question ? 'Next Progression' : 'Start Practising'}
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => playQuestion(question)}
-            disabled={!question}
-          >
-            Replay
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => playQuestion(question, 0.72)}
-            disabled={!question}
-          >
-            Replay Slower
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => {
-              stopPlayback()
-              setRevealed(true)
-            }}
-            disabled={!question || showAnswerKey}
-          >
-            Reveal Answer
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={downloadMidi}
-            disabled={!question || !showAnswerKey}
-            title={showAnswerKey ? 'Save this progression as a MIDI file' : 'Answer the question first'}
-          >
-            Download MIDI
-          </button>
-        </div>
-
-        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
-          {!question ? (
-            <p style={mutedTextStyle}>
-              Press Start Practising. Every question picks a fresh progression, key, instrument and feel,
-              then hides one chord for you to name.
-            </p>
-          ) : (
-            <>
-              <div className="ear-question-meta">
-                <span>{showKey ? `Key of ${question.key.label}` : 'Key hidden'}</span>
-                <span>{activeInstrument ? activeInstrument.name : ''}</span>
-                <span>{activePattern ? activePattern.name : ''}</span>
-                <span>{question.tempo} BPM</span>
+        <div className="ear-layout">
+          <div className="ear-main">
+            <div className="ear-toolbar">
+              <div className="control-card">
+                <label className="control-label" htmlFor="ear-tempo">Tempo</label>
+                <div className="range-value">{tempo} BPM</div>
+                <input
+                  id="ear-tempo"
+                  className="range-input"
+                  type="range"
+                  min="50"
+                  max="140"
+                  step="1"
+                  value={tempo}
+                  onChange={(event) => setTempo(Number(event.target.value))}
+                />
               </div>
 
-              <div className="ear-answer-grid" style={{ marginTop: '18px' }}>
-                {question.arrangement.reference ? (
-                  <div
-                    className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}
-                  >
-                    <span className="ear-chord-roman">{romanLabel(question.arrangement.reference)}</span>
-                    {showKey ? (
-                      <span className="ear-chord-symbol">
-                        {chordSymbol(question.arrangement.reference, question.key)}
-                      </span>
-                    ) : null}
-                    <span className="ear-chord-note">Key centre</span>
-                  </div>
-                ) : null}
-
-                {question.chords.map((chord, index) => {
-                  const isBlank = index === question.blankIndex
-                  const playing = activeChordIndex === index ? ' is-playing' : ''
-                  const roman = romanLabel(chord)
-
-                  if (!isBlank) {
-                    return (
-                      <div className={`ear-chord-result is-given${playing}`} key={`${roman}-${index}`}>
-                        <span className="ear-chord-roman">{roman}</span>
-                        {showKey ? (
-                          <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
-                        ) : null}
-                        {chord.secondary ? (
-                          <span className="ear-chord-secondary">V/{chord.secondary}</span>
-                        ) : null}
-                      </div>
-                    )
-                  }
-
-                  if (!showAnswerKey) {
-                    return (
-                      <div className={`ear-chord-result is-blank${playing}`} key={`blank-${index}`}>
-                        <span className="ear-chord-roman">?</span>
-                        <span className="ear-chord-note">Name this chord</span>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div
-                      className={`ear-chord-result is-${result ? result.status : 'revealed'}${playing}`}
-                      key={`answer-${index}`}
-                    >
-                      <span className="ear-chord-roman">{roman}</span>
-                      {showKey ? (
-                        <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
-                      ) : null}
-                      {chord.secondary ? (
-                        <span className="ear-chord-secondary">V/{chord.secondary}</span>
-                      ) : null}
-                      <span className="ear-chord-note">
-                        {result ? describeChordResult(result) : 'Revealed'}
-                      </span>
-                    </div>
-                  )
-                })}
+              <div className="control-card">
+                <label className="control-label" htmlFor="ear-instrument">Instrument</label>
+                <select
+                  id="ear-instrument"
+                  className="control-input ear-select"
+                  value={varySounds ? 'random' : instrumentId}
+                  disabled={varySounds}
+                  onChange={(event) => setInstrumentId(event.target.value)}
+                >
+                  {varySounds ? <option value="random">Random each question</option> : null}
+                  {CHORD_INSTRUMENTS.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
               </div>
 
-              {showAnswerKey ? (
-                <>
-                  <h2 style={{ ...sectionHeadingStyle, margin: '22px 0 6px' }}>
-                    {question.progression.name}
-                  </h2>
-                  {question.progression.note ? (
-                    <p style={mutedTextStyle}>{question.progression.note}</p>
-                  ) : null}
-                </>
-              ) : (
-                <p style={{ ...mutedTextStyle, marginTop: '16px' }}>
-                  {`Chord ${question.blankIndex + 1} of ${question.chords.length} is missing.`}
-                  {loopPlayback ? ' Looping until you answer.' : ''}
+              <div className="control-card ear-options-card">
+                {[
+                  ['New sound each question', varySounds, setVarySounds],
+                  ['Random key', useRandomKey, setUseRandomKey],
+                  ['Play tonic first', playReference, setPlayReference],
+                  ['Loop until answered', loopPlayback, setLoopPlayback],
+                  ['Drums', drums, setDrums],
+                  ['Show chord names', showKey, setShowKey],
+                ].map(([label, checked, set]) => (
+                  <label className="toggle-control" key={label}>
+                    <input type="checkbox" checked={checked} onChange={(event) => set(event.target.checked)} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="ear-transport">
+              <button className="primary-button" type="button" onClick={startQuestion} disabled={pool.length === 0}>
+                {question ? 'Next' : 'Start'}
+              </button>
+              <button className="secondary-button" type="button" onClick={() => playQuestion(question)} disabled={!question}>
+                Replay
+              </button>
+              <button className="secondary-button" type="button" onClick={() => playQuestion(question, 0.72)} disabled={!question}>
+                Slower
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  stopPlayback()
+                  setRevealed(true)
+                  setStreak(0)
+                }}
+                disabled={!question || showAnswerKey}
+              >
+                Reveal
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={downloadMidi}
+                disabled={!question || !showAnswerKey}
+                title={showAnswerKey ? 'Save this progression as a MIDI file' : 'Answer the question first'}
+              >
+                MIDI
+              </button>
+            </div>
+
+            <div className="surface-card ear-stage">
+              {!question ? (
+                <p className="ear-stage-empty">
+                  Press Start. Every question picks a fresh progression, key, instrument and feel.
                 </p>
+              ) : (
+                <>
+                  <div className="ear-question-meta">
+                    <span>{question.key.label}</span>
+                    <span>{activeInstrument?.name}</span>
+                    <span>{activePattern?.name}</span>
+                    <span>{question.tempo} BPM</span>
+                  </div>
+
+                  <div
+                    className="ear-answer-grid"
+                    // The chart is one row whatever the progression's length:
+                    // a second row of chips is what pushes the tool off screen.
+                    style={{ '--chip-count': question.chords.length + (question.arrangement.reference ? 1 : 0) }}
+                  >
+                    {question.arrangement.reference ? (
+                      <div className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}>
+                        <span className="ear-chord-roman">{romanLabel(question.arrangement.reference)}</span>
+                        {showKey ? (
+                          <span className="ear-chord-symbol">
+                            {chordSymbol(question.arrangement.reference, question.key)}
+                          </span>
+                        ) : null}
+                        <span className="ear-chord-note">Key centre</span>
+                      </div>
+                    ) : null}
+
+                    {question.chords.map((chord, index) => {
+                      const isBlank = index === question.blankIndex
+                      const playing = activeChordIndex === index ? ' is-playing' : ''
+                      const roman = romanLabel(chord)
+
+                      if (!isBlank) {
+                        return (
+                          <div className={`ear-chord-result is-given${playing}`} key={`${roman}-${index}`}>
+                            <span className="ear-chord-roman">{roman}</span>
+                            {showKey ? (
+                              <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
+                            ) : null}
+                            {chord.secondary ? (
+                              <span className="ear-chord-secondary">V/{chord.secondary}</span>
+                            ) : null}
+                          </div>
+                        )
+                      }
+
+                      if (!showAnswerKey) {
+                        return (
+                          <div className={`ear-chord-result is-blank${playing}`} key={`blank-${index}`}>
+                            <span className="ear-chord-roman">?</span>
+                            <span className="ear-chord-note">Name this chord</span>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div
+                          className={`ear-chord-result is-${result ? result.status : 'revealed'}${playing}`}
+                          key={`answer-${index}`}
+                        >
+                          <span className="ear-chord-roman">{roman}</span>
+                          {showKey ? (
+                            <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
+                          ) : null}
+                          {chord.secondary ? (
+                            <span className="ear-chord-secondary">V/{chord.secondary}</span>
+                          ) : null}
+                          <span className="ear-chord-note">
+                            {result ? describeChordResult(result) : 'Revealed'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <p className="ear-stage-caption">
+                    {showAnswerKey ? (
+                      <>
+                        <strong>{question.progression.name}</strong>
+                        {question.progression.note ? ` — ${question.progression.note}` : ''}
+                      </>
+                    ) : (
+                      `Chord ${question.blankIndex + 1} of ${question.chords.length} is missing.${loopPlayback ? ' Looping until you answer.' : ''}`
+                    )}
+                  </p>
+                </>
               )}
-            </>
-          )}
-        </div>
+            </div>
 
-        <div className="surface-card" style={{ ...cardStyle, marginBottom: '18px' }}>
-          <label className="control-label" htmlFor="ear-answer">The Missing Chord</label>
-          <div className="ear-answer-row">
-            <input
-              id="ear-answer"
-              ref={answerInputRef}
-              className="control-input ear-answer-input"
-              type="text"
-              placeholder={showKey ? 'V7 or G7' : 'V7'}
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck="false"
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') submitAnswer()
-              }}
-            />
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={submitAnswer}
-              disabled={!question || showAnswerKey || answer.trim() === ''}
-            >
-              Check Answer
-            </button>
+            <div className="surface-card ear-answer-card">
+              <div className="ear-answer-row">
+                <input
+                  id="ear-answer"
+                  ref={answerInputRef}
+                  className="control-input ear-answer-input"
+                  type="text"
+                  placeholder={showKey ? 'Name the missing chord — V7 or G7' : 'Name the missing chord — V7'}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  value={answer}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    // Once the answer is up, the only thing left to do is go
+                    // again, so the same key does it.
+                    if (showAnswerKey) startQuestion()
+                    else submitAnswer()
+                  }}
+                />
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={submitAnswer}
+                  disabled={!question || showAnswerKey || answer.trim() === ''}
+                >
+                  Check
+                </button>
+              </div>
+              <p className="ear-hint">
+                {showAnswerKey ? (
+                  <>Press <code>Enter</code> for the next progression.</>
+                ) : (
+                  <>
+                    <code>ii7</code> <code>V13sus</code> <code>bVII7</code> <code>Dm7</code> <code>V7/ii</code> — root
+                    scores 1, function 2, exact extension 3.
+                  </>
+                )}
+              </p>
+            </div>
           </div>
-          <p className="ear-hint">
-            One chord only — a roman numeral (<code>ii7</code>, <code>V13sus</code>, <code>bVII7</code>), a
-            chord symbol (<code>Dm7</code>, <code>G7</code>), or a secondary dominant — <code>V/ii</code>,{' '}
-            <code>V7/ii</code> and <code>V7 of ii</code> all work. Case carries the quality, so{' '}
-            <code>ii7</code> is minor and <code>V7</code> is dominant. Naming the function scores the
-            chord — any major tonic answers a major tonic, whether it sounded as maj7, maj9, maj13 or
-            6/9 — and naming the exact extension on top of that earns a bonus.
-          </p>
-        </div>
 
-        <div className="surface-card" style={cardStyle}>
-          <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Session Stats</h2>
-          <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-            Answered: {history.length} • Average score:{' '}
-            {averageScore === null ? '—' : `${averageScore}%`} • Extensions named: {bonuses}
-          </p>
-
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {history.length === 0 ? (
-              <p style={mutedTextStyle}>No answers yet.</p>
-            ) : (
-              history.map((item) => (
-                <div key={item.id} className="history-row">
-                  <span>{item.name}</span>
-                  <span>Key of {item.keyLabel}</span>
-                  <span>Missing: {item.chord}</span>
-                  <span>{item.exact ? `${item.score}% +1` : `${item.score}%`}</span>
+          <aside className="ear-sidebar">
+            <div className="surface-card ear-score-card">
+              <span className="control-label">Session</span>
+              <div className="ear-score-big">{sessionPoints}</div>
+              <span className="ear-score-unit">
+                {history.length === 0 ? 'points' : `of ${history.length * POINTS_PER_CHORD} points`}
+              </span>
+              <div className="ear-stat-grid">
+                <div className={`ear-stat${streak >= 3 ? ' is-hot' : ''}`}>
+                  <strong>{streak}</strong>
+                  <span>streak</span>
                 </div>
-              ))
-            )}
-          </div>
+                <div className="ear-stat">
+                  <strong>{bestStreak}</strong>
+                  <span>best</span>
+                </div>
+                <div className="ear-stat">
+                  <strong>{history.length}</strong>
+                  <span>answered</span>
+                </div>
+                <div className="ear-stat">
+                  <strong>{bonuses}</strong>
+                  <span>extensions</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="surface-card ear-history-card">
+              <span className="control-label">Recent</span>
+              {history.length === 0 ? (
+                <p className="ear-stage-empty">Nothing yet.</p>
+              ) : (
+                <div className="ear-history-list">
+                  {history.map((item) => (
+                    <div className="ear-history-row" key={item.id}>
+                      <span className="ear-history-chord">{item.chord}</span>
+                      <span className="ear-history-name">{item.name}</span>
+                      <span className={`ear-history-points is-p${item.points}`}>{item.points}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       </section>
     </div>

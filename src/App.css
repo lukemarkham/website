@@ -261,6 +261,19 @@ h3 {
   transform: translateX(-50%) translateY(0);
 }
 
+/* The last menu in the bar is centred under a link that sits at the right edge,
+   so half of it hangs off the page. It lines up with its trigger instead. */
+.nav-dropdown:last-of-type .nav-dropdown-menu {
+  left: auto;
+  right: 0;
+  transform: translateY(6px);
+}
+
+.nav-dropdown:last-of-type:hover .nav-dropdown-menu,
+.nav-dropdown:last-of-type:focus-within .nav-dropdown-menu {
+  transform: translateY(0);
+}
+
 .dropdown-link {
   display: block;
   padding: 10px 11px;
@@ -1854,5 +1867,313 @@ code {
     /* The basis is a width in a row, but a height once the row stacks. */
     flex: 0 0 auto;
     max-width: 100%;
+  }
+}
+
+/* ---------------------------------------------------- ear trainer layout --- */
+/* The trainer is meant to sit on one screen: a working column on the left and
+   the session's running total beside it, rather than a page you scroll while
+   the loop is playing. */
+
+/* The nav's own gap is the only breathing room this page can spare. */
+.ear-shell .site-nav {
+  margin-bottom: 12px;
+}
+
+.ear-panel {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  padding: clamp(16px, 2vw, 24px);
+  /* Fills whatever is left below the nav, so spare room on a tall screen goes
+     to the chart rather than leaving the panel floating in the middle. On a
+     short screen the content is already taller than this and nothing changes. */
+  min-height: calc(100vh - 96px);
+}
+
+.ear-layout {
+  flex: 1;
+}
+
+.ear-main {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.ear-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ear-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ear-title {
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 30px);
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.ear-topbar .ear-level-chips {
+  margin-bottom: 0;
+}
+
+.ear-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  /* Stretched so the working column can hand its spare height to the chart;
+     the sidebar packs its cards at the top instead. */
+  align-items: stretch;
+  gap: 16px;
+  text-align: left;
+}
+
+.ear-main {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ear-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+/* Controls stay out of the way: two compact cards rather than three tall ones. */
+.ear-panel .ear-toolbar {
+  grid-template-columns: minmax(0, 190px) minmax(0, 190px) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.ear-panel .control-card {
+  padding: 12px 14px;
+}
+
+.ear-panel .control-label {
+  margin-bottom: 6px;
+  font-size: 0.68rem;
+}
+
+.ear-panel .range-value {
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.ear-panel .ear-options-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 6px 16px;
+}
+
+.ear-panel .toggle-control {
+  gap: 8px;
+  font-size: 0.72rem;
+}
+
+.ear-panel .toggle-control input {
+  width: 15px;
+  height: 15px;
+}
+
+.ear-transport {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ear-transport button {
+  padding: 9px 18px;
+  font-size: 0.76rem;
+}
+
+.ear-stage {
+  padding: 14px;
+  min-height: 172px;
+}
+
+.ear-stage .ear-question-meta {
+  justify-content: flex-start;
+  margin-bottom: 12px;
+  font-size: 0.7rem;
+}
+
+.ear-stage .ear-answer-grid {
+  grid-template-columns: repeat(var(--chip-count, 4), minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ear-stage .ear-chord-result {
+  padding: 10px 8px;
+  gap: 3px;
+}
+
+.ear-stage-caption {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.ear-stage-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.ear-answer-card {
+  padding: 12px 14px;
+}
+
+.ear-answer-card .ear-answer-row {
+  margin-top: 0;
+  justify-content: flex-start;
+}
+
+.ear-answer-card .ear-answer-input {
+  max-width: none;
+  text-align: left;
+}
+
+.ear-answer-card .ear-hint {
+  margin-top: 8px;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------ scoreboard --- */
+
+.ear-score-card {
+  padding: 14px;
+  text-align: center;
+}
+
+.ear-score-big {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--accent-strong);
+}
+
+.ear-score-unit {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ear-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ear-stat {
+  padding: 8px 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--surface-border);
+}
+
+.ear-stat strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--text-soft);
+}
+
+.ear-stat span {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A streak worth noticing lights up rather than just counting. */
+.ear-stat.is-hot {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.ear-stat.is-hot strong {
+  color: var(--accent-strong);
+}
+
+.ear-history-card {
+  padding: 14px;
+}
+
+.ear-history-list {
+  display: grid;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.ear-history-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.74rem;
+}
+
+.ear-history-chord {
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.ear-history-name {
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ear-history-points {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+.ear-history-points.is-p3 {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.ear-history-points.is-p2 {
+  color: var(--text-soft);
+}
+
+@media (max-width: 900px) {
+  .ear-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Narrow enough that one row of chips would be unreadable — let them wrap. */
+  .ear-stage .ear-answer-grid {
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  }
+
+  .ear-panel .ear-toolbar {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

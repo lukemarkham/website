@@ -584,12 +584,12 @@ export function parseAnswer(text, tonicPc, single = false) {
     .map((part) => parseToken(part, tonicPc))
 }
 
-// Grading is root-first: getting the movement right is most of the work, and a
-// missing or vague quality shouldn't wipe out the whole chord. Function and
-// extension are graded apart, because they are different things to hear — any
-// major tonic answers a major tonic, whether it sounded as maj7, maj9, maj13 or
-// 6/9, so naming the family scores the chord outright and naming the exact
-// extension on top of it earns a bonus.
+// A chord is worth three points: one for hearing where the root moved, two for
+// naming what the chord does, three for naming the exact extension as well.
+// They are graded apart because they are different things to hear — any major
+// tonic answers a major tonic, whether it sounded as maj7, maj9, maj13 or 6/9,
+// so the family is what earns the chord and the extension is what tops it up.
+export const POINTS_PER_CHORD = 3
 export function gradeAnswer(text, chords, key) {
   const tokens = parseAnswer(text, key.pc, chords.length === 1)
   const results = chords.map((chord, index) => {
@@ -609,18 +609,13 @@ export function gradeAnswer(text, chords, key) {
       return { ...expected, typed: token.token, status: 'wrong', points: 0 }
     }
     if (token.family === null) {
-      return { ...expected, typed: token.token, status: 'rootOnly', points: 0.75 }
+      return { ...expected, typed: token.token, status: 'rootOnly', points: 1 }
     }
     if (token.family !== expected.family) {
-      return { ...expected, typed: token.token, status: 'quality', points: 0.5 }
+      return { ...expected, typed: token.token, status: 'quality', points: 1 }
     }
-    return {
-      ...expected,
-      typed: token.token,
-      status: 'correct',
-      points: 1,
-      exact: token.quality === chord.quality,
-    }
+    const exact = token.quality === chord.quality
+    return { ...expected, typed: token.token, status: 'correct', points: exact ? 3 : 2, exact }
   })
 
   const earned = results.reduce((sum, result) => sum + result.points, 0)
@@ -628,7 +623,9 @@ export function gradeAnswer(text, chords, key) {
     results,
     extraChords: Math.max(0, tokens.length - chords.length),
     bonus: results.filter((result) => result.exact).length,
-    score: Math.round((earned / chords.length) * 100),
+    points: earned,
+    possible: chords.length * POINTS_PER_CHORD,
+    score: Math.round((earned / (chords.length * POINTS_PER_CHORD)) * 100),
     perfect: results.every((result) => result.status === 'correct') && tokens.length === chords.length,
   }
 }
