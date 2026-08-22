@@ -308,6 +308,7 @@ function clavVoice(ctx, out, note) {
 export const CHORD_INSTRUMENTS = [
   {
     id: 'rhodes',
+    gm: 4,
     name: 'Rhodes',
     reverb: 0.3,
     bass: 'electric',
@@ -328,6 +329,7 @@ export const CHORD_INSTRUMENTS = [
   },
   {
     id: 'wurlitzer',
+    gm: 5,
     name: 'Wurlitzer',
     reverb: 0.26,
     bass: 'electric',
@@ -349,6 +351,7 @@ export const CHORD_INSTRUMENTS = [
   },
   {
     id: 'vibraphone',
+    gm: 11,
     name: 'Vibraphone',
     reverb: 0.42,
     bass: 'upright',
@@ -369,6 +372,7 @@ export const CHORD_INSTRUMENTS = [
   },
   {
     id: 'pad',
+    gm: 89,
     name: 'Warm pad',
     reverb: 0.46,
     bass: 'sub',
@@ -376,6 +380,7 @@ export const CHORD_INSTRUMENTS = [
   },
   {
     id: 'nylon',
+    gm: 24,
     name: 'Nylon guitar',
     reverb: 0.3,
     bass: 'upright',
@@ -391,6 +396,7 @@ export const CHORD_INSTRUMENTS = [
   },
   {
     id: 'harp',
+    gm: 46,
     name: 'Bell harp',
     reverb: 0.5,
     bass: 'sub',
@@ -406,6 +412,7 @@ export const CHORD_INSTRUMENTS = [
   },
   {
     id: 'clav',
+    gm: 7,
     name: 'Clav',
     reverb: 0.22,
     bass: 'electric',
@@ -415,6 +422,7 @@ export const CHORD_INSTRUMENTS = [
 
 export const BASS_INSTRUMENTS = {
   upright: {
+    gm: 32,
     name: 'Upright bass',
     reverb: 0.16,
     play: (ctx, out, note) => {
@@ -443,6 +451,7 @@ export const BASS_INSTRUMENTS = {
     },
   },
   electric: {
+    gm: 33,
     name: 'Electric bass',
     reverb: 0.12,
     play: (ctx, out, note) => {
@@ -476,6 +485,7 @@ export const BASS_INSTRUMENTS = {
     },
   },
   sub: {
+    gm: 38,
     name: 'Sub bass',
     reverb: 0.1,
     play: (ctx, out, note) => {

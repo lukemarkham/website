@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
 import { PROGRESSION_LEVELS, progressions } from './data/progressions'
+import { arrangementToMidi, midiFilename } from './lib/midi'
 import {
   FAMILY_LABELS,
   KEYS,
@@ -2194,6 +2195,31 @@ function EarTrainerPage() {
     setActiveChordIndex(null)
   }
 
+  // The MIDI is the loop pass: the progression itself, without the tonic
+  // reference that is only there to set up the question.
+  function downloadMidi() {
+    if (!question) return
+    const chordInstrument =
+      CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId) ?? CHORD_INSTRUMENTS[0]
+    const bytes = arrangementToMidi({
+      arrangement: question.loopArrangement,
+      tempo: question.tempo,
+      name: `${question.progression.name} in ${question.key.label}`,
+      chordProgram: chordInstrument.gm,
+      bassProgram: BASS_INSTRUMENTS[chordInstrument.bass].gm,
+    })
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/midi' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = midiFilename(question.progression.name, question.key.label)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    // Revoked on a timer rather than straight away, which some browsers treat
+    // as cancelling the download they have only just been handed.
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+  }
+
   async function startQuestion() {
     if (pool.length === 0) return
 
@@ -2447,6 +2473,15 @@ function EarTrainerPage() {
             disabled={!question || showAnswerKey}
           >
             Reveal Answer
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={downloadMidi}
+            disabled={!question || !showAnswerKey}
+            title={showAnswerKey ? 'Save this progression as a MIDI file' : 'Answer the question first'}
+          >
+            Download MIDI
           </button>
         </div>
 
