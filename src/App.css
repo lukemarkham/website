@@ -1603,6 +1603,7 @@ code {
 }
 
 .ear-chord-result {
+  position: relative;
   display: grid;
   align-content: center;
   gap: 6px;
@@ -1676,6 +1677,68 @@ code {
 
 .ear-chord-note {
   color: rgba(183, 232, 172, 0.85);
+}
+
+/* The points as they land, drifting off the chord they were won on. Three for
+   the exact extension, two for the function, one for hearing the root move —
+   the same number the history row keeps, said at the moment it is earned. */
+.ear-chord-gain {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-soft);
+  pointer-events: none;
+  animation: ear-gain-float 1.2s ease-out forwards;
+}
+
+.ear-chord-gain.is-p3 {
+  color: #b7e8ac;
+}
+
+.ear-chord-gain.is-p2 {
+  color: rgba(183, 232, 172, 0.82);
+}
+
+.ear-chord-gain.is-p1 {
+  color: rgba(212, 199, 161, 0.85);
+}
+
+@keyframes ear-gain-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-32px) scale(1);
+  }
+}
+
+/* Still worth seeing without the drift, so it stays put and fades. */
+@media (prefers-reduced-motion: reduce) {
+  .ear-chord-gain {
+    animation: ear-gain-fade 1.2s ease-out forwards;
+  }
+}
+
+@keyframes ear-gain-fade {
+  0%,
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes ear-correct-pop {

@@ -2521,6 +2521,11 @@ function EarTrainerPage() {
                           <span className="ear-chord-note">
                             {result ? describeChordResult(result) : 'Revealed'}
                           </span>
+                          {result && result.points > 0 ? (
+                            <span className={`ear-chord-gain is-p${result.points}`} aria-hidden="true">
+                              {`+${result.points}`}
+                            </span>
+                          ) : null}
                         </div>
                       )
                     })}

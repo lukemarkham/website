@@ -37,6 +37,7 @@ export const CHORD_INTERVALS = {
   7: [0, 4, 7, 10],
   9: [0, 4, 7, 10, 14],
   13: [0, 4, 7, 10, 14, 21],
+  '7#11': [0, 4, 10, 14, 18],
   '7b9': [0, 4, 7, 10, 13],
   '7b13': [0, 4, 7, 10, 14, 20],
   '7alt': [0, 4, 8, 10, 13],
@@ -63,6 +64,7 @@ const ROMAN_SUFFIX = {
   7: '7',
   9: '9',
   13: '13',
+  '7#11': '7♯11',
   '7b9': '7♭9',
   '7b13': '7♭13',
   '7alt': '7alt',
@@ -99,6 +101,7 @@ const QUALITY_FAMILY = {
   7: 'dominant',
   9: 'dominant',
   13: 'dominant',
+  '7#11': 'dominant',
   '7b9': 'dominant',
   '7b13': 'dominant',
   '7alt': 'dominant',
@@ -184,6 +187,10 @@ const SHADE_POOLS = {
   // progression is going.
   minorTonic: [['m9', 4], ['m7', 2], ['m11', 2], ['m69', 2]],
   dominant: [['13', 3], ['9', 3], ['7', 2]],
+  // A dominant heading for another dominant can take the lydian ♯11. It is
+  // the occasional colour rather than the everyday one, so the natural 13
+  // still leads the pool.
+  lydianDominant: [['13', 3], ['9', 3], ['7', 2], ['7#11', 1]],
   darkDominant: [['7b9', 4], ['7b13', 3], ['7', 2], ['7alt', 1]],
 }
 
@@ -219,6 +226,21 @@ function resolvesToMinor(chords, index) {
   return step === 5 && MINOR_TARGETS.has(familyOf(next.quality))
 }
 
+const DOMINANT_TARGETS = new Set(['dominant', 'sus'])
+
+// The other side of that coin. A dominant falling a fifth into another
+// dominant — V/V, and the links of a III7–VI7–II7–V7 chain — can take a ♯11,
+// which is the sound of "Take the A Train". It works there because the chord
+// it is resolving to is major: the natural 13 is that chord's major third and
+// the ♯11 leans on it from a semitone below. Over a V resolving home the same
+// note is the ♯11 of the tonic's own dominant, which is a different, more
+// unsettled sound than this trainer's plain V is asking for.
+function resolvesToDominant(chords, index) {
+  const next = chords[(index + 1) % chords.length]
+  const step = ((((next.root - chords[index].root) % 12) + 12) % 12)
+  return step === 5 && DOMINANT_TARGETS.has(familyOf(next.quality))
+}
+
 // The sixth a m6/9 puts on the tonic is the note an Aeolian progression flats,
 // so a minor key built on a ♭VI keeps its seventh instead.
 function minorTonicPool(progression, chord) {
@@ -249,6 +271,8 @@ export function shadeProgression(progression) {
     let resolved = pool
     if (pool === 'dominant' && resolvesToMinor(progression.chords, index)) {
       resolved = 'darkDominant'
+    } else if (pool === 'dominant' && resolvesToDominant(progression.chords, index)) {
+      resolved = 'lydianDominant'
     } else if (pool === 'minor') {
       resolved = minorTonicPool(progression, chord) ?? pool
     }
@@ -464,6 +488,7 @@ const QUALITY_SPELLINGS = {
   7: ['7', 'dom7', 'dom'],
   9: ['9'],
   13: ['13'],
+  '7#11': ['7#11', '9#11', '13#11', '#11'],
   '7b9': ['7b9', 'b9'],
   '7b13': ['7b13', 'b13', '7#5'],
   '7alt': ['7alt', 'alt', '7#9', '7b9#9'],
