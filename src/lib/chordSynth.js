@@ -498,6 +498,150 @@ export const BASS_INSTRUMENTS = {
   },
 }
 
+// ------------------------------------------------------------------ drums ---
+
+// One buffer of white noise per context, shared by the snare and the hats:
+// filtering it differently is most of what separates the two.
+const noiseCaches = new WeakMap()
+
+function noiseBuffer(ctx) {
+  const cached = noiseCaches.get(ctx)
+  if (cached) return cached
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.6), ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1
+  noiseCaches.set(ctx, buffer)
+  return buffer
+}
+
+function noiseVoice(ctx, out, note, { type, frequency, Q, peak, decay }) {
+  const source = ctx.createBufferSource()
+  source.buffer = noiseBuffer(ctx)
+  const filter = ctx.createBiquadFilter()
+  filter.type = type
+  filter.frequency.value = frequency
+  filter.Q.value = Q
+  const amp = ctx.createGain()
+  amp.gain.setValueAtTime(Math.max(0.0002, note.velocity * peak), note.time)
+  amp.gain.exponentialRampToValueAtTime(0.0001, note.time + decay)
+  source.connect(filter)
+  filter.connect(amp)
+  amp.connect(out)
+  source.start(note.time)
+  source.stop(note.time + decay + 0.02)
+}
+
+// The pitch falling away under the click is the whole trick to a synthesised
+// kick: start it up near the beater and let it drop into the floor.
+function kickVoice(ctx, out, note) {
+  const osc = ctx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(128, note.time)
+  osc.frequency.exponentialRampToValueAtTime(44, note.time + 0.09)
+  const amp = ctx.createGain()
+  amp.gain.setValueAtTime(Math.max(0.0002, note.velocity * 0.9), note.time)
+  amp.gain.exponentialRampToValueAtTime(0.0001, note.time + 0.34)
+  osc.connect(amp)
+  amp.connect(out)
+  osc.start(note.time)
+  osc.stop(note.time + 0.38)
+  noiseVoice(ctx, out, note, { type: 'lowpass', frequency: 2600, Q: 0.7, peak: 0.12, decay: 0.02 })
+}
+
+// A snare is a tuned shell plus a lot of wires rattling: the triangle gives it
+// a pitch, the noise gives it the snares.
+function snareVoice(ctx, out, note) {
+  const osc = ctx.createOscillator()
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(188, note.time)
+  osc.frequency.exponentialRampToValueAtTime(140, note.time + 0.1)
+  const amp = ctx.createGain()
+  amp.gain.setValueAtTime(Math.max(0.0002, note.velocity * 0.22), note.time)
+  amp.gain.exponentialRampToValueAtTime(0.0001, note.time + 0.13)
+  osc.connect(amp)
+  amp.connect(out)
+  osc.start(note.time)
+  osc.stop(note.time + 0.16)
+  noiseVoice(ctx, out, note, {
+    type: 'bandpass',
+    frequency: 1750,
+    Q: 0.6,
+    peak: 0.5,
+    decay: note.velocity < 0.3 ? 0.06 : 0.17,
+  })
+}
+
+function hatVoice(ctx, out, note) {
+  noiseVoice(ctx, out, note, {
+    type: 'highpass',
+    frequency: 8200,
+    Q: 0.9,
+    peak: 0.32,
+    decay: note.open ? 0.24 : 0.045,
+  })
+}
+
+export const DRUM_KIT = {
+  reverb: 0.12,
+  level: 0.5,
+  play: (ctx, out, note) => {
+    if (note.voice === 'kick') return kickVoice(ctx, out, note)
+    if (note.voice === 'snare') return snareVoice(ctx, out, note)
+    return hatVoice(ctx, out, note)
+  },
+}
+
+// Kick on one and the and-of-three, backbeat on two and four, eighths on the
+// hats: enough of a groove to hold the time without competing with the chords
+// for attention. The variations are rolled once per arrangement, so a loop
+// repeats exactly rather than wandering while the ear is trying to work.
+function buildGroove(startBeat, totalBeats, beat) {
+  const events = []
+  // Offbeats sit a little late — straight eighths under this harmony sound
+  // like a drum machine, and a full triplet swing fights the comping.
+  const swing = beat * 0.05
+  const hit = (position, voice, velocity, open) => {
+    if (position >= totalBeats) return
+    events.push({
+      kind: 'drum',
+      voice,
+      open,
+      // Clamped, so the jitter on the first hit can never push the groove in
+      // front of the bar it is meant to be counting.
+      time: Math.max(
+        startBeat * beat,
+        (startBeat + position) * beat + (position % 1 === 0 ? 0 : swing) + humanize(0.008),
+      ),
+      velocity: Math.max(0.1, velocity + humanize(0.07)),
+    })
+  }
+
+  for (let bar = 0; bar * 4 < totalBeats; bar += 1) {
+    const base = bar * 4
+    const last = (bar + 1) * 4 >= totalBeats
+
+    hit(base, 'kick', 0.95)
+    hit(base + 2.5, 'kick', 0.82)
+    if (Math.random() < 0.4) hit(base + 3.5, 'kick', 0.6)
+    if (bar > 0 && Math.random() < 0.25) hit(base + 1.75, 'kick', 0.55)
+
+    hit(base + 1, 'snare', 0.85)
+    hit(base + 3, 'snare', 0.88)
+    if (Math.random() < 0.5) hit(base + 2.75, 'snare', 0.22)
+    if (Math.random() < 0.35) hit(base + 0.75, 'snare', 0.2)
+
+    for (let eighth = 0; eighth < 8; eighth += 1) {
+      const position = base + eighth * 0.5
+      // Leave the hats open on the way back round, which is what tells the ear
+      // the loop has come full circle.
+      const open = last && eighth === 7
+      hit(position, 'hat', eighth % 2 === 0 ? 0.42 : 0.28, open)
+    }
+  }
+
+  return events
+}
+
 export const PATTERNS = [
   { id: 'block', name: 'Block chords' },
   { id: 'comp', name: 'Comping' },
@@ -511,7 +655,9 @@ function humanize(amount) {
 
 // Turns a progression into a flat list of timed notes: chord voices with voice
 // leading, plus a bass part that walks when the pattern calls for it.
-export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pattern, playReference }) {
+export function buildArrangement({
+  chords, key, tonic, tempo, beatsPerChord, pattern, playReference, drums,
+}) {
   const beat = 60 / tempo
   const chordSeconds = beat * beatsPerChord
   const events = []
@@ -539,6 +685,13 @@ export function buildArrangement({ chords, key, tonic, tempo, beatsPerChord, pat
     previousVoicing = voicing
     timeline.push({ index: -1, start: cursor, end: cursor + referenceSlot })
     cursor += referenceSlot
+  }
+
+  // The groove comes in with the changes, not under the tonic reference: that
+  // chord is there to be listened to, and it is also where the count would be.
+  const grooveStart = cursor
+  if (drums) {
+    events.push(...buildGroove(grooveStart / beat, chords.length * beatsPerChord, beat))
   }
 
   chords.forEach((chord, chordIndex) => {
@@ -630,6 +783,8 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
   const startTime = Math.max(at ?? ctx.currentTime + 0.12, ctx.currentTime + 0.02)
   const chordBus = engine.createBus(chordInstrument.reverb)
   const bassBus = engine.createBus(bassInstrument.reverb)
+  // Made on demand, so a question played without drums never builds the bus.
+  let drumBus = null
 
   arrangement.events.forEach((event) => {
     const note = {
@@ -638,7 +793,10 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
       duration: event.duration,
       velocity: Math.max(0.15, Math.min(1, event.velocity)),
     }
-    if (event.kind === 'bass') {
+    if (event.kind === 'drum') {
+      if (!drumBus) drumBus = engine.createBus(DRUM_KIT.reverb, DRUM_KIT.level)
+      DRUM_KIT.play(ctx, drumBus, { ...note, voice: event.voice, open: event.open })
+    } else if (event.kind === 'bass') {
       bassInstrument.play(ctx, bassBus, note, engine)
     } else {
       chordInstrument.play(ctx, chordBus, note, engine)
@@ -648,5 +806,6 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
   const tail = startTime - ctx.currentTime + arrangement.duration + 2
   engine.scheduleCleanup(chordBus, tail)
   engine.scheduleCleanup(bassBus, tail)
+  if (drumBus) engine.scheduleCleanup(drumBus, tail)
   return { startTime, duration: arrangement.duration }
 }

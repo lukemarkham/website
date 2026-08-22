@@ -11,6 +11,7 @@ import {
   gradeAnswer,
   keyForMode,
   romanLabel,
+  shadeProgression,
 } from './lib/harmony'
 import {
   BASS_INSTRUMENTS,
@@ -2052,7 +2053,9 @@ function beatsPerChordFor(progression) {
 }
 
 function describeChordResult(item) {
-  if (item.status === 'correct') return 'Correct'
+  if (item.status === 'correct') {
+    return item.exact ? 'Correct — extension and all' : 'Correct — right function'
+  }
   if (item.status === 'rootOnly') return `Right root — it was a ${FAMILY_LABELS[item.family]}`
   if (item.status === 'quality') return `Right root, but it was a ${FAMILY_LABELS[item.family]}`
   if (item.status === 'missing') return 'Nothing typed'
@@ -2067,6 +2070,7 @@ function EarTrainerPage() {
   const [useRandomKey, setUseRandomKey] = useState(true)
   const [playReference, setPlayReference] = useState(true)
   const [loopPlayback, setLoopPlayback] = useState(true)
+  const [drums, setDrums] = useState(true)
   const [showKey, setShowKey] = useState(true)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
@@ -2075,6 +2079,7 @@ function EarTrainerPage() {
   const [activeChordIndex, setActiveChordIndex] = useState(null)
   const [celebration, setCelebration] = useState(0)
   const [history, setHistory] = useState([])
+  const [bonuses, setBonuses] = useState(0)
   const engineRef = useRef(null)
   const playTimeoutRef = useRef(null)
   const frameRef = useRef(null)
@@ -2141,13 +2146,14 @@ function EarTrainerPage() {
       tempoScale === 1
         ? (withReference ? target.arrangement : target.loopArrangement)
         : buildArrangement({
-            chords: target.progression.chords,
+            chords: target.chords,
             key: target.key,
             tonic: target.progression.tonic,
             tempo: target.tempo * tempoScale,
             beatsPerChord: target.beatsPerChord,
             pattern: target.pattern,
             playReference: withReference,
+            drums: target.drums,
           })
 
     const { startTime } = playArrangement(engine, arrangement, chordInstrument, bassInstrument, at)
@@ -2206,33 +2212,41 @@ function EarTrainerPage() {
       ? Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
       : Number(tempo)
     const beatsPerChord = beatsPerChordFor(progression)
+    // Extensions are re-rolled per question, so the same changes arrive in a
+    // different colour each time. Everything downstream — chart, audio and
+    // grading — reads this array rather than the progression's written chords.
+    const chords = shadeProgression(progression)
 
     const next = {
       progression,
+      chords,
       key,
-      blankIndex: Math.floor(Math.random() * progression.chords.length),
+      blankIndex: Math.floor(Math.random() * chords.length),
       instrumentId: chordInstrument.id,
       pattern,
       tempo: questionTempo,
       beatsPerChord,
       playReference,
+      drums,
       arrangement: buildArrangement({
-        chords: progression.chords,
+        chords,
         key,
         tonic: progression.tonic,
         tempo: questionTempo,
         beatsPerChord,
         pattern,
         playReference,
+        drums,
       }),
       loopArrangement: buildArrangement({
-        chords: progression.chords,
+        chords,
         key,
         tonic: progression.tonic,
         tempo: questionTempo,
         beatsPerChord,
         pattern,
         playReference: false,
+        drums,
       }),
     }
 
@@ -2249,12 +2263,15 @@ function EarTrainerPage() {
   function submitAnswer() {
     if (!question || result || revealed || answer.trim() === '') return
 
-    const missingChord = question.progression.chords[question.blankIndex]
+    const missingChord = question.chords[question.blankIndex]
     const graded = gradeAnswer(answer, [missingChord], question.key)
     stopPlayback()
     setResult(graded.results[0])
     if (graded.results[0].status === 'correct') {
       setCelebration((previous) => previous + 1)
+    }
+    if (graded.bonus > 0) {
+      setBonuses((previous) => previous + graded.bonus)
     }
     setHistory((previous) => [
       {
@@ -2263,6 +2280,7 @@ function EarTrainerPage() {
         chord: showKey ? chordSymbol(missingChord, question.key) : romanLabel(missingChord),
         keyLabel: question.key.label,
         score: graded.score,
+        exact: graded.bonus > 0,
       },
       ...previous,
     ].slice(0, 10))
@@ -2367,6 +2385,14 @@ function EarTrainerPage() {
             <label className="toggle-control">
               <input
                 type="checkbox"
+                checked={drums}
+                onChange={(event) => setDrums(event.target.checked)}
+              />
+              <span>Drums</span>
+            </label>
+            <label className="toggle-control">
+              <input
+                type="checkbox"
                 checked={showKey}
                 onChange={(event) => setShowKey(event.target.checked)}
               />
@@ -2454,7 +2480,7 @@ function EarTrainerPage() {
                   </div>
                 ) : null}
 
-                {question.progression.chords.map((chord, index) => {
+                {question.chords.map((chord, index) => {
                   const isBlank = index === question.blankIndex
                   const playing = activeChordIndex === index ? ' is-playing' : ''
                   const roman = romanLabel(chord)
@@ -2513,7 +2539,7 @@ function EarTrainerPage() {
                 </>
               ) : (
                 <p style={{ ...mutedTextStyle, marginTop: '16px' }}>
-                  {`Chord ${question.blankIndex + 1} of ${question.progression.chords.length} is missing.`}
+                  {`Chord ${question.blankIndex + 1} of ${question.chords.length} is missing.`}
                   {loopPlayback ? ' Looping until you answer.' : ''}
                 </p>
               )}
@@ -2552,14 +2578,17 @@ function EarTrainerPage() {
             One chord only — a roman numeral (<code>ii7</code>, <code>V13sus</code>, <code>bVII7</code>), a
             chord symbol (<code>Dm7</code>, <code>G7</code>), or a secondary dominant — <code>V/ii</code>,{' '}
             <code>V7/ii</code> and <code>V7 of ii</code> all work. Case carries the quality, so{' '}
-            <code>ii7</code> is minor and <code>V7</code> is dominant; naming the quality scores full marks.
+            <code>ii7</code> is minor and <code>V7</code> is dominant. Naming the function scores the
+            chord — any major tonic answers a major tonic, whether it sounded as maj7, maj9, maj13 or
+            6/9 — and naming the exact extension on top of that earns a bonus.
           </p>
         </div>
 
         <div className="surface-card" style={cardStyle}>
           <h2 style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Session Stats</h2>
           <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-            Answered: {history.length} • Average score: {averageScore === null ? '—' : `${averageScore}%`}
+            Answered: {history.length} • Average score:{' '}
+            {averageScore === null ? '—' : `${averageScore}%`} • Extensions named: {bonuses}
           </p>
 
           <div style={{ display: 'grid', gap: '12px' }}>
@@ -2571,7 +2600,7 @@ function EarTrainerPage() {
                   <span>{item.name}</span>
                   <span>Key of {item.keyLabel}</span>
                   <span>Missing: {item.chord}</span>
-                  <span>{item.score}%</span>
+                  <span>{item.exact ? `${item.score}% +1` : `${item.score}%`}</span>
                 </div>
               ))
             )}

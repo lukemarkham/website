@@ -6,6 +6,12 @@
 // printed label is built from `numeral` + the quality suffix, so the answer key
 // and the sounding chord can never drift apart.
 
+// Extensions are re-rolled per hearing by `shadeProgression`, so a quality
+// written here is the default colour rather than the only one: `maj9` may sound
+// as maj7, `13` as a plain 7, and so on within the same chord function. Set
+// `fixed: true` on a progression whose name spells its qualities out, or whose
+// particular colour is the whole point of the exercise.
+//
 // `secondary` marks a secondary dominant with the degree it resolves to, so the
 // chart can print "V/ii" alongside the numeral.
 function chord(numeral, root, quality, secondary) {
@@ -206,6 +212,7 @@ export const progressions = [
   },
   {
     id: 'jazz-blues-head',
+    fixed: true,
     name: 'I7–IV7–I7–V7alt',
     level: 'intermediate',
     tonic: 'major',
@@ -214,6 +221,7 @@ export const progressions = [
   },
   {
     id: 'minor-blues-turnaround',
+    fixed: true,
     name: 'i–iv–i–V7♭9',
     level: 'intermediate',
     tonic: 'minor',
@@ -237,6 +245,7 @@ export const progressions = [
   },
   {
     id: 'long-turnaround-alt',
+    fixed: true,
     name: 'iii–VI7♭9–ii–V7alt',
     level: 'intermediate',
     tonic: 'major',
@@ -341,6 +350,7 @@ export const progressions = [
   },
   {
     id: 'neapolitan',
+    fixed: true,
     name: '♭IImaj7–I',
     level: 'advanced',
     tonic: 'major',
@@ -389,6 +399,7 @@ export const progressions = [
   },
   {
     id: 'six-nine-ending',
+    fixed: true,
     name: 'ii–V7alt–I6/9',
     level: 'advanced',
     tonic: 'major',
