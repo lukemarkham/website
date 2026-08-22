@@ -1815,6 +1815,19 @@ button.ear-chord-result:focus-visible {
   font-weight: 600;
 }
 
+/* With the roman numerals off, the letter name is the only label left, so it
+   takes over the headline the numeral had. */
+.ear-answer-grid.is-symbol-lead .ear-chord-symbol {
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.ear-answer-grid.is-symbol-lead .ear-chord-result.is-correct .ear-chord-symbol {
+  color: #b7e8ac;
+}
+
 .ear-chord-note {
   color: var(--text-muted);
   font-size: 0.76rem;

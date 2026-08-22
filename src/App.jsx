@@ -2091,6 +2091,7 @@ function EarTrainerPage() {
   const [loopPlayback, setLoopPlayback] = useState(true)
   const [drums, setDrums] = useState(true)
   const [showKey, setShowKey] = useState(true)
+  const [showRoman, setShowRoman] = useState(true)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState(null)
@@ -2424,6 +2425,9 @@ function EarTrainerPage() {
     })
   }
 
+  // Both spellings are always graded; this only says which one the chart is
+  // showing, so the example matches what is in front of you.
+  const answerHint = showRoman && showKey ? 'V7 or G7' : (showRoman ? 'V7' : 'G7')
   const activeInstrument = question
     ? CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId)
     : null
@@ -2505,7 +2509,14 @@ function EarTrainerPage() {
                   ['Play tonic first', playReference, setPlayReference],
                   ['Loop until answered', loopPlayback, setLoopPlayback],
                   ['Drums', drums, setDrums],
-                  ['Show chord names', showKey, setShowKey],
+                  ['Show roman numerals', showRoman, (next) => {
+                    setShowRoman(next)
+                    if (!next) setShowKey(true)
+                  }],
+                  ['Show chord names', showKey, (next) => {
+                    setShowKey(next)
+                    if (!next) setShowRoman(true)
+                  }],
                 ].map(([label, checked, set]) => (
                   <label className="toggle-control" key={label}>
                     <input type="checkbox" checked={checked} onChange={(event) => set(event.target.checked)} />
@@ -2570,13 +2581,17 @@ function EarTrainerPage() {
                     <span>{question.tempo} BPM</span>
                   </div>
 
-                  <div className="ear-answer-grid">
+                  <div className={`ear-answer-grid${showRoman ? '' : ' is-symbol-lead'}`}>
                     {question.arrangement.reference ? (
                       <ChordCard
                         className={`ear-chord-result is-reference${activeChordIndex === -1 ? ' is-playing' : ''}`}
                         onPlay={() => playChordAlone(-1)}
                       >
-                        <span className="ear-chord-roman">{romanLabel(question.arrangement.reference)}</span>
+                        {showRoman ? (
+                          <span className="ear-chord-roman">
+                            {romanLabel(question.arrangement.reference)}
+                          </span>
+                        ) : null}
                         {showKey ? (
                           <span className="ear-chord-symbol">
                             {chordSymbol(question.arrangement.reference, question.key)}
@@ -2598,11 +2613,11 @@ function EarTrainerPage() {
                             onPlay={() => playChordAlone(index)}
                             key={`${roman}-${index}`}
                           >
-                            <span className="ear-chord-roman">{roman}</span>
+                            {showRoman ? <span className="ear-chord-roman">{roman}</span> : null}
                             {showKey ? (
                               <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
                             ) : null}
-                            {chord.secondary ? (
+                            {chord.secondary && showRoman ? (
                               <span className="ear-chord-secondary">V/{chord.secondary}</span>
                             ) : null}
                           </ChordCard>
@@ -2624,11 +2639,11 @@ function EarTrainerPage() {
                           onPlay={() => playChordAlone(index)}
                           key={`answer-${index}`}
                         >
-                          <span className="ear-chord-roman">{roman}</span>
+                          {showRoman ? <span className="ear-chord-roman">{roman}</span> : null}
                           {showKey ? (
                             <span className="ear-chord-symbol">{chordSymbol(chord, question.key)}</span>
                           ) : null}
-                          {chord.secondary ? (
+                          {chord.secondary && showRoman ? (
                             <span className="ear-chord-secondary">V/{chord.secondary}</span>
                           ) : null}
                           <span className="ear-chord-note">
@@ -2665,7 +2680,7 @@ function EarTrainerPage() {
                   ref={answerInputRef}
                   className="control-input ear-answer-input"
                   type="text"
-                  placeholder={showKey ? 'Name the missing chord — V7 or G7' : 'Name the missing chord — V7'}
+                  placeholder={`Name the missing chord — ${answerHint}`}
                   autoComplete="off"
                   autoCapitalize="off"
                   spellCheck="false"
