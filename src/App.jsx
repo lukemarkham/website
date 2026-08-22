@@ -2081,6 +2081,10 @@ function EarTrainerPage() {
   const [activeChordIndex, setActiveChordIndex] = useState(null)
   const [celebration, setCelebration] = useState(0)
   const [history, setHistory] = useState([])
+  // Every answer graded this session. The Recent list keeps only the last ten,
+  // so it is this that the session score is out of — otherwise the eleventh
+  // answer starts dividing by a total that has stopped growing.
+  const [answered, setAnswered] = useState(0)
   const [bonuses, setBonuses] = useState(0)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
@@ -2298,6 +2302,7 @@ function EarTrainerPage() {
     setStreak(nextStreak)
     setBestStreak((best) => Math.max(best, nextStreak))
     setSessionPoints((previous) => previous + graded.points)
+    setAnswered((previous) => previous + 1)
     if (named) {
       setCelebration((previous) => previous + 1)
     }
@@ -2593,9 +2598,9 @@ function EarTrainerPage() {
               <span className="control-label">Session</span>
               <div className="ear-score-big">
                 {sessionPoints}
-                {history.length > 0 ? (
+                {answered > 0 ? (
                   <span className="ear-score-percent">
-                    {`(${Math.round((sessionPoints / (history.length * POINTS_PER_CHORD)) * 100)}%)`}
+                    {`(${Math.round((sessionPoints / (answered * POINTS_PER_CHORD)) * 100)}%)`}
                   </span>
                 ) : null}
               </div>
@@ -2610,7 +2615,7 @@ function EarTrainerPage() {
                   <span>best</span>
                 </div>
                 <div className="ear-stat">
-                  <strong>{history.length}</strong>
+                  <strong>{answered}</strong>
                   <span>answered</span>
                 </div>
                 <div className="ear-stat">
