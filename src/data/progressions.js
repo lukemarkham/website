@@ -229,6 +229,7 @@ export const progressions = [
   },
   {
     id: 'so-what',
+    fixed: true,
     name: 'i–♭ii (modal shift)',
     level: 'intermediate',
     tonic: 'minor',
@@ -359,6 +360,7 @@ export const progressions = [
   },
   {
     id: 'minor-line-cliche',
+    fixed: true,
     name: 'i(maj7)–i7–i6',
     level: 'advanced',
     tonic: 'minor',

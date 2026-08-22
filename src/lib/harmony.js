@@ -31,7 +31,8 @@ export const CHORD_INTERVALS = {
   m7: [0, 3, 7, 10],
   m9: [0, 3, 7, 10, 14],
   m11: [0, 3, 7, 10, 14, 17],
-  m6: [0, 3, 7, 9, 14],
+  m6: [0, 3, 7, 9],
+  m69: [0, 3, 7, 9, 14],
   mMaj7: [0, 3, 7, 11, 14],
   7: [0, 4, 7, 10],
   9: [0, 4, 7, 10, 14],
@@ -57,6 +58,7 @@ const ROMAN_SUFFIX = {
   m9: '9',
   m11: '11',
   m6: '6',
+  m69: '6/9',
   mMaj7: '(maj7)',
   7: '7',
   9: '9',
@@ -77,6 +79,7 @@ const SYMBOL_SUFFIX = {
   m9: 'm9',
   m11: 'm11',
   m6: 'm6',
+  m69: 'm6/9',
   mMaj7: 'm(maj7)',
 }
 
@@ -91,6 +94,7 @@ const QUALITY_FAMILY = {
   m9: 'minor',
   m11: 'minor',
   m6: 'minor',
+  m69: 'minor',
   mMaj7: 'minMaj',
   7: 'dominant',
   9: 'dominant',
@@ -175,6 +179,10 @@ export function familyOf(quality) {
 const SHADE_POOLS = {
   major: [['maj9', 4], ['maj7', 4], ['maj13', 2], ['69', 1], ['6', 1]],
   minor: [['m9', 4], ['m7', 3], ['m11', 2]],
+  // A minor tonic can trade its seventh for a major sixth. It only works as a
+  // resting chord, though: a ii or a iv wants the seventh that says where the
+  // progression is going.
+  minorTonic: [['m9', 4], ['m7', 2], ['m11', 2], ['m69', 2]],
   dominant: [['13', 3], ['9', 3], ['7', 2]],
   darkDominant: [['7b9', 4], ['7b13', 3], ['7', 2], ['7alt', 1]],
 }
@@ -189,6 +197,7 @@ const SHADE_POOL_FOR = {
   m7: 'minor',
   m9: 'minor',
   m11: 'minor',
+  m69: 'minor',
   7: 'dominant',
   9: 'dominant',
   13: 'dominant',
@@ -210,6 +219,14 @@ function resolvesToMinor(chords, index) {
   return step === 5 && MINOR_TARGETS.has(familyOf(next.quality))
 }
 
+// The sixth a m6/9 puts on the tonic is the note an Aeolian progression flats,
+// so a minor key built on a ♭VI keeps its seventh instead.
+function minorTonicPool(progression, chord) {
+  if (progression.tonic !== 'minor' || chord.numeral !== 'i' || chord.root !== 0) return null
+  if (progression.chords.some((item) => item.root === 8)) return null
+  return 'minorTonic'
+}
+
 function pickWeighted(options) {
   let roll = Math.random() * options.reduce((sum, [, weight]) => sum + weight, 0)
   for (const [value, weight] of options) {
@@ -229,8 +246,12 @@ export function shadeProgression(progression) {
   return progression.chords.map((chord, index) => {
     const pool = SHADE_POOL_FOR[chord.quality]
     if (!pool) return chord
-    const resolved =
-      pool === 'dominant' && resolvesToMinor(progression.chords, index) ? 'darkDominant' : pool
+    let resolved = pool
+    if (pool === 'dominant' && resolvesToMinor(progression.chords, index)) {
+      resolved = 'darkDominant'
+    } else if (pool === 'minor') {
+      resolved = minorTonicPool(progression, chord) ?? pool
+    }
     return { ...chord, quality: pickWeighted(SHADE_POOLS[resolved]) }
   })
 }
@@ -373,6 +394,7 @@ const QUALITY_SPELLINGS = {
   m9: ['m9'],
   m11: ['m11'],
   m6: ['m6'],
+  m69: ['m69', 'm6add9'],
   mMaj7: ['mmaj7', 'mmaj9', 'mmaj'],
   7: ['7', 'dom7', 'dom'],
   9: ['9'],
