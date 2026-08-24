@@ -22,6 +22,10 @@ export const KEYS = [
 ]
 
 export const CHORD_INTERVALS = {
+  // Plain triads: the key centre is planted with one, and nothing else uses
+  // them — every chord in a progression is a seventh chord or better.
+  maj: [0, 4, 7],
+  min: [0, 3, 7],
   maj7: [0, 4, 7, 11],
   maj9: [0, 4, 7, 11, 14],
   maj13: [0, 4, 7, 11, 14, 21],
@@ -49,6 +53,8 @@ export const CHORD_INTERVALS = {
 
 // Suffix printed after a roman numeral, where lowercase already implies minor.
 const ROMAN_SUFFIX = {
+  maj: '',
+  min: '',
   maj7: 'maj7',
   maj9: 'maj9',
   maj13: 'maj13',
@@ -77,6 +83,7 @@ const ROMAN_SUFFIX = {
 // Suffix printed after a letter name, where minor has to be spelled out.
 const SYMBOL_SUFFIX = {
   ...ROMAN_SUFFIX,
+  min: 'm',
   m7: 'm7',
   m9: 'm9',
   m11: 'm11',
@@ -86,6 +93,8 @@ const SYMBOL_SUFFIX = {
 }
 
 const QUALITY_FAMILY = {
+  maj: 'major',
+  min: 'minor',
   maj7: 'major',
   maj9: 'major',
   maj13: 'major',
@@ -300,16 +309,42 @@ export function midiToFreq(midi) {
 
 // --------------------------------------------------------------- voicing ---
 
+// The note the name is a promise about. An 11th chord that loses its 11th is a
+// 9th chord under another name, which is how a m9 and a m11 come to sound like
+// the same chord, so this tone is never dropped and the voicing prefers to put
+// it on top where it is the sound of the chord rather than an inner detail.
+const COLOUR_TONE = {
+  maj9: 14,
+  maj13: 21,
+  'maj7#11': 18,
+  69: 14,
+  m9: 14,
+  m11: 17,
+  m69: 14,
+  mMaj7: 14,
+  9: 14,
+  13: 21,
+  '7#11': 18,
+  '7b9': 13,
+  '7b13': 20,
+  '7alt': 13,
+  '7sus4': 14,
+  '13sus4': 21,
+}
+
 // Keep four voices at most, dropping the fifth first — the note that carries
-// the least information in a jazz voicing.
-function upperStructure(intervals) {
+// the least information in a jazz voicing — and then the plainest of what is
+// left. The colour tone stays whatever else goes.
+function upperStructure(intervals, colour) {
   const upper = intervals.slice(1)
+  const droppable = (test) => upper.findIndex((interval) => interval !== colour && test(interval))
   while (upper.length > 4) {
-    const fifth = upper.findIndex((interval) => interval % 12 === 7)
-    if (fifth === -1) break
-    upper.splice(fifth, 1)
+    const fifth = droppable((interval) => interval % 12 === 7)
+    const index = fifth === -1 ? droppable(() => true) : fifth
+    if (index === -1) break
+    upper.splice(index, 1)
   }
-  return upper.slice(0, 4)
+  return upper
 }
 
 function stackFrom(pitchClasses, lowest) {
@@ -352,11 +387,13 @@ function voiceLeadingCost(previous, candidate) {
 // voicing moves least from the previous chord while staying in a warm register.
 export function voiceChord(rootPc, quality, previous) {
   const intervals = CHORD_INTERVALS[quality] ?? CHORD_INTERVALS.maj7
+  const colour = COLOUR_TONE[quality]
+  const colourPc = colour === undefined ? null : (rootPc + colour) % 12
   // Sorted, so that rotating gives the chord's inversions in close position.
   // Stacking the intervals in the order they are written instead spreads a
   // voicing over an octave and a half — every rotation of it is wide, so no
   // compact shape is ever considered.
-  const pitchClasses = [...new Set(upperStructure(intervals).map((i) => (rootPc + i) % 12))]
+  const pitchClasses = [...new Set(upperStructure(intervals, colour).map((i) => (rootPc + i) % 12))]
     .sort((a, b) => a - b)
   const center = 65
   let best = null
@@ -376,8 +413,12 @@ export function voiceChord(rootPc, quality, previous) {
       // something a player would reach for and starts sounding spread out.
       const span = candidate[candidate.length - 1] - candidate[0]
       const spread = span > 12 ? (span - 12) * 1.1 : 0
+      // Nudged, not forced: an extension sings in the top voice, but a line
+      // that would have to leap to put it there is the worse trade.
+      const topPc = ((candidate[candidate.length - 1] % 12) + 12) % 12
+      const buried = colourPc !== null && topPc !== colourPc ? 2.2 : 0
       const cost =
-        voiceLeadingCost(previous, candidate) + Math.abs(mean - center) * anchor + spread
+        voiceLeadingCost(previous, candidate) + Math.abs(mean - center) * anchor + spread + buried
       if (cost < bestCost) {
         bestCost = cost
         best = candidate
@@ -425,6 +466,14 @@ export function voiceProgression(rootPitches, chords) {
     voicings = next
   }
   return best
+}
+
+// The key centre is planted, not played: a plain triad in root position, in the
+// same register every time, so it never doubles as a hint about the voicing of
+// the chord it introduces.
+export function triadVoicing(rootPc, tonic) {
+  const root = 55 + ((((rootPc - 55) % 12) + 12) % 12)
+  return [root, root + (tonic === 'minor' ? 3 : 4), root + 7]
 }
 
 export function bassNote(rootPc, low = 36) {

@@ -4,7 +4,7 @@
 // electric pianos, a plucked string model for the guitar, and a generated
 // convolution reverb so the chords sit in a room instead of in a browser.
 
-import { bassNote, midiToFreq, voiceChord, voiceProgression } from './harmony'
+import { bassNote, midiToFreq, triadVoicing, voiceProgression } from './harmony'
 
 function impulseResponse(ctx, seconds, decay) {
   const length = Math.floor(ctx.sampleRate * seconds)
@@ -420,6 +420,28 @@ export const CHORD_INSTRUMENTS = [
   },
 ]
 
+// The key centre is not one of the voices on offer: it is always the same stock
+// piano, so the sound of the reference never matches the sound of the chords
+// and gives away a chord that happens to be the tonic.
+export const REFERENCE_INSTRUMENT = {
+  id: 'piano',
+  gm: 0,
+  name: 'Piano',
+  reverb: 0.2,
+  play: (ctx, out, note) => fmVoice(ctx, out, note, {
+    ratio: 1,
+    index: 3.2,
+    indexEnd: 0.08,
+    indexDecay: 0.16,
+    cutoff: 4200,
+    level: 0.22,
+    attack: 0.003,
+    decay: 1.6,
+    sustain: 0.12,
+    release: 0.7,
+  }),
+}
+
 export const BASS_INSTRUMENTS = {
   upright: {
     gm: 32,
@@ -682,18 +704,24 @@ export function buildArrangement({
   const voicings = voiceProgression(rootPitches, chords)
 
   if (playReference) {
-    // A quick tonic chord so the ear has a key centre before the question.
+    // A plain triad on the tonic so the ear has a key centre before the
+    // question. It carries no extension and no shade: an extended tonic in the
+    // instrument the chords are played on hands over the answer whenever the
+    // missing chord is the one the reference just sounded.
     reference = tonic === 'minor'
-      ? { numeral: 'i', root: 0, quality: 'm9' }
-      : { numeral: 'I', root: 0, quality: 'maj9' }
+      ? { numeral: 'i', root: 0, quality: 'min' }
+      : { numeral: 'I', root: 0, quality: 'maj' }
     const referenceSlot = chordSeconds
-    // Voiced towards the chord it introduces rather than from nothing, so the
-    // way in is a step rather than a jump.
-    const voicing = voiceChord(key.pc, reference.quality, voicings[0])
-    voicing.forEach((midi, index) => {
-      events.push({ kind: 'chord', midi, time: cursor + index * 0.02, duration: referenceSlot * 0.8, velocity: 0.62 })
+    triadVoicing(key.pc, tonic).forEach((midi, index) => {
+      events.push({
+        kind: 'chord',
+        instrument: 'reference',
+        midi,
+        time: cursor + index * 0.02,
+        duration: referenceSlot * 0.8,
+        velocity: 0.62,
+      })
     })
-    events.push({ kind: 'bass', midi: bassNote(key.pc), time: cursor, duration: referenceSlot * 0.8, velocity: 0.6 })
     timeline.push({ index: -1, start: cursor, end: cursor + referenceSlot })
     cursor += referenceSlot
   }
@@ -795,6 +823,8 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
   const bassBus = engine.createBus(bassInstrument.reverb)
   // Made on demand, so a question played without drums never builds the bus.
   let drumBus = null
+  // Likewise the key centre, which only the first pass of a question has.
+  let referenceBus = null
 
   arrangement.events.forEach((event) => {
     const note = {
@@ -808,6 +838,9 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
       DRUM_KIT.play(ctx, drumBus, { ...note, voice: event.voice, open: event.open })
     } else if (event.kind === 'bass') {
       bassInstrument.play(ctx, bassBus, note, engine)
+    } else if (event.instrument === 'reference') {
+      if (!referenceBus) referenceBus = engine.createBus(REFERENCE_INSTRUMENT.reverb)
+      REFERENCE_INSTRUMENT.play(ctx, referenceBus, note, engine)
     } else {
       chordInstrument.play(ctx, chordBus, note, engine)
     }
@@ -817,5 +850,6 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
   engine.scheduleCleanup(chordBus, tail)
   engine.scheduleCleanup(bassBus, tail)
   if (drumBus) engine.scheduleCleanup(drumBus, tail)
+  if (referenceBus) engine.scheduleCleanup(referenceBus, tail)
   return { startTime, duration: arrangement.duration }
 }
