@@ -121,6 +121,20 @@ export const FAMILY_LABELS = {
   dim: 'diminished',
 }
 
+// A family is named after the seventh that defines it, but the sixth chords sit
+// in those families without ever playing that seventh — a 6 or a 6/9 has to be
+// described as what was actually voiced.
+const QUALITY_LABELS = {
+  6: 'major 6th',
+  69: 'major 6/9',
+  m6: 'minor 6th',
+  m69: 'minor 6/9',
+}
+
+export function qualityLabel(family, quality) {
+  return QUALITY_LABELS[quality] ?? FAMILY_LABELS[family]
+}
+
 const ROMAN_DEGREES = { i: 0, ii: 1, iii: 2, iv: 3, v: 4, vi: 5, vii: 6 }
 const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
 

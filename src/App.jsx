@@ -6,12 +6,12 @@ import { reviews } from './data/reviews'
 import { PROGRESSION_LEVELS, progressions } from './data/progressions'
 import { arrangementToMidi, midiFilename } from './lib/midi'
 import {
-  FAMILY_LABELS,
   POINTS_PER_CHORD,
   KEYS,
   chordSymbol,
   gradeAnswer,
   keyForMode,
+  qualityLabel,
   romanLabel,
   shadeProgression,
 } from './lib/harmony'
@@ -2058,8 +2058,9 @@ function describeChordResult(item) {
   if (item.status === 'correct') {
     return item.exact ? 'Correct — extension and all' : 'Correct — right function'
   }
-  if (item.status === 'rootOnly') return `Right root — it was a ${FAMILY_LABELS[item.family]}`
-  if (item.status === 'quality') return `Right root, but it was a ${FAMILY_LABELS[item.family]}`
+  const label = qualityLabel(item.family, item.quality)
+  if (item.status === 'rootOnly') return `Right root — it was a ${label}`
+  if (item.status === 'quality') return `Right root, but it was a ${label}`
   if (item.status === 'missing') return 'Nothing typed'
   return `You typed ${item.typed}`
 }
