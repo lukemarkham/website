@@ -11,10 +11,13 @@ import {
   chordSymbol,
   gradeAnswer,
   keyForMode,
+  midiNoteLabel,
   qualityLabel,
+  recogniseChord,
   romanLabel,
   shadeProgression,
 } from './lib/harmony'
+import { connectMidi, isMidiSupported } from './lib/midiInput'
 import {
   BASS_INSTRUMENTS,
   CHORD_INSTRUMENTS,
@@ -2050,6 +2053,10 @@ function ConfettiBurst({ trigger }) {
 
 const EAR_TRAINER_DEFAULT_LEVELS = { core: true, intermediate: true, advanced: false }
 
+// Settled once at load rather than during a render, so nothing has to reach for
+// the browser while React is deciding what the page looks like.
+const MIDI_SUPPORTED = isMidiSupported()
+
 function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)]
 }
@@ -2128,6 +2135,19 @@ function EarTrainerPage() {
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
   const [sessionPoints, setSessionPoints] = useState(0)
+  const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
+  // What is under the fingers now, what the notes played add up to, and which
+  // chord on the chart they were played at — the readings on offer belong to
+  // that slot, and must not still be there to be taken once it has moved on.
+  const [played, setPlayed] = useState({ held: [], heard: null, slot: null })
+  const midiRef = useRef(null)
+  // A pedal is for sustaining, so it only moves things along once there is
+  // something to move on from — a chord played since the last time it did.
+  const pedalArmedRef = useRef(false)
+  // The MIDI callbacks are made once, when the keyboard is connected, so they
+  // read the question as it stands now off a ref rather than off the render
+  // they happened to be created in.
+  const liveRef = useRef({ key: null, slot: 0, locked: true, advance: () => {} })
   const engineRef = useRef(null)
   const playTimeoutRef = useRef(null)
   // What the loop is waiting to play next, kept so a pause can drop the timer
@@ -2146,8 +2166,45 @@ function EarTrainerPage() {
       if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
       if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
       if (engineRef.current) engineRef.current.close()
+      if (midiRef.current) midiRef.current.close()
     }
   }, [])
+
+  // Web MIDI asks the user for permission, so the request has to come from
+  // something they did. Once granted it is remembered for the origin, and the
+  // next visit connects on the first press without a prompt.
+  async function connectMidiKeyboard() {
+    if (!MIDI_SUPPORTED || midi.status === 'connecting' || midi.status === 'ready') return
+    setMidi((previous) => ({ ...previous, status: 'connecting', error: null }))
+    try {
+      const connection = await connectMidi({
+        onChord: ({ chord, held }) => {
+          const live = liveRef.current
+          const heard = live.key && chord.length > 0 ? recogniseChord(chord, live.key) : null
+          setPlayed({ held, heard, slot: live.slot })
+          if (!heard || live.locked) return
+          pedalArmedRef.current = true
+          setAnswers((previous) => ({ ...previous, [live.slot]: heard.symbol }))
+        },
+        onSustain: (down) => {
+          if (!down) return
+          // Once the answer is up the pedal is the way to the next question,
+          // and nothing needs to have been played for that.
+          if (!pedalArmedRef.current && !liveRef.current.locked) return
+          pedalArmedRef.current = false
+          liveRef.current.advance()
+        },
+        onDevices: (devices) => setMidi((previous) => ({ ...previous, devices })),
+        onError: (error) => setMidi((previous) => ({ ...previous, error: String(error?.message ?? error) })),
+      })
+      midiRef.current = connection
+      setMidi({ status: 'ready', devices: connection.devices, error: null })
+    } catch (error) {
+      // A refused permission and a browser that cannot do this at all land in
+      // the same place: there is no keyboard, and the box still takes typing.
+      setMidi({ status: 'denied', devices: [], error: String(error?.message ?? error) })
+    }
+  }
 
   async function getEngine() {
     if (!engineRef.current) {
@@ -2400,6 +2457,7 @@ function EarTrainerPage() {
 
     setQuestion(next)
     setAnswers({})
+    setPlayed({ held: [], heard: null, slot: null })
     setSelected(next.blanks[0])
     setResults(null)
     setRevealed(false)
@@ -2459,6 +2517,21 @@ function EarTrainerPage() {
     ].slice(0, 10))
   }
 
+  // What Enter does, and what the sustain pedal does: walk on to the next chord
+  // still waiting for a name, check the answer once none are, and once the
+  // answer is up, go again.
+  function advanceOrSubmit() {
+    if (showAnswerKey) {
+      startQuestion()
+      return
+    }
+    const next = question
+      ? question.blanks.find((index) => index !== selected && (answers[index] ?? '').trim() === '')
+      : undefined
+    if (next === undefined) submitAnswer()
+    else setSelected(next)
+  }
+
   function toggleLevel(levelId) {
     setLevels((previous) => {
       const next = { ...previous, [levelId]: !previous[levelId] }
@@ -2485,6 +2558,19 @@ function EarTrainerPage() {
   useEffect(() => {
     loopRef.current = { enabled: loopPlayback, answered: showAnswerKey }
   }, [loopPlayback, showAnswerKey])
+
+  // No dependency list: everything the keyboard needs to know changes on
+  // ordinary renders, and it needs the latest of all of it.
+  useEffect(() => {
+    liveRef.current = {
+      key: question ? question.key : null,
+      slot: selected,
+      // Once the answer is up there is nothing to fill in, so a chord played
+      // then is just someone playing along.
+      locked: showAnswerKey || !question,
+      advance: advanceOrSubmit,
+    }
+  })
 
   return (
     // Padding is set here rather than in the stylesheet because the shared page
@@ -2777,22 +2863,7 @@ function EarTrainerPage() {
                     setAnswers((previous) => ({ ...previous, [selected]: value }))
                   }}
                   onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return
-                    // Once the answer is up, the only thing left to do is go
-                    // again, so the same key does it.
-                    if (showAnswerKey) {
-                      startQuestion()
-                      return
-                    }
-                    // Otherwise Enter walks on to the next chord still waiting
-                    // for a name, and only checks once none are.
-                    const next = question
-                      ? question.blanks.find(
-                        (index) => index !== selected && (answers[index] ?? '').trim() === '',
-                      )
-                      : undefined
-                    if (next === undefined) submitAnswer()
-                    else setSelected(next)
+                    if (event.key === 'Enter') advanceOrSubmit()
                   }}
                 />
                 <button
@@ -2814,6 +2885,69 @@ function EarTrainerPage() {
                   </>
                 )}
               </p>
+
+              <div className="ear-midi-row">
+                {midi.status === 'unsupported' ? (
+                  <span className="ear-midi-note">
+                    Playing the answer in needs Chrome or Edge — Safari has no Web MIDI.
+                  </span>
+                ) : midi.status === 'ready' ? (
+                  <>
+                    <span className="ear-midi-badge">MIDI in</span>
+                    <span className="ear-midi-note">
+                      {midi.devices.length > 0
+                        ? midi.devices.join(', ')
+                        : 'No keyboard found — plug one in and it will appear.'}
+                    </span>
+                    {played.held.length > 0 ? (
+                      <span className="ear-midi-held">
+                        {played.held
+                          .map((note) => midiNoteLabel(note, question ? question.key.accidental : 'flat'))
+                          .join(' ')}
+                      </span>
+                    ) : null}
+                    {/* A voicing with its root left out, or a note missing, is
+                        genuinely more than one chord. Rather than pick for you,
+                        the readings it could be are offered to take instead. */}
+                    {!showAnswerKey && played.slot === selected
+                      && played.heard && played.heard.options.length > 1 ? (
+                      <span className="ear-midi-options">
+                        <span className="ear-midi-note">or</span>
+                        {played.heard.options.slice(1).map((option) => (
+                          <button
+                            key={option.symbol}
+                            className="ear-midi-option"
+                            type="button"
+                            onClick={() => {
+                              setAnswers((previous) => ({ ...previous, [selected]: option.symbol }))
+                              if (answerInputRef.current) answerInputRef.current.focus()
+                            }}
+                          >
+                            {option.symbol}
+                          </button>
+                        ))}
+                      </span>
+                    ) : null}
+                    <span className="ear-midi-note">Sustain pedal moves on.</span>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="ear-midi-connect"
+                      type="button"
+                      onClick={connectMidiKeyboard}
+                      disabled={midi.status === 'connecting'}
+                    >
+                      {midi.status === 'connecting' ? 'Asking…' : 'Play the answer in'}
+                    </button>
+                    <span className="ear-midi-note">
+                      {midi.status === 'denied'
+                        ? `No keyboard: ${midi.error}`
+                        : 'Connect a MIDI keyboard and play the chord instead of spelling it.'}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

@@ -1582,6 +1582,77 @@ code {
   font-size: 0.82rem;
 }
 
+/* The keyboard line. It sits under the hint and stays the same height whether
+   a keyboard is connected or not, so connecting one does not move the answer
+   box out from under the cursor. */
+.ear-midi-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-border);
+  min-height: 30px;
+}
+
+.ear-midi-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.ear-midi-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The notes actually under the fingers, which is the quickest way to see that
+   a key is stuck down or that the chord is not the one being played. */
+.ear-midi-held {
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--accent-quiet);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+}
+
+.ear-midi-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ear-midi-option,
+.ear-midi-connect {
+  padding: 3px 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ear-midi-option:hover,
+.ear-midi-connect:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.ear-midi-connect:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
 .ear-question-meta {
   display: flex;
   flex-wrap: wrap;

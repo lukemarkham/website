@@ -717,3 +717,115 @@ export function gradeAnswer(text, chords, key) {
     perfect: results.every((result) => result.status === 'correct') && tokens.length === chords.length,
   }
 }
+
+// ----------------------------------------------------------- recognition ---
+
+// Playing the answer rather than typing it means going the other way: from a
+// handful of notes to the name of the chord they make. Every quality the
+// trainer can ask for is tried against every root, and the reading that
+// explains the notes with the least left over wins — which keeps a recognised
+// chord inside the set the grader can read back.
+//
+// The costs are the whole of the musical judgement. A note played that the
+// chord does not contain counts heavily against it, because a wrong note is
+// strong evidence. A note the chord contains that was not played counts by how
+// much that note defines the chord: fifths go missing from voicings all the
+// time and nobody notices, thirds and sevenths do not, and a root is left out
+// on purpose often enough to be worth only a little.
+const MISSING_COST = {
+  0: 2,
+  3: 3,
+  4: 3,
+  5: 3,
+  6: 3,
+  7: 0.4,
+  8: 3,
+  9: 2.5,
+  10: 2.5,
+  11: 2.5,
+  // Colour above the octave. A ninth or a thirteenth that is not there means
+  // a plainer chord was played; an altered one that is not there means a
+  // different chord was.
+  13: 2.5,
+  14: 1.2,
+  17: 1.2,
+  18: 2.5,
+  20: 2.5,
+  21: 1.2,
+}
+const EXTRA_NOTE_COST = 3.5
+const COLOUR_COST = 1.2
+// A chord standing on its own root is the ordinary case, and it is what breaks
+// the tie between the four equally good readings of a diminished seventh.
+const ROOT_IN_BASS_BONUS = 1.5
+
+// The letter name a played chord is given is spelled to suit the key on the
+// chart, so a flat key answers in flats. Both spellings are graded whatever
+// happens; this only decides which one is put in front of you.
+export function chordSymbolFor(rootPc, quality, key) {
+  return `${noteName(rootPc, key.accidental)}${SYMBOL_SUFFIX[quality] ?? ''}`
+}
+
+export function recogniseChord(midiNotes, key) {
+  const notes = [...new Set(midiNotes)].sort((a, b) => a - b)
+  // Two notes is an interval, not a chord, and guessing at one would put an
+  // answer in the box that nobody meant.
+  if (notes.length < 3) return null
+
+  const pitchClass = (note) => (((note % 12) + 12) % 12)
+  const played = new Set(notes.map(pitchClass))
+  const bassPc = pitchClass(notes[0])
+
+  const candidates = []
+  for (let root = 0; root < 12; root += 1) {
+    Object.entries(CHORD_INTERVALS).forEach(([quality, intervals]) => {
+      const template = new Map()
+      intervals.forEach((interval) => {
+        const pc = (root + interval) % 12
+        // Where two intervals land on the same note, the one that defines the
+        // chord more is the one it would be worse to miss.
+        const weight = MISSING_COST[interval] ?? COLOUR_COST
+        template.set(pc, Math.max(template.get(pc) ?? 0, weight))
+      })
+
+      let cost = 0
+      template.forEach((weight, pc) => {
+        if (!played.has(pc)) cost += weight
+      })
+      played.forEach((pc) => {
+        if (!template.has(pc)) cost += EXTRA_NOTE_COST
+      })
+      const rootInBass = root === bassPc
+      if (rootInBass) cost -= ROOT_IN_BASS_BONUS
+      candidates.push({ root, quality, cost, size: template.size, rootInBass })
+    })
+  }
+
+  // Cheapest first, and where two readings explain the notes equally well the
+  // simpler chord is the one to offer.
+  candidates.sort((a, b) => a.cost - b.cost || a.size - b.size)
+  const winner = candidates[0]
+  const named = (item) => ({ ...item, symbol: chordSymbolFor(item.root, item.quality, key) })
+
+  // Every note accounted for and none left over: there is nothing to choose
+  // between, so nothing is offered. Anything less — a rootless voicing, a
+  // chord with a note missing — is genuinely ambiguous and says so.
+  const spare = winner.cost + (winner.rootInBass ? ROOT_IN_BASS_BONUS : 0)
+  if (spare === 0) return { ...named(winner), options: [], notes }
+
+  const options = []
+  const seen = new Set()
+  candidates.slice(0, 12).forEach((item) => {
+    if (item.cost > winner.cost + 4) return
+    const entry = named(item)
+    if (seen.has(entry.symbol)) return
+    seen.add(entry.symbol)
+    if (options.length < 3) options.push(entry)
+  })
+  return { ...options[0], options, notes }
+}
+
+// A note under the fingers, printed the way the key on the chart spells it.
+export function midiNoteLabel(midi, accidental) {
+  return `${noteName(midi, accidental)}${Math.floor(midi / 12) - 1}`
+}
