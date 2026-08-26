@@ -52,7 +52,24 @@ export function createEngine() {
   reverbTone.connect(master)
 
   const cleanups = []
+  // Phrase buses only, each with the level it would sit at unducked.
   const activeBuses = []
+  let monitor = null
+  let duckLevel = 1
+
+  function makeBus(reverbAmount, level) {
+    const input = ctx.createGain()
+    input.gain.value = level
+    const dry = ctx.createGain()
+    dry.gain.value = 1 - reverbAmount * 0.45
+    const wet = ctx.createGain()
+    wet.gain.value = reverbAmount
+    input.connect(dry)
+    dry.connect(master)
+    input.connect(wet)
+    wet.connect(reverb)
+    return input
+  }
 
   return {
     ctx,
@@ -61,20 +78,33 @@ export function createEngine() {
       return ctx
     },
     // Each voice gets a bus with its own dry/wet balance, torn down once the
-    // phrase has rung out.
+    // phrase has rung out. A bus made while the loop is ducked starts ducked,
+    // so a repeat landing under held keys does not arrive at full.
     createBus(reverbAmount, level = 1) {
-      const input = ctx.createGain()
-      input.gain.value = level
-      const dry = ctx.createGain()
-      dry.gain.value = 1 - reverbAmount * 0.45
-      const wet = ctx.createGain()
-      wet.gain.value = reverbAmount
-      input.connect(dry)
-      dry.connect(master)
-      input.connect(wet)
-      wet.connect(reverb)
-      activeBuses.push(input)
+      const input = makeBus(reverbAmount, level * duckLevel)
+      activeBuses.push({ input, level })
       return input
+    },
+    // The keyboard's own bus, deliberately not one of the phrase buses:
+    // stopping a phrase must not take the sound of what you are playing with
+    // it, and neither must ducking.
+    monitorBus() {
+      if (!monitor) monitor = makeBus(0.18, 1)
+      return monitor
+    },
+    // The loop steps back while there are keys down, so the chord being played
+    // is the loudest thing in the room. It comes back up more slowly than it
+    // went, which is the difference between making room and cutting out.
+    duckPhrases(down) {
+      const next = down ? 0.25 : 1
+      if (next === duckLevel) return
+      duckLevel = next
+      const now = ctx.currentTime
+      activeBuses.forEach(({ input, level }) => {
+        input.gain.cancelScheduledValues(now)
+        input.gain.setValueAtTime(input.gain.value, now)
+        input.gain.linearRampToValueAtTime(level * duckLevel, now + (down ? 0.06 : 0.45))
+      })
     },
     scheduleCleanup(node, when) {
       const timer = window.setTimeout(() => {
@@ -92,13 +122,13 @@ export function createEngine() {
       cleanups.forEach((timer) => window.clearTimeout(timer))
       cleanups.length = 0
       const now = ctx.currentTime
-      activeBuses.forEach((bus) => {
-        bus.gain.cancelScheduledValues(now)
-        bus.gain.setValueAtTime(bus.gain.value, now)
-        bus.gain.linearRampToValueAtTime(0.0001, now + 0.08)
+      activeBuses.forEach(({ input }) => {
+        input.gain.cancelScheduledValues(now)
+        input.gain.setValueAtTime(input.gain.value, now)
+        input.gain.linearRampToValueAtTime(0.0001, now + 0.08)
         window.setTimeout(() => {
           try {
-            bus.disconnect()
+            input.disconnect()
           } catch {
             // Already torn down.
           }
@@ -1355,4 +1385,77 @@ export function playArrangement(engine, arrangement, chordInstrument, bassInstru
   if (drumBus) engine.scheduleCleanup(drumBus, tail)
   if (referenceBus) engine.scheduleCleanup(referenceBus, tail)
   return { startTime, duration: arrangement.duration }
+}
+
+// --------------------------------------------------------------- live in ---
+
+// Every voice in the rack is fired at a time, for a length decided in advance.
+// That is what scheduling a phrase ahead needs, and it is no use at all for a
+// key held under a finger, which starts when the key goes down and ends when
+// it comes up.
+//
+// It is always the stock piano, for the same reason the key centre is: what
+// you play must never arrive in the same voice as the chord you are being
+// asked about, or hearing yourself becomes hearing the answer.
+const LIVE_LATEST_SECONDS = 6
+
+export function playLiveNote(engine, midi, velocity) {
+  const { ctx } = engine
+  const out = engine.monitorBus()
+  const time = ctx.currentTime
+  const freq = midiToFreq(midi)
+  const level = Math.max(0.08, velocity) * 0.26
+
+  const carrier = ctx.createOscillator()
+  carrier.type = 'sine'
+  carrier.frequency.setValueAtTime(freq, time)
+  const modulator = ctx.createOscillator()
+  modulator.type = 'sine'
+  modulator.frequency.setValueAtTime(freq, time)
+  const depth = ctx.createGain()
+  depth.gain.setValueAtTime(freq * 3.2 * (0.45 + velocity * 0.8), time)
+  depth.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.08), time + 0.16)
+  modulator.connect(depth)
+  depth.connect(carrier.frequency)
+
+  const tone = ctx.createBiquadFilter()
+  tone.type = 'lowpass'
+  tone.frequency.value = 4200
+  tone.Q.value = 0.4
+
+  const amp = ctx.createGain()
+  amp.gain.setValueAtTime(0.0001, time)
+  amp.gain.exponentialRampToValueAtTime(level, time + 0.004)
+  // A struck string is on its way out from the moment it is hit, so there is
+  // no sustain to hold at — holding the key only means not damping it yet.
+  amp.gain.exponentialRampToValueAtTime(level * 0.04, time + LIVE_LATEST_SECONDS)
+
+  carrier.connect(tone)
+  tone.connect(amp)
+  amp.connect(out)
+  carrier.start(time)
+  modulator.start(time)
+  // A key that never comes back up still has to stop eventually.
+  const latest = time + LIVE_LATEST_SECONDS + 0.5
+  carrier.stop(latest)
+  modulator.stop(latest)
+
+  let released = false
+  return {
+    release() {
+      if (released) return
+      released = true
+      const now = ctx.currentTime
+      const end = Math.min(latest, now + 0.3)
+      amp.gain.cancelScheduledValues(now)
+      amp.gain.setValueAtTime(Math.max(0.0002, amp.gain.value), now)
+      amp.gain.exponentialRampToValueAtTime(0.0001, end)
+      try {
+        carrier.stop(end + 0.04)
+        modulator.stop(end + 0.04)
+      } catch {
+        // Already run its course on its own.
+      }
+    },
+  }
 }

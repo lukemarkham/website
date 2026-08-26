@@ -24,10 +24,12 @@ function describe(access) {
   return [...access.inputs.values()].map((input) => input.name).filter(Boolean)
 }
 
-// `onChord` is handed every note in the gesture so far — a rolled chord builds
-// up rather than being read as four one-note chords — alongside what is still
-// under the fingers, which is what the on-screen keyboard shows.
-export async function connectMidi({ onChord, onSustain, onDevices, onError }) {
+// `onNote` is every key going down and coming up, on its own and as soon as it
+// happens, because it is what sounds the note and latency is the whole game
+// there. `onChord` is the reading of it: every note in the gesture so far — a
+// rolled chord builds up rather than being read as four one-note chords —
+// alongside what is still under the fingers.
+export async function connectMidi({ onNote, onChord, onSustain, onDevices, onError }) {
   if (!isMidiSupported()) throw new Error('unsupported')
 
   const access = await navigator.requestMIDIAccess({ sysex: false })
@@ -52,6 +54,10 @@ export async function connectMidi({ onChord, onSustain, onDevices, onError }) {
     const isNoteOn = command === NOTE_ON && data2 > 0
     const isNoteOff = command === NOTE_OFF || (command === NOTE_ON && data2 === 0)
     if (!isNoteOn && !isNoteOff) return
+
+    // Sounded before anything is worked out about it: the note under the
+    // finger should not wait on the name of the chord it is part of.
+    onNote?.({ note: data1, on: isNoteOn, velocity: isNoteOn ? data2 / 127 : 0 })
 
     if (isNoteOn) {
       if (held.size === 0 && event.timeStamp - lastReleasedAt > GESTURE_GAP_MS) {

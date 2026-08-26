@@ -25,6 +25,7 @@ import {
   buildArrangement,
   createEngine,
   playArrangement,
+  playLiveNote,
 } from './lib/chordSynth'
 
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
@@ -2144,6 +2145,8 @@ function EarTrainerPage() {
   // A pedal is for sustaining, so it only moves things along once there is
   // something to move on from — a chord played since the last time it did.
   const pedalArmedRef = useRef(false)
+  // One live voice per key that is down, so a note can be let go of.
+  const liveVoicesRef = useRef(new Map())
   // The MIDI callbacks are made once, when the keyboard is connected, so they
   // read the question as it stands now off a ref rather than off the render
   // they happened to be created in.
@@ -2166,9 +2169,29 @@ function EarTrainerPage() {
       if (playTimeoutRef.current) window.clearTimeout(playTimeoutRef.current)
       if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
       if (engineRef.current) engineRef.current.close()
+      // Live voices need no unwinding of their own: closing the context takes
+      // the whole graph, monitor bus and all, with it.
       if (midiRef.current) midiRef.current.close()
     }
   }, [])
+
+  // What you play, in the stock piano, on a bus of its own. Not the question's
+  // instrument: hearing your guess in the same voice as the chord you are
+  // guessing about is halfway to being told.
+  function soundLiveNote({ note, on, velocity }) {
+    const engine = engineRef.current
+    const voices = liveVoicesRef.current
+    // Pausing suspends the audio clock, and a note started against a stopped
+    // clock would sit silent until the clock ran again and then all arrive at
+    // once. Nothing sounds until the question does.
+    if (!engine || engine.ctx.state !== 'running') return
+    voices.get(note)?.release()
+    if (!on) {
+      voices.delete(note)
+      return
+    }
+    voices.set(note, playLiveNote(engine, note, velocity))
+  }
 
   // Web MIDI asks the user for permission, so the request has to come from
   // something they did. Once granted it is remembered for the origin, and the
@@ -2177,11 +2200,19 @@ function EarTrainerPage() {
     if (!MIDI_SUPPORTED || midi.status === 'connecting' || midi.status === 'ready') return
     setMidi((previous) => ({ ...previous, status: 'connecting', error: null }))
     try {
+      // The connect button is the user gesture the audio clock needs, so the
+      // engine is started here rather than on the first note. Sounding a key
+      // is then synchronous, which is the only way it lands in time.
+      await getEngine()
       const connection = await connectMidi({
+        onNote: soundLiveNote,
         onChord: ({ chord, held }) => {
           const live = liveRef.current
           const heard = live.key && chord.length > 0 ? recogniseChord(chord, live.key) : null
           setPlayed({ held, heard, slot: live.slot })
+          // Held is the authority on whether anything is down, so a note-off
+          // that never arrived cannot leave the loop ducked for good.
+          engineRef.current?.duckPhrases(held.length > 0)
           if (!heard || live.locked) return
           pedalArmedRef.current = true
           setAnswers((previous) => ({ ...previous, [live.slot]: heard.symbol }))
