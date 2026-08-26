@@ -2186,7 +2186,7 @@ function EarTrainerPage() {
     if (!engine) return
     const chordInstrument =
       CHORD_INSTRUMENTS.find((item) => item.id === target.instrumentId) ?? CHORD_INSTRUMENTS[0]
-    const bassInstrument = BASS_INSTRUMENTS[chordInstrument.bass]
+    const bassInstrument = BASS_INSTRUMENTS[target.bassId]
     const withReference = target.playReference && !isLoopPass
     const arrangement =
       tempoScale === 1
@@ -2274,7 +2274,7 @@ function EarTrainerPage() {
     const span = slot.end - slot.start
     const single = { events, duration: span + 1.2 }
     const { startTime } = playArrangement(
-      engine, single, chordInstrument, BASS_INSTRUMENTS[chordInstrument.bass], null,
+      engine, single, chordInstrument, BASS_INSTRUMENTS[question.bassId], null,
     )
     // The chip that was clicked is the one that lights, whatever its place in
     // the progression the slice came from.
@@ -2320,7 +2320,7 @@ function EarTrainerPage() {
       tempo: question.tempo,
       name: `${question.progression.name} in ${question.key.label}`,
       chordProgram: chordInstrument.gm,
-      bassProgram: BASS_INSTRUMENTS[chordInstrument.bass].gm,
+      bassProgram: BASS_INSTRUMENTS[question.bassId].gm,
     })
     const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/midi' }))
     const link = document.createElement('a')
@@ -2346,6 +2346,9 @@ function EarTrainerPage() {
     const chordInstrument = varySounds
       ? pickRandom(CHORD_INSTRUMENTS)
       : CHORD_INSTRUMENTS.find((item) => item.id === instrumentId) ?? CHORD_INSTRUMENTS[0]
+    // Each chord instrument names the basses that suit it rather than one, so
+    // the same Rhodes can come back under a different rhythm section.
+    const bassId = varySounds ? pickRandom(chordInstrument.bass) : chordInstrument.bass[0]
     const pattern = varySounds ? pickRandom(PATTERNS).id : 'block'
     const questionTempo = varySounds ? driftTempo(tempo) : Number(tempo)
     const beatsPerChord = beatsPerChordFor(progression)
@@ -2365,6 +2368,7 @@ function EarTrainerPage() {
         ? chords.map((_, index) => index)
         : [randomInt(0, chords.length - 1)],
       instrumentId: chordInstrument.id,
+      bassId,
       pattern,
       tempo: questionTempo,
       beatsPerChord,
@@ -2632,6 +2636,7 @@ function EarTrainerPage() {
                   <div className="ear-question-meta">
                     <span>{question.key.label}</span>
                     <span>{activeInstrument?.name}</span>
+                    <span>{BASS_INSTRUMENTS[question.bassId]?.name}</span>
                     <span>{activePattern?.name}</span>
                     <span>{question.tempo} BPM</span>
                   </div>
