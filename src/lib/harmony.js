@@ -484,8 +484,24 @@ export function bassNote(rootPc, low = 36) {
 
 const ROMAN_PATTERN = /^([b♭#♯]*)([IViv]+)(.*)$/
 const ARABIC_PATTERN = /^([b♭#♯]*)([1-7])(.*)$/
-const SYMBOL_PATTERN = /^([A-Ga-g])([b♭#♯]*)(.*)$/
+const SYMBOL_PATTERN = /^([A-Ga-g])(.*)$/
 const LETTER_PITCH = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }
+
+// A run of accidentals after a letter name is not all the root's. "G♯♭13" is a
+// sharp root carrying a flat thirteenth, and taking the whole run for the root
+// cancels the two out and answers on G natural. The accidental that belongs to
+// the chord rather than to the root is the one whose direction differs from
+// the root's — or, where they agree, the second of a pair with a degree behind
+// it, since "B♭♭9" is a flat ninth far more often than it is a double flat.
+function splitAccidental(text) {
+  const [, run, rest] = text.match(/^([b♭#♯]*)(.*)$/)
+  if (run.length < 2) return [run, rest]
+  const isFlat = (character) => character === 'b' || character === '♭'
+  let taken = 1
+  while (taken < run.length && isFlat(run[taken]) === isFlat(run[0])) taken += 1
+  if (taken > 1 && /^\d/.test(run.slice(taken) + rest)) taken = 1
+  return [run.slice(0, taken), run.slice(taken) + rest]
+}
 
 function accidentalShift(text) {
   let shift = 0
@@ -598,8 +614,10 @@ function parseSecondaryTarget(text, tonicPc) {
   }
 
   const symbol = text.match(SYMBOL_PATTERN)
-  if (symbol && symbol[3] !== '') {
-    const pc = LETTER_PITCH[symbol[1].toLowerCase()] + accidentalShift(symbol[2])
+  if (symbol) {
+    const [accidental, rest] = splitAccidental(symbol[2])
+    if (rest === '') return null
+    const pc = LETTER_PITCH[symbol[1].toLowerCase()] + accidentalShift(accidental)
     return ((((pc - tonicPc) % 12) + 12) % 12)
   }
 
@@ -649,9 +667,10 @@ function parseToken(token, tonicPc) {
 
   const symbol = text.match(SYMBOL_PATTERN)
   if (symbol) {
-    const pc = LETTER_PITCH[symbol[1].toLowerCase()] + accidentalShift(symbol[2])
+    const [accidental, suffix] = splitAccidental(symbol[2])
+    const pc = LETTER_PITCH[symbol[1].toLowerCase()] + accidentalShift(accidental)
     const root = ((((pc - tonicPc) % 12) + 12) % 12)
-    return { token, root, family: familyFromSuffix(symbol[3]), quality: qualityFromSuffix(symbol[3]) }
+    return { token, root, family: familyFromSuffix(suffix), quality: qualityFromSuffix(suffix) }
   }
 
   return { token, root: null, family: null, quality: null }
