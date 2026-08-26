@@ -1045,6 +1045,13 @@ h3 {
   accent-color: var(--accent-warm);
 }
 
+/* A setting another setting is holding for it: still readable, but plainly not
+   yours to move while the one holding it is on. */
+.toggle-control.is-locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .metronome-subdivision-card {
   display: grid;
   align-content: space-between;
@@ -1672,6 +1679,23 @@ button.ear-chord-result:focus-visible {
 
 .ear-chord-result.is-blank .ear-chord-roman {
   font-size: 1.7rem;
+}
+
+/* A typed answer is longer than the question mark it stands in for, so it drops
+   back to the size the given chords are printed at and wraps rather than
+   pushing the chip wider than its neighbours. */
+.ear-chord-result.is-blank .ear-chord-roman.is-draft {
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+/* In hard mode every chip is a blank, so the chart has to say which one the
+   answer box is pointing at. A single blank never sets this: with nothing to
+   choose between, the dashed outline is already saying it. */
+.ear-chord-result.is-blank.is-selected {
+  border-style: solid;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .ear-chord-result.is-revealed {

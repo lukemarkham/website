@@ -1986,10 +1986,14 @@ function ConfettiBurst({ trigger }) {
     canvas.height = height * ratio
     context.scale(ratio, ratio)
 
-    const target = document.querySelector('.ear-chord-result.is-correct')
-    const rect = target ? target.getBoundingClientRect() : null
-    const originX = rect ? rect.left + rect.width / 2 : width / 2
-    const originY = rect ? rect.top + rect.height / 2 : height / 3
+    // A hard mode clear lights the whole chart, so the burst comes from the
+    // middle of everything that was named rather than from the first of it. A
+    // single chip is its own first and last, and lands where it always did.
+    const named = document.querySelectorAll('.ear-chord-result.is-correct')
+    const first = named.length > 0 ? named[0].getBoundingClientRect() : null
+    const last = named.length > 0 ? named[named.length - 1].getBoundingClientRect() : null
+    const originX = first ? (first.left + last.right) / 2 : width / 2
+    const originY = first ? (first.top + last.bottom) / 2 : height / 3
 
     const pieces = Array.from({ length: 90 }, () => {
       const angle = Math.random() * Math.PI * 2
@@ -2054,6 +2058,12 @@ function beatsPerChordFor(progression) {
   return progression.chords.length >= 6 ? 2 : 4
 }
 
+// A little tempo drift stops the ear from anchoring on one groove. It lives out
+// here with the other rolls of the dice, away from anything React renders.
+function driftTempo(tempo) {
+  return Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
+}
+
 function describeChordResult(item) {
   if (item.status === 'correct') {
     return item.exact ? 'Correct — extension and all' : 'Correct — right function'
@@ -2066,8 +2076,9 @@ function describeChordResult(item) {
 }
 
 // A chord chip is a button when there is something to hear and a plain panel
-// when there is not — the blank chord stays inert until it has been answered,
-// since playing it would be handing over the answer.
+// when there is not — a blank is never played through this, since hearing it
+// on its own would be handing over the answer. It has a button of its own,
+// which picks it out for the answer box instead of sounding it.
 function ChordCard({ className, onPlay, children }) {
   if (!onPlay) return <div className={className}>{children}</div>
   return (
@@ -2093,9 +2104,16 @@ function EarTrainerPage() {
   const [drums, setDrums] = useState(true)
   const [showKey, setShowKey] = useState(true)
   const [showRoman, setShowRoman] = useState(true)
+  // Hard mode leaves nothing on the page: the key centre sounds, the changes go
+  // round, and every chord in them is a blank to be named.
+  const [hardMode, setHardMode] = useState(false)
   const [question, setQuestion] = useState(null)
-  const [answer, setAnswer] = useState('')
-  const [result, setResult] = useState(null)
+  // A draft per blank, kept against the chord's place in the progression. One
+  // blank or all of them is only a difference in how many keys this has, so the
+  // chart, the answer box and the grading read the same shape either way.
+  const [answers, setAnswers] = useState({})
+  const [selected, setSelected] = useState(0)
+  const [results, setResults] = useState(null)
   const [revealed, setRevealed] = useState(false)
   const [activeChordIndex, setActiveChordIndex] = useState(null)
   const [playing, setPlaying] = useState(false)
@@ -2329,11 +2347,11 @@ function EarTrainerPage() {
       ? pickRandom(CHORD_INSTRUMENTS)
       : CHORD_INSTRUMENTS.find((item) => item.id === instrumentId) ?? CHORD_INSTRUMENTS[0]
     const pattern = varySounds ? pickRandom(PATTERNS).id : 'block'
-    // A little tempo drift stops the ear from anchoring on one groove.
-    const questionTempo = varySounds
-      ? Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
-      : Number(tempo)
+    const questionTempo = varySounds ? driftTempo(tempo) : Number(tempo)
     const beatsPerChord = beatsPerChordFor(progression)
+    // With every chord hidden the tonic is the only way into the key, so hard
+    // mode sounds it whether or not the toggle asked for it.
+    const withReference = playReference || hardMode
     // Extensions are re-rolled per question, so the same changes arrive in a
     // different colour each time. Everything downstream — chart, audio and
     // grading — reads this array rather than the progression's written chords.
@@ -2343,12 +2361,14 @@ function EarTrainerPage() {
       progression,
       chords,
       key,
-      blankIndex: Math.floor(Math.random() * chords.length),
+      blanks: hardMode
+        ? chords.map((_, index) => index)
+        : [randomInt(0, chords.length - 1)],
       instrumentId: chordInstrument.id,
       pattern,
       tempo: questionTempo,
       beatsPerChord,
-      playReference,
+      playReference: withReference,
       drums,
       arrangement: buildArrangement({
         chords,
@@ -2357,7 +2377,7 @@ function EarTrainerPage() {
         tempo: questionTempo,
         beatsPerChord,
         pattern,
-        playReference,
+        playReference: withReference,
         drums,
       }),
       loopArrangement: buildArrangement({
@@ -2375,45 +2395,62 @@ function EarTrainerPage() {
     currentQuestionRef.current = next
 
     setQuestion(next)
-    setAnswer('')
-    setResult(null)
+    setAnswers({})
+    setSelected(next.blanks[0])
+    setResults(null)
     setRevealed(false)
     await playQuestion(next)
     if (answerInputRef.current) answerInputRef.current.focus()
   }
 
   function submitAnswer() {
-    if (!question || result || revealed || answer.trim() === '') return
+    if (!question || results || revealed || !hasDraft) return
 
-    const missingChord = question.chords[question.blankIndex]
-    const graded = gradeAnswer(answer, [missingChord], question.key)
+    // Each blank is graded on its own rather than as one line of chords, so a
+    // space in "E maj7" stays one answer and a slot left empty costs only
+    // itself instead of pushing every chord after it out of step.
+    const graded = question.blanks.map((index) => ({
+      index,
+      ...gradeAnswer(answers[index] ?? '', [question.chords[index]], question.key).results[0],
+    }))
     stopPlayback()
-    setResult(graded.results[0])
-    // A streak is answers running that named what the chord does; a revealed
-    // answer breaks it just as a wrong one does.
-    const named = graded.results[0].status === 'correct'
-    const nextStreak = named ? streak + 1 : 0
+    setResults(graded)
+
+    const points = graded.reduce((sum, item) => sum + item.points, 0)
+    const exact = graded.filter((item) => item.exact).length
+    // A streak is chords running that named what the chord does; a revealed
+    // answer breaks it just as a wrong one does. A hard mode question can
+    // carry it several chords further, or break it partway through.
+    let nextStreak = streak
+    let best = bestStreak
+    graded.forEach((item) => {
+      nextStreak = item.status === 'correct' ? nextStreak + 1 : 0
+      best = Math.max(best, nextStreak)
+    })
     setStreak(nextStreak)
-    setBestStreak((best) => Math.max(best, nextStreak))
-    setSessionPoints((previous) => previous + graded.points)
-    setAnswered((previous) => previous + 1)
-    if (named) {
+    setBestStreak(best)
+    setSessionPoints((previous) => previous + points)
+    setAnswered((previous) => previous + graded.length)
+    if (graded.every((item) => item.status === 'correct')) {
       setCelebration((previous) => previous + 1)
     }
-    if (graded.bonus > 0) {
-      setBonuses((previous) => previous + graded.bonus)
+    if (exact > 0) {
+      setBonuses((previous) => previous + exact)
     }
     // Checking with the mouse moves focus to the button, which is then
     // disabled — putting it back keeps Enter working for the next question.
     if (answerInputRef.current) answerInputRef.current.focus()
     setHistory((previous) => [
-      {
-        id: Date.now(),
-        name: question.progression.name,
-        chord: showKey ? chordSymbol(missingChord, question.key) : romanLabel(missingChord),
-        keyLabel: question.key.label,
-        points: graded.points,
-      },
+      ...graded.map((item, order) => {
+        const chord = question.chords[item.index]
+        return {
+          id: Date.now() + order,
+          name: question.progression.name,
+          chord: showKey ? chordSymbol(chord, question.key) : romanLabel(chord),
+          keyLabel: question.key.label,
+          points: item.points,
+        }
+      }),
       ...previous,
     ].slice(0, 10))
   }
@@ -2433,7 +2470,12 @@ function EarTrainerPage() {
     ? CHORD_INSTRUMENTS.find((item) => item.id === question.instrumentId)
     : null
   const activePattern = question ? PATTERNS.find((item) => item.id === question.pattern) : null
-  const showAnswerKey = revealed || Boolean(result)
+  const showAnswerKey = revealed || Boolean(results)
+  // More than one blank is what makes a question hard mode, whatever the toggle
+  // has been moved to since it was dealt.
+  const manyBlanks = Boolean(question) && question.blanks.length > 1
+  const hasDraft = Boolean(question)
+    && question.blanks.some((index) => (answers[index] ?? '').trim() !== '')
 
   // The loop is scheduled from a timer, so it reads the live settings off a ref.
   useEffect(() => {
@@ -2507,7 +2549,9 @@ function EarTrainerPage() {
                 {[
                   ['New sound each question', varySounds, setVarySounds],
                   ['Random key', useRandomKey, setUseRandomKey],
-                  ['Play tonic first', playReference, setPlayReference],
+                  // Hard mode needs the tonic, so it holds this on and says so
+                  // by showing it ticked rather than by quietly overriding it.
+                  ['Play tonic first', playReference || hardMode, setPlayReference, hardMode],
                   ['Loop until answered', loopPlayback, setLoopPlayback],
                   ['Drums', drums, setDrums],
                   ['Show roman numerals', showRoman, (next) => {
@@ -2518,9 +2562,19 @@ function EarTrainerPage() {
                     setShowKey(next)
                     if (!next) setShowRoman(true)
                   }],
-                ].map(([label, checked, set]) => (
-                  <label className="toggle-control" key={label}>
-                    <input type="checkbox" checked={checked} onChange={(event) => set(event.target.checked)} />
+                  ['Hard mode — hide every chord', hardMode, setHardMode],
+                ].map(([label, checked, set, locked]) => (
+                  <label
+                    className={`toggle-control${locked ? ' is-locked' : ''}`}
+                    key={label}
+                    title={locked ? 'Hard mode plays the key centre every question' : undefined}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={Boolean(locked)}
+                      onChange={(event) => set(event.target.checked)}
+                    />
                     <span>{label}</span>
                   </label>
                 ))}
@@ -2603,9 +2657,10 @@ function EarTrainerPage() {
                     ) : null}
 
                     {question.chords.map((chord, index) => {
-                      const isBlank = index === question.blankIndex
+                      const isBlank = question.blanks.includes(index)
                       const isSounding = activeChordIndex === index ? ' is-playing' : ''
                       const roman = romanLabel(chord)
+                      const graded = results ? results.find((item) => item.index === index) : null
 
                       if (!isBlank) {
                         return (
@@ -2626,17 +2681,37 @@ function EarTrainerPage() {
                       }
 
                       if (!showAnswerKey) {
+                        // The blank still will not play — hearing it alone
+                        // would be a closer listen than the question is asking
+                        // for — but it does say which chord the answer box is
+                        // pointing at, which is the only way round a chart
+                        // where every chip is a blank.
+                        const draft = (answers[index] ?? '').trim()
+                        const isSelected = manyBlanks && selected === index
                         return (
-                          <div className={`ear-chord-result is-blank${isSounding}`} key={`blank-${index}`}>
-                            <span className="ear-chord-roman">?</span>
-                            <span className="ear-chord-note">Name this chord</span>
-                          </div>
+                          <button
+                            className={`ear-chord-result is-blank is-clickable${isSounding}${isSelected ? ' is-selected' : ''}`}
+                            type="button"
+                            key={`blank-${index}`}
+                            onClick={() => {
+                              setSelected(index)
+                              if (answerInputRef.current) answerInputRef.current.focus()
+                            }}
+                            title="Answer this chord"
+                          >
+                            <span className={`ear-chord-roman${draft ? ' is-draft' : ''}`}>
+                              {draft || '?'}
+                            </span>
+                            <span className="ear-chord-note">
+                              {manyBlanks ? `Chord ${index + 1}` : 'Name this chord'}
+                            </span>
+                          </button>
                         )
                       }
 
                       return (
                         <ChordCard
-                          className={`ear-chord-result is-${result ? result.status : 'revealed'}${isSounding}`}
+                          className={`ear-chord-result is-${graded ? graded.status : 'revealed'}${isSounding}`}
                           onPlay={() => playChordAlone(index)}
                           key={`answer-${index}`}
                         >
@@ -2648,11 +2723,11 @@ function EarTrainerPage() {
                             <span className="ear-chord-secondary">V/{chord.secondary}</span>
                           ) : null}
                           <span className="ear-chord-note">
-                            {result ? describeChordResult(result) : 'Revealed'}
+                            {graded ? describeChordResult(graded) : 'Revealed'}
                           </span>
-                          {result && result.points > 0 ? (
-                            <span className={`ear-chord-gain is-p${result.points}`} aria-hidden="true">
-                              {`+${result.points}`}
+                          {graded && graded.points > 0 ? (
+                            <span className={`ear-chord-gain is-p${graded.points}`} aria-hidden="true">
+                              {`+${graded.points}`}
                             </span>
                           ) : null}
                         </ChordCard>
@@ -2667,7 +2742,9 @@ function EarTrainerPage() {
                         {question.progression.note ? ` — ${question.progression.note}` : ''}
                       </>
                     ) : (
-                      `Chord ${question.blankIndex + 1} of ${question.chords.length} is missing.${loopPlayback ? ' Looping until you answer.' : ''}`
+                      manyBlanks
+                        ? `All ${question.chords.length} chords hidden — the key centre is the only thing given. Pick a chip and name it.${loopPlayback ? ' Looping until you check.' : ''}`
+                        : `Chord ${question.blanks[0] + 1} of ${question.chords.length} is missing.${loopPlayback ? ' Looping until you answer.' : ''}`
                     )}
                   </p>
                 </>
@@ -2681,25 +2758,43 @@ function EarTrainerPage() {
                   ref={answerInputRef}
                   className="control-input ear-answer-input"
                   type="text"
-                  placeholder={`Name the missing chord — ${answerHint}`}
+                  placeholder={
+                    manyBlanks
+                      ? `Chord ${selected + 1} of ${question.chords.length} — ${answerHint}`
+                      : `Name the missing chord — ${answerHint}`
+                  }
                   autoComplete="off"
                   autoCapitalize="off"
                   spellCheck="false"
-                  value={answer}
-                  onChange={(event) => setAnswer(event.target.value)}
+                  value={answers[selected] ?? ''}
+                  onChange={(event) => {
+                    const { value } = event.target
+                    setAnswers((previous) => ({ ...previous, [selected]: value }))
+                  }}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter') return
                     // Once the answer is up, the only thing left to do is go
                     // again, so the same key does it.
-                    if (showAnswerKey) startQuestion()
-                    else submitAnswer()
+                    if (showAnswerKey) {
+                      startQuestion()
+                      return
+                    }
+                    // Otherwise Enter walks on to the next chord still waiting
+                    // for a name, and only checks once none are.
+                    const next = question
+                      ? question.blanks.find(
+                        (index) => index !== selected && (answers[index] ?? '').trim() === '',
+                      )
+                      : undefined
+                    if (next === undefined) submitAnswer()
+                    else setSelected(next)
                   }}
                 />
                 <button
                   className="secondary-button"
                   type="button"
                   onClick={submitAnswer}
-                  disabled={!question || showAnswerKey || answer.trim() === ''}
+                  disabled={!question || showAnswerKey || !hasDraft}
                 >
                   Check
                 </button>
