@@ -35,3 +35,7 @@ src/assets/photography/*
 *.njsproj
 *.sln
 *.sw?
+
+# Sticking votes cast against the local dev server. Production votes live in
+# Netlify Blobs; both get archived into feedback/sticking-feedback.json.
+feedback/*.dev.json
