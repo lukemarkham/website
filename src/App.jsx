@@ -681,7 +681,7 @@ function HomePage() {
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Sticking Generator</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Generate random hand and foot sticking patterns for four-limb coordination practice.
+              Generate linear fill stickings built from rudiments, resolving on the kick or snare.
             </p>
             <Link className="text-link" to="/sticking-generator">Go to Sticking Generator</Link>
           </div>
@@ -846,31 +846,85 @@ function randomInt(min, max) {
   return Math.floor(Math.random() * (high - low + 1)) + low
 }
 
-function oppositeLimb(limb) {
-  return limb === 'R' ? 'L' : 'R'
+// Fills are built from cells: short rudiments, and linear versions of them
+// with some strokes moved to the kick. Each cell is written right-hand lead;
+// the left-lead mirror is added automatically.
+const STICKING_CELLS = [
+  { pattern: 'RL', name: 'Single strokes', weight: 1 },
+  { pattern: 'RR', name: 'Double stroke', weight: 1 },
+  { pattern: 'RLRR', name: 'Paradiddle', weight: 2 },
+  { pattern: 'RLLR', name: 'Inverted paradiddle', weight: 1 },
+  { pattern: 'RRLLR', name: 'Five-stroke roll', weight: 1 },
+  { pattern: 'RLRLRR', name: 'Double paradiddle', weight: 1 },
+  { pattern: 'RLRRLL', name: 'Paradiddle-diddle', weight: 1 },
+  { pattern: 'K', name: 'Kick', weight: 1 },
+  { pattern: 'RLK', name: 'Singles into the kick', weight: 3 },
+  { pattern: 'RRK', name: 'Double into the kick', weight: 2 },
+  { pattern: 'RLRLK', name: 'Singles into the kick', weight: 2 },
+  { pattern: 'RLRK', name: 'Paradiddle, last stroke on the kick', weight: 3 },
+  { pattern: 'RLKK', name: 'Paradiddle, double on the kick', weight: 3 },
+  { pattern: 'RLLK', name: 'Inverted paradiddle, last stroke on the kick', weight: 2 },
+  { pattern: 'RKKR', name: 'Inverted paradiddle, double on the kick', weight: 2 },
+  { pattern: 'RRLLK', name: 'Five-stroke roll, release on the kick', weight: 2 },
+  { pattern: 'RLRLKK', name: 'Double paradiddle, double on the kick', weight: 2 },
+  { pattern: 'RLKKLL', name: 'Paradiddle-diddle, first double on the kick', weight: 2 },
+].flatMap((cell) => {
+  const mirror = cell.pattern.replace(/[RL]/g, (hand) => (hand === 'R' ? 'L' : 'R'))
+  const cells = [{ ...cell, strokes: cell.pattern.split('') }]
+  if (mirror !== cell.pattern) cells.push({ ...cell, pattern: mirror, strokes: mirror.split('') })
+  return cells
+})
+
+const STICKING_RATES = [
+  { id: 'sixteenth', label: '16ths', notesPerBeat: 4, counts: ['', 'e', '&', 'a'] },
+  { id: 'triplet', label: 'Triplets', notesPerBeat: 3, counts: ['', '&', 'a'] },
+]
+
+// The resolution is the downbeat the fill lands on. A snare landing is taken
+// with the right hand, so the fill is checked against that stroke too.
+const STICKING_RESOLUTIONS = [
+  { id: 'kick', label: 'Kick', stroke: 'K' },
+  { id: 'snare', label: 'Snare', stroke: 'R' },
+]
+
+function pickWeighted(items) {
+  const total = items.reduce((sum, item) => sum + item.weight, 0)
+  let roll = Math.random() * total
+  for (const item of items) {
+    roll -= item.weight
+    if (roll < 0) return item
+  }
+  return items[items.length - 1]
 }
 
-// A limb may never be used three times in a row, so once the previous two
-// strokes match, the next one has to switch. Hands and feet are separate
-// voices, so each is generated under the rule independently.
-function getRandomLimbSequence(length) {
-  const sequence = []
-
-  for (let index = 0; index < length; index += 1) {
-    const previous = sequence[index - 1]
-    const mustSwitch = previous !== undefined && previous === sequence[index - 2]
-
-    sequence.push(mustSwitch ? oppositeLimb(previous) : Math.random() > 0.5 ? 'R' : 'L')
+// No limb three times in a row, counting the resolution stroke, and never
+// two kicks going into it.
+function isPlayableSticking(strokes, resolutionStroke) {
+  const withResolution = [...strokes, resolutionStroke]
+  for (let index = 2; index < withResolution.length; index += 1) {
+    const stroke = withResolution[index]
+    if (stroke === withResolution[index - 1] && stroke === withResolution[index - 2]) return false
   }
-
-  return sequence
+  return !(strokes.at(-1) === 'K' && strokes.at(-2) === 'K')
 }
 
-function getRandomSticking(length) {
-  return {
-    hands: getRandomLimbSequence(length),
-    feet: getRandomLimbSequence(length),
+function getRandomFill(length, resolutionStroke) {
+  let cells = []
+
+  // Random cells rarely break the rules, so drawing again until they fit is
+  // quick; single strokes and a lone kick can always close out the bar.
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
+    cells = []
+    let remaining = length
+    while (remaining > 0) {
+      const cell = pickWeighted(STICKING_CELLS.filter((item) => item.strokes.length <= remaining))
+      cells.push(cell)
+      remaining -= cell.strokes.length
+    }
+    if (isPlayableSticking(cells.flatMap((cell) => cell.strokes), resolutionStroke)) break
   }
+
+  return cells
 }
 
 function getDefaultMetronomeProbabilities() {
@@ -1669,34 +1723,47 @@ function MetronomePage() {
 }
 
 function StickingGeneratorPage() {
-  const [stepCount, setStepCount] = useState(16)
-  const [sticking, setSticking] = useState(() => getRandomSticking(16))
+  const [rateId, setRateId] = useState('sixteenth')
+  const [resolutionId, setResolutionId] = useState('kick')
+  const [beats, setBeats] = useState(2)
+  const rate = STICKING_RATES.find((item) => item.id === rateId)
+  const resolution = STICKING_RESOLUTIONS.find((item) => item.id === resolutionId)
+  const [cells, setCells] = useState(() => getRandomFill(beats * rate.notesPerBeat, resolution.stroke))
 
   const groupedSteps = useMemo(() => {
-    const steps = sticking.hands.map((hand, index) => ({
-      id: `${index}-${hand}-${sticking.feet[index]}`,
-      count: index + 1,
-      hand,
-      foot: sticking.feet[index],
-      isDownbeat: index % 4 === 0,
-    }))
-
+    const steps = cells.flatMap((cell) => cell.strokes)
     const groups = []
-    for (let index = 0; index < steps.length; index += 4) {
-      groups.push(steps.slice(index, index + 4))
+    for (let index = 0; index < steps.length; index += rate.notesPerBeat) {
+      groups.push(steps.slice(index, index + rate.notesPerBeat).map((stroke, offset) => ({
+        stroke,
+        count: offset === 0 ? String(index / rate.notesPerBeat + 1) : rate.counts[offset],
+        isDownbeat: offset === 0,
+      })))
     }
-
     return groups
-  }, [sticking])
+  }, [cells, rate])
 
-  function generateSticking(nextLength = stepCount) {
-    setSticking(getRandomSticking(Number(nextLength)))
+  function generate(next = {}) {
+    const nextRate = STICKING_RATES.find((item) => item.id === (next.rateId ?? rateId))
+    const nextResolution = STICKING_RESOLUTIONS.find((item) => item.id === (next.resolutionId ?? resolutionId))
+    const nextBeats = next.beats ?? beats
+    setCells(getRandomFill(nextBeats * nextRate.notesPerBeat, nextResolution.stroke))
   }
 
-  function updateStepCount(event) {
-    const nextStepCount = Number(event.target.value)
-    setStepCount(nextStepCount)
-    generateSticking(nextStepCount)
+  function updateRate(nextRateId) {
+    setRateId(nextRateId)
+    generate({ rateId: nextRateId })
+  }
+
+  function updateResolution(nextResolutionId) {
+    setResolutionId(nextResolutionId)
+    generate({ resolutionId: nextResolutionId })
+  }
+
+  function updateBeats(event) {
+    const nextBeats = Number(event.target.value)
+    setBeats(nextBeats)
+    generate({ beats: nextBeats })
   }
 
   return (
@@ -1707,60 +1774,106 @@ function StickingGeneratorPage() {
         <div style={metaStyle}>Practice Tools</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sticking Generator</h1>
         <p style={introStyle}>
-          Generate a random hand sticking and foot sticking for four-limb coordination practice.
+          Generate linear fill stickings built from rudiments, with hands and kick sharing one line and
+          the fill landing on the next downbeat.
         </p>
 
         <div className="sticking-toolbar">
           <div className="control-card">
-            <label className="control-label" htmlFor="sticking-step-count">Pattern Length</label>
-            <div className="range-value">{stepCount} notes</div>
+            <span className="control-label">Rate</span>
+            <div className="sticking-chips">
+              {STICKING_RATES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`ear-level-chip${item.id === rateId ? ' is-active' : ''}`}
+                  aria-pressed={item.id === rateId}
+                  onClick={() => updateRate(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Resolve On</span>
+            <div className="sticking-chips">
+              {STICKING_RESOLUTIONS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`ear-level-chip${item.id === resolutionId ? ' is-active' : ''}`}
+                  aria-pressed={item.id === resolutionId}
+                  onClick={() => updateResolution(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="sticking-beats">Length</label>
+            <div className="range-value">{beats} {beats === 1 ? 'beat' : 'beats'}</div>
             <input
-              id="sticking-step-count"
+              id="sticking-beats"
               className="range-input"
               type="range"
-              min="4"
-              max="32"
-              step="4"
-              value={stepCount}
-              onChange={updateStepCount}
+              min="1"
+              max="4"
+              step="1"
+              value={beats}
+              onChange={updateBeats}
             />
           </div>
 
-          <button className="primary-button" type="button" onClick={() => generateSticking()}>
-            Generate Sticking
+          <button className="primary-button" type="button" onClick={() => generate()}>
+            Generate Fill
           </button>
         </div>
 
         <div className="sticking-board surface-card">
-          <div className="sticking-labels" aria-hidden="true">
-            <span>Hands</span>
-            <span>Feet</span>
-          </div>
-
           <div className="sticking-groups">
             {groupedSteps.map((group, groupIndex) => (
-              <div className="sticking-group" key={`group-${groupIndex}`}>
-                {group.map((step) => (
-                  <div className={`sticking-step${step.isDownbeat ? ' is-downbeat' : ''}`} key={step.id}>
+              <div
+                className="sticking-group"
+                style={{ gridTemplateColumns: `repeat(${rate.notesPerBeat}, var(--sticking-cell-width))` }}
+                key={`group-${groupIndex}`}
+              >
+                {group.map((step, stepIndex) => (
+                  <div className={`sticking-step${step.isDownbeat ? ' is-downbeat' : ''}`} key={stepIndex}>
                     <span className="sticking-count">{step.count}</span>
-                    <span className="sticking-cell sticking-hand">{step.hand}</span>
-                    <span className="sticking-cell sticking-foot">{step.foot}</span>
+                    <span className={`sticking-cell ${step.stroke === 'K' ? 'sticking-foot' : 'sticking-hand'}`}>
+                      {step.stroke}
+                    </span>
                   </div>
                 ))}
               </div>
             ))}
+
+            <div className="sticking-group sticking-resolution">
+              <div className="sticking-step is-downbeat">
+                <span className="sticking-count">1</span>
+                <span className={`sticking-cell ${resolution.stroke === 'K' ? 'sticking-foot' : 'sticking-hand'}`}>
+                  {resolution.stroke}
+                </span>
+                <span className="sticking-resolution-label">{resolution.label}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="sticking-readout">
-          <div className="surface-card" style={cardStyle}>
-            <div className="stat-label">Hands</div>
-            <div className="sticking-line">{sticking.hands.join(' ')}</div>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <div className="stat-label">Feet</div>
-            <div className="sticking-line">{sticking.feet.join(' ')}</div>
-          </div>
+        <div className="surface-card" style={cardStyle}>
+          <div className="stat-label">Built From</div>
+          <ol className="sticking-cells">
+            {cells.map((cell, index) => (
+              <li key={index}>
+                <span className="sticking-line">{cell.pattern}</span>
+                <span className="sticking-cell-name">{cell.name}</span>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
     </div>
