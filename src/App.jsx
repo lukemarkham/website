@@ -908,23 +908,63 @@ function isPlayableSticking(strokes, resolutionStroke) {
   return !(strokes.at(-1) === 'K' && strokes.at(-2) === 'K')
 }
 
-function getRandomFill(length, resolutionStroke) {
-  let cells = []
+// Recent fills are kept in this browser so a new one avoids repeating them,
+// within a session and across visits.
+const STICKING_HISTORY_KEY = 'lm-sticking-history'
+const STICKING_HISTORY_LIMIT = 300
+
+function getStickingId(rateId, strokes, resolutionStroke) {
+  return `${rateId}:${strokes.join('')}>${resolutionStroke}`
+}
+
+function readStickingHistory() {
+  try {
+    const history = JSON.parse(window.localStorage.getItem(STICKING_HISTORY_KEY))
+    return Array.isArray(history) ? history : []
+  } catch {
+    return []
+  }
+}
+
+function rememberSticking(id) {
+  try {
+    const history = [id, ...readStickingHistory().filter((item) => item !== id)]
+    window.localStorage.setItem(STICKING_HISTORY_KEY, JSON.stringify(history.slice(0, STICKING_HISTORY_LIMIT)))
+  } catch {
+    // Without storage the generator still works; it just can't remember.
+  }
+}
+
+function getRandomFill(length, resolutionStroke, rateId) {
+  const history = readStickingHistory()
+  let fallback = null
+  let fallbackAge = -1
 
   // Random cells rarely break the rules, so drawing again until they fit is
-  // quick; single strokes and a lone kick can always close out the bar.
+  // quick; single strokes and a lone kick can always close out the bar. A
+  // fill that hasn't come up recently wins outright. Short lengths can run
+  // out of fresh ones, so otherwise the one seen longest ago is used.
   for (let attempt = 0; attempt < 1000; attempt += 1) {
-    cells = []
+    const cells = []
     let remaining = length
     while (remaining > 0) {
       const cell = pickWeighted(STICKING_CELLS.filter((item) => item.strokes.length <= remaining))
       cells.push(cell)
       remaining -= cell.strokes.length
     }
-    if (isPlayableSticking(cells.flatMap((cell) => cell.strokes), resolutionStroke)) break
+
+    const strokes = cells.flatMap((cell) => cell.strokes)
+    if (!isPlayableSticking(strokes, resolutionStroke)) continue
+
+    const age = history.indexOf(getStickingId(rateId, strokes, resolutionStroke))
+    if (age === -1) return cells
+    if (age > fallbackAge) {
+      fallback = cells
+      fallbackAge = age
+    }
   }
 
-  return cells
+  return fallback
 }
 
 function getDefaultMetronomeProbabilities() {
@@ -1212,6 +1252,50 @@ function TempoGuessrPage() {
   )
 }
 
+function playMetronomeClick(ctx, time, frequency, volume, duration = 0.045) {
+  const oscillator = ctx.createOscillator()
+  const gain = ctx.createGain()
+
+  oscillator.type = 'square'
+  oscillator.frequency.value = frequency
+  gain.gain.setValueAtTime(0.0001, time)
+  gain.gain.exponentialRampToValueAtTime(volume, time + 0.001)
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + duration)
+
+  oscillator.connect(gain)
+  gain.connect(ctx.destination)
+  oscillator.start(time)
+  oscillator.stop(time + duration + 0.01)
+}
+
+function playSessionCompleteSound(ctx) {
+  const now = ctx.currentTime + 0.04
+  const notes = [523.25, 659.25, 783.99, 1046.5]
+
+  notes.forEach((frequency, index) => {
+    const time = now + index * 0.12
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    oscillator.type = 'triangle'
+    oscillator.frequency.setValueAtTime(frequency, time)
+    gain.gain.setValueAtTime(0.0001, time)
+    gain.gain.exponentialRampToValueAtTime(0.18, time + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.34)
+
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start(time)
+    oscillator.stop(time + 0.38)
+  })
+}
+
+function formatSessionTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function MetronomePage() {
   const [tempo, setTempo] = useState(120)
   const [tempoDraft, setTempoDraft] = useState('120')
@@ -1291,44 +1375,6 @@ function MetronomePage() {
     }
 
     return audioContextRef.current
-  }
-
-  function playMetronomeClick(ctx, time, frequency, volume, duration = 0.045) {
-    const oscillator = ctx.createOscillator()
-    const gain = ctx.createGain()
-
-    oscillator.type = 'square'
-    oscillator.frequency.value = frequency
-    gain.gain.setValueAtTime(0.0001, time)
-    gain.gain.exponentialRampToValueAtTime(volume, time + 0.001)
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration)
-
-    oscillator.connect(gain)
-    gain.connect(ctx.destination)
-    oscillator.start(time)
-    oscillator.stop(time + duration + 0.01)
-  }
-
-  function playSessionCompleteSound(ctx) {
-    const now = ctx.currentTime + 0.04
-    const notes = [523.25, 659.25, 783.99, 1046.5]
-
-    notes.forEach((frequency, index) => {
-      const time = now + index * 0.12
-      const oscillator = ctx.createOscillator()
-      const gain = ctx.createGain()
-
-      oscillator.type = 'triangle'
-      oscillator.frequency.setValueAtTime(frequency, time)
-      gain.gain.setValueAtTime(0.0001, time)
-      gain.gain.exponentialRampToValueAtTime(0.18, time + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.34)
-
-      oscillator.connect(gain)
-      gain.connect(ctx.destination)
-      oscillator.start(time)
-      oscillator.stop(time + 0.38)
-    })
   }
 
   function probabilityHit(key, probability) {
@@ -1524,12 +1570,6 @@ function MetronomePage() {
     )
   }
 
-  function formatSessionTime(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return `${minutes}:${String(seconds).padStart(2, '0')}`
-  }
-
   return (
     <div style={pageShellStyle}>
       <SiteNav showHomeLink />
@@ -1722,13 +1762,346 @@ function MetronomePage() {
   )
 }
 
+const STICKING_ROTATION_OPTIONS = [
+  { seconds: 0, label: 'Never' },
+  { seconds: 30, label: 'Every 30 sec' },
+  { seconds: 60, label: 'Every 1 min' },
+  { seconds: 120, label: 'Every 2 min' },
+  { seconds: 180, label: 'Every 3 min' },
+  { seconds: 300, label: 'Every 5 min' },
+]
+
+const STICKING_COUNT_IN_BEATS = 4
+const STICKING_CHIME_SECONDS = 0.7
+const STICKING_REVEAL_MS = 1500
+
+function playFillChangeChime(ctx, time) {
+  ;[[1318.51, 0], [987.77, 0.16]].forEach(([frequency, offset]) => {
+    const start = time + offset
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(frequency, start)
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(0.22, start + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9)
+
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start(start)
+    oscillator.stop(start + 0.95)
+  })
+}
+
+// A pared-back metronome for the sticking page: a 4/4 click with beat one
+// accented and a session countdown. When the new-fill interval runs out, the
+// click stops on the next downbeat for a chime, the new fill is revealed, and
+// a one-bar count-in brings the click back.
+function StickingPracticeSession({ onNewFill, manualFillCount }) {
+  const [tempo, setTempo] = useState(90)
+  const [tempoDraft, setTempoDraft] = useState('90')
+  const [sessionMinutes, setSessionMinutes] = useState(10)
+  const [rotationSeconds, setRotationSeconds] = useState(60)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [activeBeat, setActiveBeat] = useState(null)
+  const [banner, setBanner] = useState(null)
+  const [clock, setClock] = useState({ session: null, nextFill: null })
+  const audioContextRef = useRef(null)
+  const schedulerRef = useRef(null)
+  const clockRef = useRef(null)
+  const visualTimeoutsRef = useRef([])
+  const wakeLockRef = useRef(null)
+  const runRef = useRef(null)
+  const tempoRef = useRef(tempo)
+  const onNewFillRef = useRef(onNewFill)
+
+  useEffect(() => {
+    tempoRef.current = tempo
+  }, [tempo])
+
+  useEffect(() => {
+    onNewFillRef.current = onNewFill
+  }, [onNewFill])
+
+  // Picking a fill by hand restarts the wait for the next automatic one, so
+  // it gets the full interval too.
+  useEffect(() => {
+    const run = runRef.current
+    if (run && run.rotationSeconds > 0) {
+      run.nextFillAt = audioContextRef.current.currentTime + run.rotationSeconds
+    }
+  }, [manualFillCount])
+
+  useEffect(() => {
+    const visualTimeouts = visualTimeoutsRef.current
+    return () => {
+      window.clearInterval(schedulerRef.current)
+      window.clearInterval(clockRef.current)
+      visualTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId))
+      wakeLockRef.current?.release().catch(() => {})
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
+    }
+  }, [])
+
+  async function getAudioContext() {
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      audioContextRef.current = new AudioContextClass()
+    }
+
+    if (audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume()
+    }
+
+    return audioContextRef.current
+  }
+
+  function atAudioTime(ctx, time, callback) {
+    const delay = Math.max(0, (time - ctx.currentTime) * 1000)
+    visualTimeoutsRef.current.push(window.setTimeout(callback, delay))
+  }
+
+  function scheduler(ctx) {
+    const run = runRef.current
+
+    while (run.nextBeatTime < ctx.currentTime + METRONOME_SCHEDULE_AHEAD_SECONDS) {
+      const time = run.nextBeatTime
+      if (run.sessionEndsAt !== null && time >= run.sessionEndsAt) return
+
+      const beatInBar = run.beatIndex % 4
+      const isCountIn = run.beatIndex < STICKING_COUNT_IN_BEATS
+
+      // The interval starts counting once the count-in is over.
+      if (run.beatIndex === STICKING_COUNT_IN_BEATS && run.rotationSeconds > 0) {
+        run.nextFillAt = time + run.rotationSeconds
+      }
+
+      if (!isCountIn && beatInBar === 0 && run.nextFillAt !== null && time >= run.nextFillAt) {
+        changeFill(ctx, time)
+        continue
+      }
+
+      if (isCountIn) {
+        playMetronomeClick(ctx, time, 1760, 0.3, 0.035)
+      } else {
+        playMetronomeClick(ctx, time, beatInBar === 0 ? 1320 : 920, beatInBar === 0 ? 0.36 : 0.26)
+      }
+      atAudioTime(ctx, time, () => {
+        setActiveBeat(beatInBar)
+        setBanner(isCountIn ? String(beatInBar + 1) : null)
+      })
+      atAudioTime(ctx, time + 0.09, () => setActiveBeat(null))
+
+      run.nextBeatTime += 60 / tempoRef.current
+      run.beatIndex += 1
+    }
+  }
+
+  // Rather than stopping the scheduler, push the next beat back past the chime
+  // and the reveal and start a fresh count-in from there.
+  function changeFill(ctx, time) {
+    const run = runRef.current
+    const resumeAt = time + STICKING_CHIME_SECONDS + STICKING_REVEAL_MS / 1000 + 0.3
+
+    run.nextFillAt = null
+    run.nextBeatTime = resumeAt
+    run.beatIndex = 0
+    playFillChangeChime(ctx, time)
+    atAudioTime(ctx, time, () => setBanner('New fill'))
+    atAudioTime(ctx, time + STICKING_CHIME_SECONDS, () => onNewFillRef.current())
+  }
+
+  function updateClock(ctx) {
+    const run = runRef.current
+    const now = ctx.currentTime
+
+    if (run.sessionEndsAt !== null && now >= run.sessionEndsAt) {
+      stop({ playCompletion: true })
+      return
+    }
+
+    setClock({
+      session: run.sessionEndsAt === null ? null : Math.ceil(run.sessionEndsAt - now),
+      nextFill: run.nextFillAt === null ? null : Math.max(0, Math.ceil(run.nextFillAt - now)),
+    })
+  }
+
+  async function start() {
+    const ctx = await getAudioContext()
+    const startsAt = ctx.currentTime + 0.08
+    const sessionSeconds = clampWholeNumber(sessionMinutes, 0, 240) * 60
+
+    runRef.current = {
+      nextBeatTime: startsAt,
+      beatIndex: 0,
+      rotationSeconds,
+      sessionEndsAt: sessionSeconds > 0 ? startsAt + sessionSeconds : null,
+      nextFillAt: null,
+    }
+    setIsPlaying(true)
+    updateClock(ctx)
+    schedulerRef.current = window.setInterval(() => scheduler(ctx), METRONOME_LOOKAHEAD_MS)
+    clockRef.current = window.setInterval(() => updateClock(ctx), 200)
+
+    // Keep the screen awake for the session; the fill is no use on a dark screen.
+    try {
+      wakeLockRef.current = await navigator.wakeLock?.request('screen')
+    } catch {
+      wakeLockRef.current = null
+    }
+  }
+
+  function stop(options = {}) {
+    window.clearInterval(schedulerRef.current)
+    window.clearInterval(clockRef.current)
+    visualTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    visualTimeoutsRef.current = []
+    wakeLockRef.current?.release().catch(() => {})
+    wakeLockRef.current = null
+    runRef.current = null
+    setActiveBeat(null)
+    setBanner(null)
+    setClock({ session: null, nextFill: null })
+    setIsPlaying(false)
+
+    if (options.playCompletion && audioContextRef.current) {
+      playSessionCompleteSound(audioContextRef.current)
+    }
+  }
+
+  // Same tempo entry as the full metronome: keep partial typing, snap on blur.
+  function updateTempo(event) {
+    const { value } = event.target
+    setTempoDraft(value)
+
+    const parsed = Number(value)
+    if (value.trim() !== '' && Number.isFinite(parsed) && parsed >= 30 && parsed <= 300) {
+      setTempo(parsed)
+    }
+  }
+
+  function commitTempo() {
+    const parsed = Number(tempoDraft)
+    const nextTempo = tempoDraft.trim() === '' || !Number.isFinite(parsed)
+      ? tempo
+      : clamp(parsed, 30, 300)
+
+    setTempo(nextTempo)
+    setTempoDraft(String(nextTempo))
+  }
+
+  return (
+    <div className="sticking-session surface-card">
+      <div className="sticking-session-controls">
+        <div className="sticking-session-field">
+          <label className="control-label" htmlFor="sticking-tempo">Tempo</label>
+          <div className="sticking-session-input-row">
+            <input
+              id="sticking-tempo"
+              className="control-input"
+              type="number"
+              min="30"
+              max="300"
+              value={tempoDraft}
+              onChange={updateTempo}
+              onBlur={commitTempo}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur()
+              }}
+            />
+            <span className="metronome-bpm">BPM</span>
+          </div>
+        </div>
+
+        <div className="sticking-session-field">
+          <label className="control-label" htmlFor="sticking-session-minutes">Session</label>
+          <div className="sticking-session-input-row">
+            <input
+              id="sticking-session-minutes"
+              className="control-input"
+              type="number"
+              min="0"
+              max="240"
+              step="1"
+              value={sessionMinutes}
+              disabled={isPlaying}
+              onChange={(event) => setSessionMinutes(clampWholeNumber(event.target.value, 0, 240))}
+            />
+            <span className="metronome-bpm">Min</span>
+          </div>
+        </div>
+
+        <div className="sticking-session-field">
+          <label className="control-label" htmlFor="sticking-rotation">New Fill</label>
+          <select
+            id="sticking-rotation"
+            className="control-input ear-select"
+            value={rotationSeconds}
+            disabled={isPlaying}
+            onChange={(event) => setRotationSeconds(Number(event.target.value))}
+          >
+            {STICKING_ROTATION_OPTIONS.map((option) => (
+              <option key={option.seconds} value={option.seconds}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <button className="primary-button" type="button" onClick={() => (isPlaying ? stop() : start())}>
+          {isPlaying ? 'Stop' : 'Start Session'}
+        </button>
+      </div>
+
+      <div className="sticking-session-status">
+        <div className={`sticking-session-banner${banner ? ' is-visible' : ''}`} aria-live="polite">
+          {banner && banner !== 'New fill' ? <span className="stat-label">Count-in</span> : null}
+          <span key={banner}>{banner}</span>
+        </div>
+        <div className="sticking-session-beats" aria-hidden="true">
+          {[0, 1, 2, 3].map((beat) => (
+            <span
+              key={beat}
+              className={`sticking-session-beat${beat === 0 ? ' is-downbeat' : ''}${activeBeat === beat ? ' is-active' : ''}`}
+            />
+          ))}
+        </div>
+        <div className="sticking-session-readout">
+          <span>
+            <span className="stat-label">Session</span>
+            {clock.session !== null
+              ? formatSessionTime(clock.session)
+              : sessionMinutes > 0 ? formatSessionTime(sessionMinutes * 60) : 'Open'}
+          </span>
+          <span>
+            <span className="stat-label">Next Fill</span>
+            {clock.nextFill !== null
+              ? formatSessionTime(clock.nextFill)
+              : rotationSeconds > 0 ? formatSessionTime(rotationSeconds) : 'Off'}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StickingGeneratorPage() {
   const [rateId, setRateId] = useState('sixteenth')
   const [resolutionId, setResolutionId] = useState('kick')
   const [beats, setBeats] = useState(2)
   const rate = STICKING_RATES.find((item) => item.id === rateId)
   const resolution = STICKING_RESOLUTIONS.find((item) => item.id === resolutionId)
-  const [cells, setCells] = useState(() => getRandomFill(beats * rate.notesPerBeat, resolution.stroke))
+  const [cells, setCells] = useState(() => getRandomFill(beats * rate.notesPerBeat, resolution.stroke, rateId))
+  const [manualFillCount, setManualFillCount] = useState(0)
+  const [reveal, setReveal] = useState(null)
+  const revealTimerRef = useRef(null)
+
+  useEffect(() => {
+    rememberSticking(getStickingId(rateId, cells.flatMap((cell) => cell.strokes), resolution.stroke))
+  }, [cells, rateId, resolution])
+
+  useEffect(() => () => window.clearInterval(revealTimerRef.current), [])
 
   const groupedSteps = useMemo(() => {
     const steps = cells.flatMap((cell) => cell.strokes)
@@ -1736,6 +2109,7 @@ function StickingGeneratorPage() {
     for (let index = 0; index < steps.length; index += rate.notesPerBeat) {
       groups.push(steps.slice(index, index + rate.notesPerBeat).map((stroke, offset) => ({
         stroke,
+        index: index + offset,
         count: offset === 0 ? String(index / rate.notesPerBeat + 1) : rate.counts[offset],
         isDownbeat: offset === 0,
       })))
@@ -1747,23 +2121,60 @@ function StickingGeneratorPage() {
     const nextRate = STICKING_RATES.find((item) => item.id === (next.rateId ?? rateId))
     const nextResolution = STICKING_RESOLUTIONS.find((item) => item.id === (next.resolutionId ?? resolutionId))
     const nextBeats = next.beats ?? beats
-    setCells(getRandomFill(nextBeats * nextRate.notesPerBeat, nextResolution.stroke))
+    const nextCells = getRandomFill(nextBeats * nextRate.notesPerBeat, nextResolution.stroke, nextRate.id)
+    setCells(nextCells)
+    return nextCells
+  }
+
+  function stopReveal() {
+    window.clearInterval(revealTimerRef.current)
+    setReveal(null)
+  }
+
+  function generateByHand(next) {
+    stopReveal()
+    generate(next)
+    setManualFillCount((count) => count + 1)
+  }
+
+  // The session's new fill scrambles for a moment, then settles left to right.
+  function revealNewFill() {
+    const length = generate().flatMap((cell) => cell.strokes).length
+    const frameMs = 70
+    let frame = 0
+
+    function step() {
+      const progress = (frame * frameMs) / STICKING_REVEAL_MS
+      frame += 1
+      if (progress >= 1) {
+        stopReveal()
+        return
+      }
+      setReveal({
+        settled: Math.floor(Math.max(0, (progress - 0.3) / 0.7) * length),
+        noise: Array.from({ length }, () => 'RLK'[randomInt(0, 2)]),
+      })
+    }
+
+    window.clearInterval(revealTimerRef.current)
+    step()
+    revealTimerRef.current = window.setInterval(step, frameMs)
   }
 
   function updateRate(nextRateId) {
     setRateId(nextRateId)
-    generate({ rateId: nextRateId })
+    generateByHand({ rateId: nextRateId })
   }
 
   function updateResolution(nextResolutionId) {
     setResolutionId(nextResolutionId)
-    generate({ resolutionId: nextResolutionId })
+    generateByHand({ resolutionId: nextResolutionId })
   }
 
   function updateBeats(event) {
     const nextBeats = Number(event.target.value)
     setBeats(nextBeats)
-    generate({ beats: nextBeats })
+    generateByHand({ beats: nextBeats })
   }
 
   return (
@@ -1828,10 +2239,12 @@ function StickingGeneratorPage() {
             />
           </div>
 
-          <button className="primary-button" type="button" onClick={() => generate()}>
+          <button className="primary-button" type="button" onClick={() => generateByHand()}>
             Generate Fill
           </button>
         </div>
+
+        <StickingPracticeSession onNewFill={revealNewFill} manualFillCount={manualFillCount} />
 
         <div className="sticking-board surface-card">
           <div className="sticking-groups">
@@ -1841,14 +2254,20 @@ function StickingGeneratorPage() {
                 style={{ gridTemplateColumns: `repeat(${rate.notesPerBeat}, var(--sticking-cell-width))` }}
                 key={`group-${groupIndex}`}
               >
-                {group.map((step, stepIndex) => (
-                  <div className={`sticking-step${step.isDownbeat ? ' is-downbeat' : ''}`} key={stepIndex}>
-                    <span className="sticking-count">{step.count}</span>
-                    <span className={`sticking-cell ${step.stroke === 'K' ? 'sticking-foot' : 'sticking-hand'}`}>
-                      {step.stroke}
-                    </span>
-                  </div>
-                ))}
+                {group.map((step, stepIndex) => {
+                  const isScrambling = reveal !== null && step.index >= reveal.settled
+                  const isLanding = reveal !== null && !isScrambling
+                  const stroke = isScrambling ? reveal.noise[step.index] : step.stroke
+                  const voiceClass = stroke === 'K' ? 'sticking-foot' : 'sticking-hand'
+                  const stateClass = isScrambling ? ' is-scrambling' : isLanding ? ' is-landing' : ''
+
+                  return (
+                    <div className={`sticking-step${step.isDownbeat ? ' is-downbeat' : ''}`} key={stepIndex}>
+                      <span className="sticking-count">{step.count}</span>
+                      <span className={`sticking-cell ${voiceClass}${stateClass}`}>{stroke}</span>
+                    </div>
+                  )
+                })}
               </div>
             ))}
 
@@ -1864,7 +2283,7 @@ function StickingGeneratorPage() {
           </div>
         </div>
 
-        <div className="surface-card" style={cardStyle}>
+        <div className={`surface-card sticking-built-from${reveal ? ' is-hidden' : ''}`} style={cardStyle}>
           <div className="stat-label">Built From</div>
           <ol className="sticking-cells">
             {cells.map((cell, index) => (
