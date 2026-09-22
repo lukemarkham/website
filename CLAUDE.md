@@ -6,6 +6,9 @@ Begin each new session by running `git pull`. Luke works on this site from two
 different machines, so the local checkout is often behind — pulling first avoids
 editing stale files and creating conflicting commits.
 
+Then read `NOTES.md` for what changed last session and what's still open, and
+add a dated entry there at the end of a working session.
+
 ## Deployment
 
 Netlify builds and deploys from `main`, so pushing to `main` publishes the site.
