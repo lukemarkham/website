@@ -1125,6 +1125,8 @@ function TempoGuessrPage() {
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Tempo Guessr</h1>
         <p style={introStyle}>Hear a random metronome tempo, then guess the BPM.</p>
 
+        <PracticeTimer />
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '18px', marginBottom: '24px' }}>
           <div className="control-card">
             <label className="control-label">Minimum BPM</label>
@@ -1294,6 +1296,147 @@ function formatSessionTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+// Every practice tool carries a session timer. This is the standalone one, for
+// tools with no transport of their own; the metronome and the sticking
+// generator run theirs off their Start button instead. It keeps time against
+// the wall clock, so a throttled background tab still ends on time.
+function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
+  const [minutesDraft, setMinutesDraft] = useState(String(defaultMinutes))
+  const [status, setStatus] = useState('idle')
+  const [remaining, setRemaining] = useState(null)
+  const endsAtRef = useRef(null)
+  const pausedMsRef = useRef(null)
+  const tickRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const wakeLockRef = useRef(null)
+  const onCompleteRef = useRef(onComplete)
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
+
+  useEffect(() => {
+    return () => {
+      window.clearInterval(tickRef.current)
+      wakeLockRef.current?.release().catch(() => {})
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
+    }
+  }, [])
+
+  async function holdWakeLock() {
+    try {
+      wakeLockRef.current = await navigator.wakeLock?.request('screen')
+    } catch {
+      wakeLockRef.current = null
+    }
+  }
+
+  function releaseWakeLock() {
+    wakeLockRef.current?.release().catch(() => {})
+    wakeLockRef.current = null
+  }
+
+  function halt() {
+    window.clearInterval(tickRef.current)
+    releaseWakeLock()
+  }
+
+  function finish() {
+    halt()
+    setStatus('done')
+    setRemaining(0)
+    if (audioContextRef.current) playSessionCompleteSound(audioContextRef.current)
+    onCompleteRef.current?.()
+  }
+
+  function run(durationMs) {
+    endsAtRef.current = Date.now() + durationMs
+    setStatus('running')
+    setRemaining(Math.ceil(durationMs / 1000))
+    window.clearInterval(tickRef.current)
+    tickRef.current = window.setInterval(() => {
+      const leftMs = endsAtRef.current - Date.now()
+      if (leftMs <= 0) {
+        finish()
+      } else {
+        setRemaining(Math.ceil(leftMs / 1000))
+      }
+    }, 250)
+    holdWakeLock()
+  }
+
+  function start() {
+    // The chime at the end needs an audio context that was opened by a click.
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      audioContextRef.current = new AudioContextClass()
+    }
+    audioContextRef.current.resume()
+
+    const minutes = clampWholeNumber(Number(minutesDraft) || defaultMinutes, 1, 240)
+    setMinutesDraft(String(minutes))
+    run(minutes * 60 * 1000)
+  }
+
+  function pause() {
+    pausedMsRef.current = endsAtRef.current - Date.now()
+    halt()
+    setStatus('paused')
+  }
+
+  function reset() {
+    halt()
+    setStatus('idle')
+    setRemaining(null)
+  }
+
+  return (
+    <div className={`surface-card practice-timer is-${status}`}>
+      <span className="control-label">Session Timer</span>
+      {status === 'idle' ? (
+        <div className="practice-timer-row">
+          <input
+            className="control-input practice-timer-input"
+            type="number"
+            min="1"
+            max="240"
+            step="1"
+            value={minutesDraft}
+            aria-label="Session length in minutes"
+            onChange={(event) => setMinutesDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') start()
+            }}
+          />
+          <span className="metronome-bpm">Min</span>
+          <button className="secondary-button" type="button" onClick={start}>Start</button>
+        </div>
+      ) : (
+        <>
+          <div className="practice-timer-clock" aria-live="polite">
+            {status === 'done' ? 'Session complete' : formatSessionTime(remaining)}
+          </div>
+          <div className="practice-timer-row">
+            {status === 'running' ? (
+              <button className="secondary-button" type="button" onClick={pause}>Pause</button>
+            ) : null}
+            {status === 'paused' ? (
+              <button className="secondary-button" type="button" onClick={() => run(pausedMsRef.current)}>
+                Resume
+              </button>
+            ) : null}
+            <button className="secondary-button" type="button" onClick={reset}>
+              {status === 'done' ? 'New Session' : 'Reset'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 function MetronomePage() {
@@ -3515,6 +3658,8 @@ function EarTrainerPage() {
           </div>
 
           <aside className="ear-sidebar">
+            <PracticeTimer onComplete={stopPlayback} />
+
             <div className="surface-card ear-score-card">
               <span className="control-label">Session</span>
               <div className="ear-score-big">
