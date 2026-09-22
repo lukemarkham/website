@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": "2026-09-22T19-40-04-843Z-tszwsp",
+    "createdAt": "2026-09-22T19:40:04.843Z",
+    "vote": "up",
+    "strokes": "RLKRLK",
+    "resolution": "K",
+    "rateId": "triplet",
+    "beats": 2,
+    "tempo": 120,
+    "cells": ["RLK", "RLK"],
+    "note": "Deploy check from Claude, not real feedback",
+    "tags": [],
+    "review": "Test entry confirming the live store accepts writes. No action."
+  }
+]
