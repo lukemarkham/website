@@ -18,6 +18,7 @@ import {
   shadeProgression,
 } from './lib/harmony'
 import { connectMidi, isMidiSupported } from './lib/midiInput'
+import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import {
   BASS_INSTRUMENTS,
   CHORD_INSTRUMENTS,
@@ -2540,6 +2541,55 @@ function StickingFeedbackDialog({ open, sticking, onSubmit, onCancel }) {
   )
 }
 
+// The fill as notation, sticking underneath. Falls back to the sticking as
+// text until (or unless) VexFlow loads.
+function FillNotation({ steps, notesPerBeat, beats, landing }) {
+  const hostRef = useRef(null)
+  const [vexflow, setVexflow] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    loadVexFlow()
+      .then((module) => {
+        if (!cancelled) setVexflow(module)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!vexflow || !host) return
+    const style = getComputedStyle(host)
+    const token = (name) => style.getPropertyValue(name).trim()
+
+    renderFillNotation(host, vexflow, {
+      steps,
+      notesPerBeat,
+      beats,
+      landing,
+      colors: {
+        ink: token('--text'),
+        muted: token('--text-muted'),
+        hand: token('--text'),
+        kick: token('--accent-warm'),
+      },
+      font: style.fontFamily,
+    })
+  }, [vexflow, steps, notesPerBeat, beats, landing])
+
+  if (failed) {
+    return <div className="sticking-line fill-notation-fallback">{steps.map((step) => step.stroke).join(' ')}</div>
+  }
+
+  return <div ref={hostRef} className="fill-notation" role="img" aria-label={`Fill: ${steps.map((step) => step.stroke).join(' ')}, landing on the ${landing.label.toLowerCase()}`} />
+}
+
 function ThumbIcon({ down = false }) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -2595,18 +2645,20 @@ function StickingGeneratorPage() {
       .catch(() => {})
   }, [])
 
-  const groupedSteps = useMemo(() => {
-    const groups = []
-    for (let index = 0; index < strokes.length; index += rate.notesPerBeat) {
-      groups.push(strokes.slice(index, index + rate.notesPerBeat).map((stroke, offset) => ({
-        stroke,
-        index: index + offset,
-        count: offset === 0 ? String(index / rate.notesPerBeat + 1) : rate.counts[offset],
-        isDownbeat: offset === 0,
-      })))
-    }
-    return groups
-  }, [strokes, rate])
+  // Counted where the fill sits in the bar: it ends the bar, so a two-beat
+  // fill runs "3 e & a 4 e & a".
+  const notationSteps = useMemo(() => {
+    const firstBeat = 4 - strokes.length / rate.notesPerBeat + 1
+    return strokes.map((stroke, index) => {
+      const offset = index % rate.notesPerBeat
+      const isScrambling = reveal !== null && index >= reveal.settled
+      return {
+        stroke: isScrambling ? reveal.noise[index] : stroke,
+        count: offset === 0 ? String(firstBeat + index / rate.notesPerBeat) : rate.counts[offset],
+        isScrambling,
+      }
+    })
+  }, [strokes, rate, reveal])
 
   function generate(next = {}) {
     const nextRate = STICKING_RATES.find((item) => item.id === (next.rateId ?? rateId))
@@ -2800,40 +2852,12 @@ function StickingGeneratorPage() {
         />
 
         <div className="sticking-board surface-card">
-          <div className="sticking-groups">
-            {groupedSteps.map((group, groupIndex) => (
-              <div
-                className="sticking-group"
-                style={{ gridTemplateColumns: `repeat(${rate.notesPerBeat}, var(--sticking-cell-width))` }}
-                key={`group-${groupIndex}`}
-              >
-                {group.map((step, stepIndex) => {
-                  const isScrambling = reveal !== null && step.index >= reveal.settled
-                  const isLanding = reveal !== null && !isScrambling
-                  const stroke = isScrambling ? reveal.noise[step.index] : step.stroke
-                  const voiceClass = stroke === 'K' ? 'sticking-foot' : 'sticking-hand'
-                  const stateClass = isScrambling ? ' is-scrambling' : isLanding ? ' is-landing' : ''
-
-                  return (
-                    <div className={`sticking-step${step.isDownbeat ? ' is-downbeat' : ''}`} key={stepIndex}>
-                      <span className="sticking-count">{step.count}</span>
-                      <span className={`sticking-cell ${voiceClass}${stateClass}`}>{stroke}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-
-            <div className="sticking-group sticking-resolution">
-              <div className="sticking-step is-downbeat">
-                <span className="sticking-count">1</span>
-                <span className={`sticking-cell ${resolution.stroke === 'K' ? 'sticking-foot' : 'sticking-hand'}`}>
-                  {resolution.stroke}
-                </span>
-                <span className="sticking-resolution-label">{resolution.label}</span>
-              </div>
-            </div>
-          </div>
+          <FillNotation
+            steps={notationSteps}
+            notesPerBeat={rate.notesPerBeat}
+            beats={strokes.length / rate.notesPerBeat}
+            landing={resolution}
+          />
 
           <div className="sticking-board-actions">
             <button
@@ -2841,13 +2865,20 @@ function StickingGeneratorPage() {
               type="button"
               disabled={reveal !== null || upvoted === fill}
               onClick={upvote}
+              aria-label={upvoted === fill ? 'Liked' : 'Thumbs up'}
+              title={upvoted === fill ? 'Liked' : 'Thumbs up'}
             >
               <ThumbIcon />
-              {upvoted === fill ? 'Liked' : 'Good one'}
             </button>
-            <button className="sticking-vote" type="button" disabled={reveal !== null} onClick={downvote}>
+            <button
+              className="sticking-vote"
+              type="button"
+              disabled={reveal !== null}
+              onClick={downvote}
+              aria-label="Thumbs down"
+              title="Thumbs down"
+            >
               <ThumbIcon down />
-              Not useful
             </button>
             <button className="primary-button" type="button" onClick={() => generateByHand()}>
               Generate Fill
