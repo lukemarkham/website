@@ -3,18 +3,20 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
-## 2026-09-28 — Practice Tools menu grouped by instrument
+## 2026-09-28 — Practice Tools menu split into Drums and Keys
 
 ### What changed
 
-- The Practice Tools nav dropdown now has labelled groups, driven by
-  `practiceToolGroups` in `src/App.jsx`: General (Tempo Guessr, Metronome),
-  Drums (Sticking Generator) and Keys (Ear Trainer). New tools go in that list.
+- The Practice Tools nav dropdown now lists Drums, Keys, Metronome and Tempo
+  Guessr. Drums and Keys open a flyout (hover, or tap on touch screens) with
+  their tools: Sticking Generator and Ear Trainer. On phones the flyout opens
+  in place under its row. The list is `practiceToolMenu` in `src/App.jsx`;
+  an entry with `tools` becomes a submenu (`NavSubmenu`).
 
 ### Open items / ideas
 
 - The home page's Practice Tools section is still one flat grid; it could
-  mirror the same groups.
+  mirror the Drums / Keys split.
 
 ## 2026-09-22 — Sticking Generator overhaul, session timers everywhere
 

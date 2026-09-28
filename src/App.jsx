@@ -301,23 +301,41 @@ function TwitchLiveCard() {
   )
 }
 
-const practiceToolGroups = [
-  {
-    label: 'General',
-    tools: [
-      { label: 'Tempo Guessr', to: '/tempo-guessr' },
-      { label: 'Metronome', to: '/metronome' },
-    ],
-  },
-  {
-    label: 'Drums',
-    tools: [{ label: 'Sticking Generator', to: '/sticking-generator' }],
-  },
-  {
-    label: 'Keys',
-    tools: [{ label: 'Ear Trainer', to: '/ear-training' }],
-  },
+// Drums and Keys open a further menu on hover, or on tap for touch screens.
+const practiceToolMenu = [
+  { label: 'Drums', tools: [{ label: 'Sticking Generator', to: '/sticking-generator' }] },
+  { label: 'Keys', tools: [{ label: 'Ear Trainer', to: '/ear-training' }] },
+  { label: 'Metronome', to: '/metronome' },
+  { label: 'Tempo Guessr', to: '/tempo-guessr' },
 ]
+
+function NavSubmenu({ label, tools }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div
+      className={`nav-submenu${open ? ' is-open' : ''}`}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className="dropdown-link nav-submenu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {label}
+      </button>
+      <div className="nav-submenu-menu" role="menu">
+        {tools.map((tool) => (
+          <Link className="dropdown-link" to={tool.to} key={tool.to}>
+            {tool.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function SiteNav({ showHomeLink = false }) {
   return (
@@ -353,16 +371,15 @@ function SiteNav({ showHomeLink = false }) {
             Practice Tools
           </button>
           <div className="nav-dropdown-menu" role="menu">
-            {practiceToolGroups.map((group) => (
-              <div className="dropdown-group" role="group" aria-label={group.label} key={group.label}>
-                <div className="dropdown-group-label" aria-hidden="true">{group.label}</div>
-                {group.tools.map((tool) => (
-                  <Link className="dropdown-link" to={tool.to} key={tool.to}>
-                    {tool.label}
-                  </Link>
-                ))}
-              </div>
-            ))}
+            {practiceToolMenu.map((item) =>
+              item.tools ? (
+                <NavSubmenu label={item.label} tools={item.tools} key={item.label} />
+              ) : (
+                <Link className="dropdown-link" to={item.to} key={item.to}>
+                  {item.label}
+                </Link>
+              ),
+            )}
           </div>
         </div>
         <a className="nav-link" href="/#store">Beat Store</a>
