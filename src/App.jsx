@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, useParams } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
@@ -5269,6 +5269,92 @@ function TwoFivePage() {
   )
 }
 
+// A student's lesson notes, from the Google Doc Luke keeps for them (see
+// netlify/lib/studentNotes.mjs). The address is the student's name, like
+// /oliver-otto. Pages are unlisted: nothing links to them and search engines
+// are asked to leave them out.
+function StudentPage() {
+  const { slug } = useParams()
+  const [state, setState] = useState({ status: 'loading' })
+
+  useEffect(() => {
+    const robots = document.createElement('meta')
+    robots.name = 'robots'
+    robots.content = 'noindex, nofollow'
+    document.head.appendChild(robots)
+    return () => robots.remove()
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/.netlify/functions/student-notes?slug=${encodeURIComponent(slug)}`)
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        if (cancelled) return
+        if (response.status === 404) setState({ status: 'missing' })
+        else if (!response.ok) setState({ status: 'error', message: data.error })
+        else setState({ status: 'ready', ...data })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: 'error' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [slug])
+
+  useEffect(() => {
+    if (state.status === 'ready') document.title = `${state.name} · Lesson Notes · Luke Markham`
+  }, [state])
+
+  if (state.status === 'missing') return <NotFoundPage />
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Lesson Notes</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>
+          {state.status === 'ready' ? state.name : '\u00a0'}
+        </h1>
+
+        <div className="surface-card student-notes-card" style={cardStyle}>
+          {state.status === 'loading' ? <p className="student-notes-status">Loading notes…</p> : null}
+          {state.status === 'error' ? (
+            <p className="student-notes-status">
+              {"The notes couldn't be loaded right now."}
+              {state.message ? ` (${state.message})` : ''}
+            </p>
+          ) : null}
+          {state.status === 'ready' && !state.html ? (
+            <p className="student-notes-status">Notes from your lessons will show up here.</p>
+          ) : null}
+          {state.status === 'ready' && state.html ? (
+            // Built from an allowlist on the server; nothing from the Doc passes through as-is.
+            <div className="student-notes" dangerouslySetInnerHTML={{ __html: state.html }} />
+          ) : null}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function NotFoundPage() {
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Page not found</h1>
+        <p style={introStyle}>
+          {"There's nothing at this address. "}
+          <Link className="text-link" to="/">Back to the home page</Link>
+        </p>
+      </section>
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -5285,6 +5371,8 @@ function App() {
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
+        <Route path="/:slug" element={<StudentPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <TwitchLiveCard />
     </BrowserRouter>

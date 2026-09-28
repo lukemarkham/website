@@ -3,6 +3,29 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-09-28 (night) — Student notes pages, review check
+
+### What changed
+
+- **Student pages**: `/<first-last>` (for example `/oliver-otto`) shows that
+  student's Google Doc in the site's styling, fetched fresh on every load. On
+  the server, `netlify/lib/studentNotes.mjs` keeps only the Doc's structure:
+  headings, paragraphs, bold, italic and underline, links (Google's redirect
+  wrappers removed), lists with nesting, tables, rules and Google-hosted
+  images. Output is built from an allowlist. The roster is
+  `netlify/lib/students.mjs`, server-only. Pages carry noindex and nothing
+  links to them. Unknown addresses get a new "Page not found" page.
+- **Reviews**: CLAUDE.md now has every session check for screenshots in
+  `src/assets/reviews/` with no entry in `reviews.js`, and transcribe them.
+  There never was an automated tool; past sessions did it when they noticed.
+
+### Open items / ideas
+
+- Oliver Otto's page exists, but his Doc link isn't set yet, so it shows
+  "Notes from your lessons will show up here."
+- Once lukemarkham.com points at Netlify, the old Bandzoogle student links
+  keep working as-is.
+
 ## 2026-09-28 (evening) — ii-Vs, Ear Trainer moved, piano samples
 
 ### What changed

@@ -2247,6 +2247,131 @@ code {
   text-align: center;
 }
 
+/* A student's notes, restyled from their Google Doc. */
+.student-notes-card {
+  max-width: 820px;
+  margin: 18px auto 0;
+  text-align: left;
+}
+
+.student-notes-status {
+  margin: 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.student-notes {
+  color: var(--text-soft);
+  font-size: 1.02rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.student-notes > :first-child {
+  margin-top: 0;
+}
+
+.student-notes h2,
+.student-notes h3,
+.student-notes h4,
+.student-notes h5,
+.student-notes h6 {
+  margin: 1.8em 0 0.5em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.student-notes h2 {
+  font-size: 1.6rem;
+}
+
+.student-notes h3 {
+  font-size: 1.3rem;
+}
+
+.student-notes h4,
+.student-notes h5,
+.student-notes h6 {
+  font-size: 1.08rem;
+}
+
+.student-notes p {
+  margin: 0 0 0.8em;
+}
+
+.student-notes .subtitle {
+  color: var(--text-muted);
+}
+
+.student-notes strong {
+  color: var(--text);
+}
+
+.student-notes a {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.student-notes ul,
+.student-notes ol {
+  margin: 0 0 0.8em;
+  padding-left: 1.4em;
+}
+
+.student-notes ul + ul,
+.student-notes ol + ol {
+  margin-top: -0.8em;
+}
+
+.student-notes .level-1 { padding-left: 2.8em; }
+.student-notes .level-2 { padding-left: 4.2em; }
+.student-notes .level-3,
+.student-notes .level-4,
+.student-notes .level-5,
+.student-notes .level-6 { padding-left: 5.6em; }
+
+.student-notes li {
+  margin: 0.2em 0;
+}
+
+.student-notes hr {
+  margin: 1.8em 0;
+  border: 0;
+  border-top: 1px solid var(--surface-border);
+}
+
+.student-notes img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.8em 0;
+  border-radius: 8px;
+}
+
+.student-notes .notes-table {
+  margin: 0 0 1em;
+  overflow-x: auto;
+}
+
+.student-notes table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.student-notes td,
+.student-notes th {
+  padding: 8px 12px;
+  border: 1px solid var(--surface-border);
+  vertical-align: top;
+}
+
+.student-notes tr:first-child td {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .ear-question-meta {
   display: flex;
   flex-wrap: wrap;
