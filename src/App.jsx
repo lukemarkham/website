@@ -28,6 +28,7 @@ import {
   isHand,
   limbName,
 } from './lib/independence'
+import { MIN_NOTES, matchesChord, randomTwoFive } from './lib/twoFives'
 import {
   BASS_INSTRUMENTS,
   CHORD_INSTRUMENTS,
@@ -320,7 +321,8 @@ const practiceToolMenu = [
       { label: 'Independence', to: '/independence' },
     ],
   },
-  { label: 'Keys', tools: [{ label: 'Ear Trainer', to: '/ear-training' }] },
+  { label: 'Keys', tools: [{ label: 'ii-Vs', to: '/ii-vs' }] },
+  { label: 'Ear Trainer', to: '/ear-training' },
   { label: 'Metronome', to: '/metronome' },
   { label: 'Tempo Guessr', to: '/tempo-guessr' },
 ]
@@ -755,6 +757,13 @@ function HomePage() {
               Hear a jazz or neo-soul progression, then name the one chord missing from the chart.
             </p>
             <Link className="text-link" to="/ear-training">Go to Ear Trainer</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">ii-Vs</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              A random major or minor key comes up; play its ii-V on a MIDI keyboard to move on.
+            </p>
+            <Link className="text-link" to="/ii-vs">Go to ii-Vs</Link>
           </div>
         </div>
       </section>
@@ -4914,6 +4923,312 @@ function EarTrainerPage() {
   )
 }
 
+const TWO_FIVE_MODE_OPTIONS = [
+  { id: 'both', label: 'Both', modes: ['major', 'minor'] },
+  { id: 'major', label: 'Major', modes: ['major'] },
+  { id: 'minor', label: 'Minor', modes: ['minor'] },
+]
+const TWO_FIVE_NEXT_DELAY_MS = 1400
+const TWO_FIVE_SOUND_KEY = 'lm-ii-v-sound'
+
+// A key comes up; play its ii and then its V on a MIDI keyboard. Each chord
+// is checked as it is held (see src/lib/twoFives.js), and once the V lands
+// the next key follows on its own.
+function TwoFivePage() {
+  const [modeId, setModeId] = useState('both')
+  const modes = TWO_FIVE_MODE_OPTIONS.find((item) => item.id === modeId).modes
+  const [question, setQuestion] = useState(() => randomTwoFive(['major', 'minor'], null))
+  // 0 waits for the ii, 1 for the V, 2 is solved.
+  const [step, setStep] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [miss, setMiss] = useState(null)
+  const [held, setHeld] = useState([])
+  const [stats, setStats] = useState({ solved: 0, streak: 0, best: 0, totalSeconds: 0 })
+  const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
+  const [soundOn, setSoundOn] = useState(() => {
+    try {
+      return window.localStorage.getItem(TWO_FIVE_SOUND_KEY) !== 'off'
+    } catch {
+      return true
+    }
+  })
+  const midiRef = useRef(null)
+  const engineRef = useRef(null)
+  const liveVoicesRef = useRef(new Map())
+  const nextTimeoutRef = useRef(null)
+  const askedAtRef = useRef(null)
+  // The MIDI callbacks are made once, on connect, so they read the question
+  // as it stands now off this ref rather than the render they were made in.
+  const liveRef = useRef({ question, step: 0, revealed: false, matchedThisGesture: false, soundOn, solve: () => {} })
+
+  useEffect(() => {
+    askedAtRef.current = performance.now()
+  }, [question])
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(nextTimeoutRef.current)
+      midiRef.current?.close()
+      engineRef.current?.close()
+    }
+  }, [])
+
+  function ask(nextModes = modes) {
+    window.clearTimeout(nextTimeoutRef.current)
+    setQuestion((current) => randomTwoFive(nextModes, current))
+    setStep(0)
+    setRevealed(false)
+    setMiss(null)
+    liveRef.current.step = 0
+    liveRef.current.matchedThisGesture = false
+  }
+
+  function solve() {
+    const seconds = (performance.now() - askedAtRef.current) / 1000
+    const clean = !liveRef.current.revealed
+    setStats((current) => {
+      const streak = clean ? current.streak + 1 : 0
+      return {
+        solved: current.solved + 1,
+        streak,
+        best: Math.max(current.best, streak),
+        totalSeconds: current.totalSeconds + seconds,
+      }
+    })
+    const engine = engineRef.current
+    if (engine && engine.ctx.state === 'running') playFillChangeChime(engine.ctx, engine.ctx.currentTime)
+    nextTimeoutRef.current = window.setTimeout(() => ask(), TWO_FIVE_NEXT_DELAY_MS)
+  }
+
+  function skip() {
+    setStats((current) => ({ ...current, streak: 0 }))
+    ask()
+  }
+
+  function soundLiveNote({ note, on, velocity }) {
+    const engine = engineRef.current
+    const voices = liveVoicesRef.current
+    voices.get(note)?.release()
+    voices.delete(note)
+    if (!on || !liveRef.current.soundOn || !engine || engine.ctx.state !== 'running') return
+    voices.set(note, playLiveNote(engine, note, velocity))
+  }
+
+  // Held is what's down right now, so a chord counts the moment the last of
+  // its notes goes down, and moving from the ii to the V with common tones
+  // held works. A chord let go of without matching gets a hint.
+  function hearChord({ chord, held: heldNow }) {
+    const live = liveRef.current
+    setHeld(heldNow)
+    if (live.step > 1) {
+      if (heldNow.length === 0) live.matchedThisGesture = false
+      return
+    }
+
+    const target = live.question.chords[live.step]
+    if (heldNow.length > 0 && matchesChord(heldNow, target)) {
+      live.matchedThisGesture = true
+      live.step += 1
+      setStep(live.step)
+      setMiss(null)
+      if (live.step === 2) live.solve()
+      return
+    }
+
+    if (heldNow.length === 0) {
+      if (!live.matchedThisGesture && chord.length >= MIN_NOTES) {
+        const heard = recogniseChord(chord, live.question.key)
+        setMiss({ role: target.role, heard: heard?.symbol ?? null })
+      }
+      live.matchedThisGesture = false
+    }
+  }
+
+  async function connectMidiKeyboard() {
+    if (!MIDI_SUPPORTED || midi.status === 'connecting' || midi.status === 'ready') return
+    setMidi((previous) => ({ ...previous, status: 'connecting', error: null }))
+    try {
+      // The connect button is the user gesture the audio clock needs.
+      if (!engineRef.current) engineRef.current = createEngine()
+      await engineRef.current.ensure()
+      const connection = await connectMidi({
+        onNote: soundLiveNote,
+        onChord: hearChord,
+        onDevices: (devices) => setMidi((previous) => ({ ...previous, devices })),
+        onError: (error) => setMidi((previous) => ({ ...previous, error: String(error?.message ?? error) })),
+      })
+      midiRef.current = connection
+      askedAtRef.current = performance.now()
+      setMidi({ status: 'ready', devices: connection.devices, error: null })
+    } catch (error) {
+      setMidi({ status: 'denied', devices: [], error: String(error?.message ?? error) })
+    }
+  }
+
+  function toggleSound(next) {
+    setSoundOn(next)
+    try {
+      window.localStorage.setItem(TWO_FIVE_SOUND_KEY, next ? 'on' : 'off')
+    } catch {
+      // Not remembered, still applied.
+    }
+  }
+
+  // Declared after solve so the ref always holds this render's copy.
+  useEffect(() => {
+    liveRef.current = { ...liveRef.current, question, step, revealed, soundOn, solve }
+  })
+
+  const accidental = question.key.accidental
+  const averageSeconds = stats.solved > 0 ? stats.totalSeconds / stats.solved : null
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools · Keys</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>ii-Vs</h1>
+        <p style={introStyle}>
+          A key comes up. Play its ii and then its V on your MIDI keyboard, in any voicing with the third and
+          seventh in it, and the next key follows as soon as the V lands.
+        </p>
+
+        <div className="twofive-layout">
+          <div className="twofive-main">
+            <div className="surface-card twofive-controls" style={cardStyle}>
+              <div className="twofive-control">
+                <span className="control-label">Keys</span>
+                <div className="sticking-chips">
+                  {TWO_FIVE_MODE_OPTIONS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`ear-level-chip${item.id === modeId ? ' is-active' : ''}`}
+                      aria-pressed={item.id === modeId}
+                      onClick={() => {
+                        setModeId(item.id)
+                        ask(item.modes)
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="twofive-control">
+                <span className="control-label">Sound</span>
+                <div className="sticking-chips">
+                  {[true, false].map((item) => (
+                    <button
+                      key={String(item)}
+                      type="button"
+                      className={`ear-level-chip${item === soundOn ? ' is-active' : ''}`}
+                      aria-pressed={item === soundOn}
+                      onClick={() => toggleSound(item)}
+                    >
+                      {item ? 'On' : 'Off'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className={`surface-card twofive-question${step === 2 ? ' is-solved' : ''}`} style={cardStyle}>
+              <span className="control-label">Your key</span>
+              <div key={`${question.key.pc}-${question.mode}`} className="twofive-key">{question.key.label}</div>
+
+              <div className="twofive-chords">
+                {question.chords.map((chord, index) => {
+                  const isDone = step > index
+                  const isCurrent = step === index && midi.status === 'ready'
+                  return (
+                    <div
+                      key={chord.role}
+                      className={`twofive-chord${isDone ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}`}
+                    >
+                      <span className="twofive-role">{chord.role}</span>
+                      <span className="twofive-symbol">{isDone || revealed ? chord.symbol : '?'}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="twofive-status" aria-live="polite">
+                {step === 2
+                  ? 'Got it. Next key coming up.'
+                  : miss
+                    ? `Not the ${miss.role}${miss.heard ? `: that sounded like ${miss.heard}` : ''}.`
+                    : midi.status === 'ready'
+                      ? `Play the ${question.chords[Math.min(step, 1)].role}.`
+                      : ''}
+              </div>
+
+              <div className="ear-midi-row twofive-midi">
+                {midi.status === 'unsupported' ? (
+                  <span className="ear-midi-note">This browser can't read MIDI. Try Chrome or Edge.</span>
+                ) : midi.status === 'ready' ? (
+                  <>
+                    <span className="ear-midi-badge">{midi.devices.length > 0 ? midi.devices.join(', ') : 'Waiting for a keyboard'}</span>
+                    {held.length > 0 ? (
+                      <span className="ear-midi-held">{held.map((note) => midiNoteLabel(note, accidental)).join(' ')}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="ear-midi-connect"
+                      type="button"
+                      onClick={connectMidiKeyboard}
+                      disabled={midi.status === 'connecting'}
+                    >
+                      {midi.status === 'connecting' ? 'Asking…' : 'Connect MIDI keyboard'}
+                    </button>
+                    {midi.status === 'denied' ? <span className="ear-midi-note">No keyboard: {midi.error}</span> : null}
+                  </>
+                )}
+              </div>
+
+              <div className="twofive-actions">
+                <button className="secondary-button" type="button" disabled={revealed || step === 2} onClick={() => setRevealed(true)}>
+                  Show Answer
+                </button>
+                <button className="primary-button" type="button" onClick={skip}>
+                  Skip
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <aside className="ear-sidebar">
+            <PracticeTimer />
+
+            <div className="surface-card ear-score-card" style={cardStyle}>
+              <span className="control-label">Session</span>
+              <div className="ear-score-big">{stats.solved}</div>
+              <span className="ear-score-unit">solved</span>
+              <div className="ear-stat-grid">
+                <div className={`ear-stat${stats.streak >= 3 ? ' is-hot' : ''}`}>
+                  <strong>{stats.streak}</strong>
+                  <span>streak</span>
+                </div>
+                <div className="ear-stat">
+                  <strong>{stats.best}</strong>
+                  <span>best</span>
+                </div>
+                <div className="ear-stat">
+                  <strong>{averageSeconds === null ? '–' : `${averageSeconds.toFixed(1)}s`}</strong>
+                  <span>average</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -4925,6 +5240,7 @@ function App() {
         <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
         <Route path="/independence" element={<IndependencePage />} />
         <Route path="/ear-training" element={<EarTrainerPage />} />
+        <Route path="/ii-vs" element={<TwoFivePage />} />
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />

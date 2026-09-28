@@ -3,6 +3,29 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-09-28 (evening) — ii-Vs, Ear Trainer moved
+
+### What changed
+
+- **ii-Vs** (`/ii-vs`, under Keys): a random major or minor key comes up.
+  Play its ii and then its V on a MIDI keyboard, and the next key follows on
+  its own about 1.4 s after the V lands. `src/lib/twoFives.js` checks each
+  chord against the notes held down. It needs 3 or more notes including the
+  3rd and 7th. The root and 5th are optional, and any other note must be a
+  tension the chord takes. The ii is m7 in major and ø7 in minor. The V takes
+  any usual dominant tension, natural or altered. A chord released without
+  matching shows "Not the ii: that sounded like X". There is a Major / Minor /
+  Both filter, a Sound on/off toggle (for keyboards without speakers), Show
+  Answer, Skip, and stats: solved, streak, best, average time. Show Answer or
+  Skip breaks the streak.
+- **Ear Trainer** is now a top-level Practice Tools item, next to Metronome
+  and Tempo Guessr. Keys holds only ii-Vs.
+
+### Open items / ideas
+
+- Next for ii-Vs: specific extensions on the V (for example ♭9 in minor, 13
+  in major), and possibly requiring the I, or a voice-led ii-V-I.
+
 ## 2026-09-28 (later) — Fill Generator rename, new Sticking Generator, Independence
 
 ### What changed
