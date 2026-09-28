@@ -19,6 +19,21 @@ Originals go in the gitignored `src/assets/photography/`; only the generated
 WebPs in `src/assets/photography-optimized/` are committed. See the Photography
 section of `README.md` for the full workflow and its gotchas.
 
+## Reviews
+
+The home page review gallery shows text from `src/data/reviews.js`; the
+SoundBetter screenshots in `src/assets/reviews/` are only source material, and
+Luke adds new ones without transcribing them. After the start-of-session pull,
+check that every `screenshot_review_<id>.png` has a `review-<id>` entry:
+
+    diff <(ls src/assets/reviews | sed -n 's/^screenshot_review_\(.*\)\.png$/\1/p' | sort) \
+         <(grep -o "review-[0-9]*" src/data/reviews.js | sed 's/review-//' | sort)
+
+For each screenshot missing an entry, read the image and append `{ id, quote,
+source, stars }` in id order, keeping the reviewer's wording (fix only obvious
+typos; if a screenshot is cut off, keep the complete sentences). Commit the
+screenshot with its entry and tell Luke which reviews were added.
+
 ## Practice tools
 
 Every practice tool gets a session timer. Drop in the shared `<PracticeTimer />`
