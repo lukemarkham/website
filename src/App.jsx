@@ -19,6 +19,15 @@ import {
 } from './lib/harmony'
 import { connectMidi, isMidiSupported } from './lib/midiInput'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
+import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
+import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
+import {
+  COUNT_SYLLABLES,
+  INSTRUMENTS,
+  generateIndependenceExercise,
+  isHand,
+  limbName,
+} from './lib/independence'
 import {
   BASS_INSTRUMENTS,
   CHORD_INSTRUMENTS,
@@ -303,7 +312,14 @@ function TwitchLiveCard() {
 
 // Drums and Keys open a further menu on hover, or on tap for touch screens.
 const practiceToolMenu = [
-  { label: 'Drums', tools: [{ label: 'Sticking Generator', to: '/sticking-generator' }] },
+  {
+    label: 'Drums',
+    tools: [
+      { label: 'Fill Generator', to: '/fill-generator' },
+      { label: 'Sticking Generator', to: '/sticking-generator' },
+      { label: 'Independence', to: '/independence' },
+    ],
+  },
   { label: 'Keys', tools: [{ label: 'Ear Trainer', to: '/ear-training' }] },
   { label: 'Metronome', to: '/metronome' },
   { label: 'Tempo Guessr', to: '/tempo-guessr' },
@@ -713,11 +729,25 @@ function HomePage() {
             <Link className="text-link" to="/metronome">Go to Metronome</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Fill Generator</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Generate linear fills built from rudiments, resolving on the kick or snare.
+            </p>
+            <Link className="text-link" to="/fill-generator">Go to Fill Generator</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Sticking Generator</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Generate linear fill stickings built from rudiments, resolving on the kick or snare.
+              Hands-only stickings built from rudiments, looped through the bar with accents.
             </p>
             <Link className="text-link" to="/sticking-generator">Go to Sticking Generator</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Independence</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Four-limb coordination exercises, from comping basics to ostinatos, groupings and metric modulation.
+            </p>
+            <Link className="text-link" to="/independence">Go to Independence</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Progression Ear Trainer</h3>
@@ -883,7 +913,7 @@ function randomInt(min, max) {
 // Fills are built from cells: short rudiments, and linear versions of them
 // with some strokes moved to the kick. Each cell is written right-hand lead;
 // the left-lead mirror is added automatically.
-const STICKING_CELLS = [
+const FILL_CELLS = [
   { pattern: 'RL', name: 'Single strokes', weight: 1 },
   { pattern: 'RR', name: 'Double stroke', weight: 1 },
   { pattern: 'RLRR', name: 'Paradiddle', weight: 2 },
@@ -909,14 +939,14 @@ const STICKING_CELLS = [
   return cells
 })
 
-const STICKING_RATES = [
+const FILL_RATES = [
   { id: 'sixteenth', label: '16ths', notesPerBeat: 4, counts: ['', 'e', '&', 'a'] },
   { id: 'triplet', label: 'Triplets', notesPerBeat: 3, counts: ['', '&', 'a'] },
 ]
 
 // The resolution is the downbeat the fill lands on. A snare landing is taken
 // with the right hand, so the fill is checked against that stroke too.
-const STICKING_RESOLUTIONS = [
+const FILL_RESOLUTIONS = [
   { id: 'kick', label: 'Kick', stroke: 'K' },
   { id: 'snare', label: 'Snare', stroke: 'R' },
 ]
@@ -935,7 +965,7 @@ function pickWeighted(items) {
 // Fills get played two ways, so the three-in-a-row rule holds for both: once
 // through into the landing stroke, and looped, where the end runs straight
 // back into the start.
-function isPlayableSticking(strokes, resolutionStroke) {
+function isPlayableFill(strokes, resolutionStroke) {
   const withResolution = [...strokes, resolutionStroke]
   for (let index = 2; index < withResolution.length; index += 1) {
     const stroke = withResolution[index]
@@ -952,75 +982,88 @@ function isPlayableSticking(strokes, resolutionStroke) {
   return !(strokes.at(-1) === 'K' && strokes.at(-2) === 'K')
 }
 
-// Recent fills are kept in this browser so a new one avoids repeating them,
-// within a session and across visits.
-const STICKING_HISTORY_KEY = 'lm-sticking-history'
-const STICKING_HISTORY_LIMIT = 300
+// Recent picks from each generator are kept in this browser so a new one
+// avoids repeating them, within a session and across visits.
+const GENERATOR_HISTORY_LIMIT = 300
 
-function getStickingId(rateId, strokes, resolutionStroke) {
-  return `${rateId}:${strokes.join('')}>${resolutionStroke}`
+function historyKey(tool) {
+  return `lm-${tool}-history`
 }
 
-function readStickingHistory() {
+function readHistory(tool) {
   try {
-    const history = JSON.parse(window.localStorage.getItem(STICKING_HISTORY_KEY))
+    const history = JSON.parse(window.localStorage.getItem(historyKey(tool)))
     return Array.isArray(history) ? history : []
   } catch {
     return []
   }
 }
 
-function rememberSticking(id) {
+function rememberInHistory(tool, id) {
   try {
-    const history = [id, ...readStickingHistory().filter((item) => item !== id)]
-    window.localStorage.setItem(STICKING_HISTORY_KEY, JSON.stringify(history.slice(0, STICKING_HISTORY_LIMIT)))
+    const history = [id, ...readHistory(tool).filter((item) => item !== id)]
+    window.localStorage.setItem(historyKey(tool), JSON.stringify(history.slice(0, GENERATOR_HISTORY_LIMIT)))
   } catch {
     // Without storage the generator still works; it just can't remember.
   }
 }
 
-// Downvoted fills are identified by sticking and landing alone: a sticking
-// that sits badly under the hands is awkward at either rate.
-function getDownvoteKey(strokes, resolutionStroke) {
-  return `${strokes.join('')}>${resolutionStroke}`
-}
-
-function getRandomFill(length, resolutionStroke, rateId, downvoted = new Set()) {
-  const history = readStickingHistory()
+// Draws until something fresh comes up. Something that hasn't come up recently
+// wins outright. Small option sets can run out of fresh ones, so otherwise the
+// one seen longest ago is used, and a downvoted one only if nothing else will
+// do. draw() returns null when a candidate breaks the generator's rules.
+function drawFresh(tool, draw, { idOf, downvoteKeyOf, downvoted, attempts = 1000 }) {
+  const history = readHistory(tool)
   let fallback = null
   let fallbackAge = -1
   let lastResort = null
 
-  // Random cells rarely break the rules, so drawing again until they fit is
-  // quick; single strokes and a lone kick can always close out the bar. A
-  // fill that hasn't come up recently wins outright. Short lengths can run
-  // out of fresh ones, so otherwise the one seen longest ago is used, and a
-  // downvoted fill only if nothing else will do.
-  for (let attempt = 0; attempt < 1000; attempt += 1) {
-    const cells = []
-    let remaining = length
-    while (remaining > 0) {
-      const cell = pickWeighted(STICKING_CELLS.filter((item) => item.strokes.length <= remaining))
-      cells.push(cell)
-      remaining -= cell.strokes.length
-    }
-
-    const strokes = cells.flatMap((cell) => cell.strokes)
-    if (!isPlayableSticking(strokes, resolutionStroke)) continue
-    if (downvoted.has(getDownvoteKey(strokes, resolutionStroke))) {
-      lastResort = cells
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const candidate = draw()
+    if (!candidate) continue
+    if (downvoted.has(downvoteKeyOf(candidate))) {
+      lastResort = candidate
       continue
     }
 
-    const age = history.indexOf(getStickingId(rateId, strokes, resolutionStroke))
-    if (age === -1) return cells
+    const age = history.indexOf(idOf(candidate))
+    if (age === -1) return candidate
     if (age > fallbackAge) {
-      fallback = cells
+      fallback = candidate
       fallbackAge = age
     }
   }
 
   return fallback ?? lastResort
+}
+
+function getFillId(rateId, strokes, resolutionStroke) {
+  return `${rateId}:${strokes.join('')}>${resolutionStroke}`
+}
+
+// Downvoted fills are identified by sticking and landing alone: a sticking
+// that sits badly under the hands is awkward at either rate.
+function getFillDownvoteKey(strokes, resolutionStroke) {
+  return `${strokes.join('')}>${resolutionStroke}`
+}
+
+// Random cells rarely break the rules, so drawing again until they fit is
+// quick; single strokes and a lone kick can always close out the bar.
+function getRandomFill(length, resolutionStroke, rateId, downvoted = new Set()) {
+  return drawFresh('fill', () => {
+    const cells = []
+    let remaining = length
+    while (remaining > 0) {
+      const cell = pickWeighted(FILL_CELLS.filter((item) => item.strokes.length <= remaining))
+      cells.push(cell)
+      remaining -= cell.strokes.length
+    }
+    return isPlayableFill(cells.flatMap((cell) => cell.strokes), resolutionStroke) ? cells : null
+  }, {
+    idOf: (cells) => getFillId(rateId, cells.flatMap((cell) => cell.strokes), resolutionStroke),
+    downvoteKeyOf: (cells) => getFillDownvoteKey(cells.flatMap((cell) => cell.strokes), resolutionStroke),
+    downvoted,
+  })
 }
 
 function getDefaultMetronomeProbabilities() {
@@ -1961,7 +2004,7 @@ function MetronomePage() {
   )
 }
 
-const STICKING_ROTATION_OPTIONS = [
+const PRACTICE_ROTATION_OPTIONS = [
   { seconds: 0, label: 'Never' },
   { seconds: 30, label: 'Every 30 sec' },
   { seconds: 60, label: 'Every 1 min' },
@@ -1970,18 +2013,28 @@ const STICKING_ROTATION_OPTIONS = [
   { seconds: 300, label: 'Every 5 min' },
 ]
 
-const STICKING_TEMPO_LIMITS = { min: 40, max: 240 }
-const STICKING_DEFAULT_TEMPO_RANGE = [90, 150]
-const STICKING_COUNT_IN_BEATS = 4
-const STICKING_CHIME_SECONDS = 0.7
-const STICKING_REVEAL_MS = 1500
+const PRACTICE_TEMPO_LIMITS = { min: 40, max: 240 }
+const FILL_DEFAULT_TEMPO_RANGE = [90, 150]
+const PRACTICE_COUNT_IN_BEATS = 4
+const PRACTICE_CHIME_SECONDS = 0.7
+const PRACTICE_REVEAL_MS = 1500
 // Rendered by scripts/generate-count-in.sh.
-const STICKING_COUNT_IN_URLS = [1, 2, 3, 4].map((beat) => `/audio/count-in/${beat}.wav`)
+const PRACTICE_COUNT_IN_URLS = [1, 2, 3, 4].map((beat) => `/audio/count-in/${beat}.wav`)
 
-const STICKING_FEEDBACK_URL = '/.netlify/functions/sticking-feedback'
-const STICKING_OUTBOX_KEY = 'lm-sticking-feedback-outbox'
-const STICKING_DOWNVOTES_KEY = 'lm-sticking-downvotes'
-const STICKING_FEEDBACK_TAGS = [
+// Each generator's votes go to its own store: see netlify/lib/practiceFeedback.mjs.
+function feedbackUrl(tool) {
+  return `/.netlify/functions/practice-feedback?tool=${tool}`
+}
+
+function outboxKey(tool) {
+  return `lm-${tool}-feedback-outbox`
+}
+
+function downvotesKey(tool) {
+  return `lm-${tool}-downvotes`
+}
+
+const FILL_FEEDBACK_TAGS = [
   'Awkward hand motion',
   'Awkward kick placement',
   'Weak lead-in to the landing',
@@ -1990,6 +2043,26 @@ const STICKING_FEEDBACK_TAGS = [
   'Too few kicks',
   'Breaks a rule',
   'Not musical',
+]
+
+const STICKING_FEEDBACK_TAGS = [
+  'Awkward hand motion',
+  "Doesn't loop smoothly",
+  'Too repetitive',
+  'Accents feel wrong',
+  'Too easy',
+  'Too hard',
+  'Not musical',
+]
+
+const INDEPENDENCE_FEEDBACK_TAGS = [
+  'Too easy',
+  'Too hard',
+  'Awkward limb combination',
+  'Not musical',
+  'Notation hard to read',
+  'Takes too long to come around',
+  'Wrong feel',
 ]
 
 function readStoredList(key) {
@@ -2009,19 +2082,35 @@ function writeStoredList(key, list) {
   }
 }
 
+// Fills were called stickings until the hands-only Sticking Generator took
+// the name, so this browser's fill history, downvotes and unsent votes move
+// over to the fill keys once, before the new generator can read them.
+try {
+  if (!window.localStorage.getItem('lm-fill-keys-migrated')) {
+    ;['history', 'downvotes', 'feedback-outbox'].forEach((name) => {
+      const value = window.localStorage.getItem(`lm-sticking-${name}`)
+      if (value !== null) window.localStorage.setItem(`lm-fill-${name}`, value)
+      window.localStorage.removeItem(`lm-sticking-${name}`)
+    })
+    window.localStorage.setItem('lm-fill-keys-migrated', '1')
+  }
+} catch {
+  // No storage, nothing to move.
+}
+
 // Votes queue here first and are sent from the queue, so a vote cast with no
 // connection (or with the dev server down) goes out on the next try.
-let isFlushingOutbox = false
+const flushingOutboxes = new Set()
 
-async function flushStickingOutbox() {
-  if (isFlushingOutbox) return
-  isFlushingOutbox = true
+async function flushFeedbackOutbox(tool) {
+  if (flushingOutboxes.has(tool)) return
+  flushingOutboxes.add(tool)
 
   try {
-    for (const entry of readStoredList(STICKING_OUTBOX_KEY)) {
+    for (const entry of readStoredList(outboxKey(tool))) {
       let response
       try {
-        response = await fetch(STICKING_FEEDBACK_URL, {
+        response = await fetch(feedbackUrl(tool), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entry),
@@ -2032,16 +2121,43 @@ async function flushStickingOutbox() {
 
       // A 4xx will never succeed, so drop it rather than retrying forever.
       if (!response.ok && response.status >= 500) return
-      writeStoredList(STICKING_OUTBOX_KEY, readStoredList(STICKING_OUTBOX_KEY).filter((item) => item.queuedAt !== entry.queuedAt))
+      writeStoredList(outboxKey(tool), readStoredList(outboxKey(tool)).filter((item) => item.queuedAt !== entry.queuedAt))
     }
   } finally {
-    isFlushingOutbox = false
+    flushingOutboxes.delete(tool)
   }
 }
 
-function sendStickingFeedback(entry) {
-  writeStoredList(STICKING_OUTBOX_KEY, [...readStoredList(STICKING_OUTBOX_KEY), { ...entry, queuedAt: Date.now() }])
-  flushStickingOutbox()
+function sendFeedback(tool, entry) {
+  writeStoredList(outboxKey(tool), [...readStoredList(outboxKey(tool)), { ...entry, queuedAt: Date.now() }])
+  flushFeedbackOutbox(tool)
+}
+
+function rememberDownvote(tool, key) {
+  writeStoredList(downvotesKey(tool), [...new Set([...readStoredList(downvotesKey(tool)), key])])
+}
+
+// Downvotes from this browser straight away, and everyone's once the feedback
+// store answers, so a bad pick stays gone on both machines. Also sends any
+// votes still queued from last time.
+function useDownvotes(tool, keyOfEntry) {
+  const [initial] = useState(() => new Set(readStoredList(downvotesKey(tool))))
+  const downvotedRef = useRef(initial)
+  const keyOfEntryRef = useRef(keyOfEntry)
+
+  useEffect(() => {
+    flushFeedbackOutbox(tool)
+    fetch(feedbackUrl(tool))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        data?.entries
+          ?.filter((entry) => entry.vote === 'down')
+          .forEach((entry) => downvotedRef.current.add(keyOfEntryRef.current(entry)))
+      })
+      .catch(() => {})
+  }, [tool])
+
+  return downvotedRef
 }
 
 function playFillChangeChime(ctx, time) {
@@ -2084,13 +2200,14 @@ function playCountInKnock(ctx, time) {
   })
 }
 
-// A pared-back metronome for the sticking page: a 4/4 click with beat one
-// accented and a session countdown, at the tempo the current fill picked.
-// When the new-fill interval runs out, the click stops on the next downbeat
-// for a chime, the new fill is revealed, and a spoken one-bar count-in brings
-// the click back. The page can also pause it (while a downvote is explained)
-// and resume it, with or without a new fill.
-function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef }) {
+// A pared-back metronome for the generator pages: a 4/4 click with beat one
+// accented and a session countdown, at the tempo the current fill (or
+// sticking, or exercise) picked. When the interval for a new one runs out,
+// the click stops at the end of the current cycle for a chime, the new one is
+// revealed, and a spoken one-bar count-in brings the click back. The page can
+// also pause it (while a downvote is explained) and resume it, with or
+// without a new one.
+function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFillCount, controlRef }) {
   const [sessionMinutes, setSessionMinutes] = useState(10)
   const [rotationSeconds, setRotationSeconds] = useState(60)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -2104,7 +2221,9 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
   const wakeLockRef = useRef(null)
   const runRef = useRef(null)
   const tempoRef = useRef(tempo)
-  const onNewFillRef = useRef(onNewFill)
+  const onNewFillRef = useRef(onNewItem)
+  const cycleBarsRef = useRef(cycleBars)
+  const itemTitle = itemName[0].toUpperCase() + itemName.slice(1)
   const voiceFilesRef = useRef(null)
   const voiceBuffersRef = useRef(null)
 
@@ -2113,13 +2232,17 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
   }, [tempo])
 
   useEffect(() => {
-    onNewFillRef.current = onNewFill
-  }, [onNewFill])
+    onNewFillRef.current = onNewItem
+  }, [onNewItem])
+
+  useEffect(() => {
+    cycleBarsRef.current = cycleBars
+  }, [cycleBars])
 
   // Fetch the count-in early; decoding waits for an audio context.
   useEffect(() => {
     voiceFilesRef.current = Promise.all(
-      STICKING_COUNT_IN_URLS.map((url) => fetch(url).then((response) => {
+      PRACTICE_COUNT_IN_URLS.map((url) => fetch(url).then((response) => {
         if (!response.ok) throw new Error(`${url}: ${response.status}`)
         return response.arrayBuffer()
       })),
@@ -2215,14 +2338,17 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
       if (run.sessionEndsAt !== null && time >= run.sessionEndsAt) return
 
       const beatInBar = run.beatIndex % 4
-      const isCountIn = run.beatIndex < STICKING_COUNT_IN_BEATS
+      const isCountIn = run.beatIndex < PRACTICE_COUNT_IN_BEATS
 
       // The interval starts counting once the count-in is over.
-      if (run.beatIndex === STICKING_COUNT_IN_BEATS && run.rotationSeconds > 0) {
+      if (run.beatIndex === PRACTICE_COUNT_IN_BEATS && run.rotationSeconds > 0) {
         run.nextFillAt = time + run.rotationSeconds
       }
 
-      if (!isCountIn && beatInBar === 0 && run.nextFillAt !== null && time >= run.nextFillAt) {
+      // Changes wait for the end of the cycle, so a figure that takes a few
+      // bars to come around gets played through.
+      const isCycleStart = (run.beatIndex - PRACTICE_COUNT_IN_BEATS) % (4 * cycleBarsRef.current) === 0
+      if (!isCountIn && isCycleStart && run.nextFillAt !== null && time >= run.nextFillAt) {
         changeFill(ctx, time)
         continue
       }
@@ -2247,14 +2373,14 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
   // and the reveal and start a fresh count-in from there.
   function changeFill(ctx, time) {
     const run = runRef.current
-    const resumeAt = time + STICKING_CHIME_SECONDS + STICKING_REVEAL_MS / 1000 + 0.3
+    const resumeAt = time + PRACTICE_CHIME_SECONDS + PRACTICE_REVEAL_MS / 1000 + 0.3
 
     run.nextFillAt = null
     run.nextBeatTime = resumeAt
     run.beatIndex = 0
     playFillChangeChime(ctx, time)
-    atAudioTime(ctx, time, () => setBanner('New fill'))
-    atAudioTime(ctx, time + STICKING_CHIME_SECONDS, () => onNewFillRef.current())
+    atAudioTime(ctx, time, () => setBanner(`New ${itemName}`))
+    atAudioTime(ctx, time + PRACTICE_CHIME_SECONDS, () => onNewFillRef.current())
   }
 
   function updateClock(ctx) {
@@ -2331,9 +2457,9 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
     }
 
     const now = ctx.currentTime
-    const startsAt = now + (newFill ? STICKING_REVEAL_MS / 1000 : 0) + 0.3
+    const startsAt = now + (newFill ? PRACTICE_REVEAL_MS / 1000 : 0) + 0.3
     if (newFill) {
-      setBanner('New fill')
+      setBanner(`New ${itemName}`)
       onNewFillRef.current()
     } else {
       setBanner(null)
@@ -2397,7 +2523,7 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
         </div>
 
         <div className="sticking-session-field">
-          <label className="control-label" htmlFor="sticking-rotation">New Fill</label>
+          <label className="control-label" htmlFor="sticking-rotation">New {itemTitle}</label>
           <select
             id="sticking-rotation"
             className="control-input ear-select"
@@ -2405,7 +2531,7 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
             disabled={isPlaying}
             onChange={(event) => setRotationSeconds(Number(event.target.value))}
           >
-            {STICKING_ROTATION_OPTIONS.map((option) => (
+            {PRACTICE_ROTATION_OPTIONS.map((option) => (
               <option key={option.seconds} value={option.seconds}>{option.label}</option>
             ))}
           </select>
@@ -2441,7 +2567,7 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
               : sessionMinutes > 0 ? formatSessionTime(sessionMinutes * 60) : 'Open'}
           </span>
           <span>
-            <span className="stat-label">Next Fill</span>
+            <span className="stat-label">Next {itemTitle}</span>
             {clock.nextFill !== null
               ? formatSessionTime(clock.nextFill)
               : rotationSeconds > 0 ? formatSessionTime(rotationSeconds) : 'Off'}
@@ -2456,9 +2582,9 @@ function StickingPracticeSession({ tempo, onNewFill, manualFillCount, controlRef
 // thumb, so either end can be dragged wherever the other one sits.
 function TempoRangeSlider({ id, value, onChange }) {
   const [low, high] = value
-  const span = STICKING_TEMPO_LIMITS.max - STICKING_TEMPO_LIMITS.min
-  const lowPercent = ((low - STICKING_TEMPO_LIMITS.min) / span) * 100
-  const highPercent = ((high - STICKING_TEMPO_LIMITS.min) / span) * 100
+  const span = PRACTICE_TEMPO_LIMITS.max - PRACTICE_TEMPO_LIMITS.min
+  const lowPercent = ((low - PRACTICE_TEMPO_LIMITS.min) / span) * 100
+  const highPercent = ((high - PRACTICE_TEMPO_LIMITS.min) / span) * 100
 
   return (
     <div className="dual-range" style={{ '--range-low': `${lowPercent}%`, '--range-high': `${highPercent}%` }}>
@@ -2466,8 +2592,8 @@ function TempoRangeSlider({ id, value, onChange }) {
         id={id}
         className="dual-range-input"
         type="range"
-        min={STICKING_TEMPO_LIMITS.min}
-        max={STICKING_TEMPO_LIMITS.max}
+        min={PRACTICE_TEMPO_LIMITS.min}
+        max={PRACTICE_TEMPO_LIMITS.max}
         step="1"
         value={low}
         aria-label="Slowest tempo"
@@ -2476,8 +2602,8 @@ function TempoRangeSlider({ id, value, onChange }) {
       <input
         className="dual-range-input"
         type="range"
-        min={STICKING_TEMPO_LIMITS.min}
-        max={STICKING_TEMPO_LIMITS.max}
+        min={PRACTICE_TEMPO_LIMITS.min}
+        max={PRACTICE_TEMPO_LIMITS.max}
         step="1"
         value={high}
         aria-label="Fastest tempo"
@@ -2487,7 +2613,7 @@ function TempoRangeSlider({ id, value, onChange }) {
   )
 }
 
-function StickingFeedbackDialog({ open, sticking, onSubmit, onCancel }) {
+function GeneratorFeedbackDialog({ open, summary, tags: tagOptions, submitLabel, onSubmit, onCancel }) {
   const dialogRef = useRef(null)
   const noteRef = useRef(null)
   const [tags, setTags] = useState([])
@@ -2529,10 +2655,10 @@ function StickingFeedbackDialog({ open, sticking, onSubmit, onCancel }) {
         }}
       >
         <span className="control-label">What's off about this one?</span>
-        <div className="sticking-line sticking-feedback-sticking">{sticking}</div>
+        <div className="sticking-line sticking-feedback-sticking">{summary}</div>
 
         <div className="sticking-feedback-tags">
-          {STICKING_FEEDBACK_TAGS.map((tag) => (
+          {tagOptions.map((tag) => (
             <button
               key={tag}
               type="button"
@@ -2566,7 +2692,7 @@ function StickingFeedbackDialog({ open, sticking, onSubmit, onCancel }) {
             Cancel
           </button>
           <button className="primary-button" type="submit">
-            Log &amp; New Fill
+            {submitLabel}
           </button>
         </div>
       </form>
@@ -2635,19 +2761,17 @@ function ThumbIcon({ down = false }) {
   )
 }
 
-function StickingGeneratorPage() {
+function FillGeneratorPage() {
   const [rateId, setRateId] = useState('sixteenth')
   const [resolutionId, setResolutionId] = useState('kick')
   const [beats, setBeats] = useState(2)
-  const [tempoRange, setTempoRange] = useState(STICKING_DEFAULT_TEMPO_RANGE)
-  const rate = STICKING_RATES.find((item) => item.id === rateId)
-  const resolution = STICKING_RESOLUTIONS.find((item) => item.id === resolutionId)
-  // Downvotes from this browser straight away, and everyone's once the
-  // feedback store answers, so a bad fill stays gone on both machines.
-  const downvotedRef = useRef(null)
+  const [tempoRange, setTempoRange] = useState(FILL_DEFAULT_TEMPO_RANGE)
+  const rate = FILL_RATES.find((item) => item.id === rateId)
+  const resolution = FILL_RESOLUTIONS.find((item) => item.id === resolutionId)
+  const downvotedRef = useDownvotes('fill', (entry) => `${entry.strokes}>${entry.resolution}`)
   const [fill, setFill] = useState(() => ({
-    cells: getRandomFill(beats * rate.notesPerBeat, resolution.stroke, rateId, new Set(readStoredList(STICKING_DOWNVOTES_KEY))),
-    tempo: randomInt(...STICKING_DEFAULT_TEMPO_RANGE),
+    cells: getRandomFill(beats * rate.notesPerBeat, resolution.stroke, rateId, new Set(readStoredList(downvotesKey('fill')))),
+    tempo: randomInt(...FILL_DEFAULT_TEMPO_RANGE),
   }))
   const [manualFillCount, setManualFillCount] = useState(0)
   const [reveal, setReveal] = useState(null)
@@ -2659,24 +2783,10 @@ function StickingGeneratorPage() {
   const strokes = useMemo(() => cells.flatMap((cell) => cell.strokes), [cells])
 
   useEffect(() => {
-    rememberSticking(getStickingId(rateId, strokes, resolution.stroke))
+    rememberInHistory('fill', getFillId(rateId, strokes, resolution.stroke))
   }, [strokes, rateId, resolution])
 
   useEffect(() => () => window.clearInterval(revealTimerRef.current), [])
-
-  useEffect(() => {
-    downvotedRef.current = new Set(readStoredList(STICKING_DOWNVOTES_KEY))
-    flushStickingOutbox()
-
-    fetch(STICKING_FEEDBACK_URL)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        data?.entries
-          ?.filter((entry) => entry.vote === 'down')
-          .forEach((entry) => downvotedRef.current.add(`${entry.strokes}>${entry.resolution}`))
-      })
-      .catch(() => {})
-  }, [])
 
   // Counted where the fill sits in the bar: it ends the bar, so a two-beat
   // fill runs "3 e & a 4 e & a".
@@ -2694,14 +2804,14 @@ function StickingGeneratorPage() {
   }, [strokes, rate, reveal])
 
   function generate(next = {}) {
-    const nextRate = STICKING_RATES.find((item) => item.id === (next.rateId ?? rateId))
-    const nextResolution = STICKING_RESOLUTIONS.find((item) => item.id === (next.resolutionId ?? resolutionId))
+    const nextRate = FILL_RATES.find((item) => item.id === (next.rateId ?? rateId))
+    const nextResolution = FILL_RESOLUTIONS.find((item) => item.id === (next.resolutionId ?? resolutionId))
     const nextBeats = next.beats ?? beats
     const nextCells = getRandomFill(
       nextBeats * nextRate.notesPerBeat,
       nextResolution.stroke,
       nextRate.id,
-      downvotedRef.current ?? new Set(),
+      downvotedRef.current,
     )
     setFill({ cells: nextCells, tempo: randomInt(...tempoRange) })
     setUpvoted(null)
@@ -2726,7 +2836,7 @@ function StickingGeneratorPage() {
     let frame = 0
 
     function step() {
-      const progress = (frame * frameMs) / STICKING_REVEAL_MS
+      const progress = (frame * frameMs) / PRACTICE_REVEAL_MS
       frame += 1
       if (progress >= 1) {
         stopReveal()
@@ -2777,7 +2887,7 @@ function StickingGeneratorPage() {
   }
 
   function upvote() {
-    sendStickingFeedback({ vote: 'up', ...describeFill() })
+    sendFeedback('fill', { vote: 'up', ...describeFill() })
     setUpvoted(fill)
   }
 
@@ -2788,11 +2898,11 @@ function StickingGeneratorPage() {
 
   function submitDownvote({ tags, note }) {
     const described = describeFill()
-    sendStickingFeedback({ vote: 'down', ...described, tags, note })
+    sendFeedback('fill', { vote: 'down', ...described, tags, note })
 
     const key = `${described.strokes}>${described.resolution}`
     downvotedRef.current.add(key)
-    writeStoredList(STICKING_DOWNVOTES_KEY, [...new Set([...readStoredList(STICKING_DOWNVOTES_KEY), key])])
+    rememberDownvote('fill', key)
 
     setIsFeedbackOpen(false)
     setManualFillCount((count) => count + 1)
@@ -2814,7 +2924,7 @@ function StickingGeneratorPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sticking Generator</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Fill Generator</h1>
         <p style={introStyle}>
           Generate linear fill stickings built from rudiments, with hands and kick sharing one line and
           the fill landing on the next downbeat.
@@ -2824,7 +2934,7 @@ function StickingGeneratorPage() {
           <div className="control-card">
             <span className="control-label">Rate</span>
             <div className="sticking-chips">
-              {STICKING_RATES.map((item) => (
+              {FILL_RATES.map((item) => (
                 <button
                   key={item.id}
                   type="button"
@@ -2841,7 +2951,7 @@ function StickingGeneratorPage() {
           <div className="control-card">
             <span className="control-label">Resolve On</span>
             <div className="sticking-chips">
-              {STICKING_RESOLUTIONS.map((item) => (
+              {FILL_RESOLUTIONS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
@@ -2877,9 +2987,10 @@ function StickingGeneratorPage() {
           </div>
         </div>
 
-        <StickingPracticeSession
+        <PracticeSession
+          itemName="fill"
           tempo={fill.tempo}
-          onNewFill={revealNewFill}
+          onNewItem={revealNewFill}
           manualFillCount={manualFillCount}
           controlRef={sessionControlRef}
         />
@@ -2931,9 +3042,598 @@ function StickingGeneratorPage() {
           </ol>
         </div>
 
-        <StickingFeedbackDialog
+        <GeneratorFeedbackDialog
           open={isFeedbackOpen}
-          sticking={cells.map((cell) => cell.pattern).join(' ')}
+          summary={cells.map((cell) => cell.pattern).join(' ')}
+          tags={FILL_FEEDBACK_TAGS}
+          submitLabel="Log & New Fill"
+          onSubmit={submitDownvote}
+          onCancel={cancelDownvote}
+        />
+      </section>
+    </div>
+  )
+}
+
+// A groove on a drum staff (see src/lib/drumNotation.js). Wide screens get
+// two bars to a line, phones one. Falls back to `fallback` text until (or
+// unless) VexFlow loads.
+function GrooveNotation({ label, fallback, slotsPerBeat, bars, voices, labels, feel, repeat }) {
+  const hostRef = useRef(null)
+  const [vexflow, setVexflow] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [isWide, setIsWide] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    loadVexFlow()
+      .then((module) => {
+        if (!cancelled) setVexflow(module)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return undefined
+    const observer = new ResizeObserver(([entry]) => setIsWide(entry.contentRect.width >= 720))
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [failed])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!vexflow || !host) return
+    const style = getComputedStyle(host)
+    const token = (name) => style.getPropertyValue(name).trim()
+
+    renderDrumNotation(host, vexflow, {
+      slotsPerBeat,
+      bars,
+      voices,
+      labels,
+      feel,
+      repeat,
+      barsPerLine: isWide ? 2 : 1,
+      colors: { ink: token('--text'), muted: token('--text-muted') },
+      font: style.fontFamily,
+    })
+  }, [vexflow, slotsPerBeat, bars, voices, labels, feel, repeat, isWide])
+
+  if (failed) {
+    return <div className="sticking-line fill-notation-fallback">{fallback}</div>
+  }
+
+  return <div ref={hostRef} className="fill-notation groove-notation" role="img" aria-label={label} />
+}
+
+function countLabel(slot, slotsPerBeat) {
+  const offset = slot % slotsPerBeat
+  if (offset === 0) return String((Math.floor(slot / slotsPerBeat) % 4) + 1)
+  return COUNT_SYLLABLES[slotsPerBeat][offset]
+}
+
+function getRandomHandSticking(length, rateId, downvoted) {
+  const strokesOf = (cells) => cells.map((cell) => cell.pattern).join('')
+  return drawFresh('sticking', () => drawHandSticking(length), {
+    idOf: (cells) => `${rateId}:${strokesOf(cells)}`,
+    downvoteKeyOf: strokesOf,
+    downvoted,
+  })
+}
+
+// Hands only: a short cycle of rudiment cells, repeated to fill a bar and
+// looped. The Fill Generator covers hands and kick together.
+function StickingGeneratorPage() {
+  const [rateId, setRateId] = useState('sixteenth')
+  const [beats, setBeats] = useState(2)
+  const [accents, setAccents] = useState(true)
+  const [tempoRange, setTempoRange] = useState(FILL_DEFAULT_TEMPO_RANGE)
+  const rate = HAND_RATES.find((item) => item.id === rateId)
+  const downvotedRef = useDownvotes('sticking', (entry) => entry.strokes)
+  const [pattern, setPattern] = useState(() => ({
+    cells: getRandomHandSticking(beats * rate.notesPerBeat, rateId, new Set(readStoredList(downvotesKey('sticking')))),
+    tempo: randomInt(...FILL_DEFAULT_TEMPO_RANGE),
+  }))
+  const [manualCount, setManualCount] = useState(0)
+  const [reveal, setReveal] = useState(null)
+  const [upvoted, setUpvoted] = useState(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const revealTimerRef = useRef(null)
+  const sessionControlRef = useRef(null)
+  const { cells } = pattern
+  const strokes = useMemo(() => cells.flatMap((cell) => cell.strokes), [cells])
+
+  useEffect(() => {
+    rememberInHistory('sticking', `${rateId}:${strokes.join('')}`)
+  }, [strokes, rateId])
+
+  useEffect(() => () => window.clearInterval(revealTimerRef.current), [])
+
+  // The cycle repeated to fill the bar, accents on the first stroke of each
+  // cell.
+  const notation = useMemo(() => {
+    const cellStarts = new Set()
+    cells.reduce((start, cell) => {
+      cellStarts.add(start)
+      return start + cell.strokes.length
+    }, 0)
+
+    const slotsPerBar = rate.notesPerBeat * 4
+    const hits = {}
+    const labels = []
+    for (let slot = 0; slot < slotsPerBar; slot += 1) {
+      const index = slot % strokes.length
+      const isScrambling = reveal !== null && index >= reveal.settled
+      hits[slot] = { keys: [DRUM_KEYS.snare], accent: accents && !isScrambling && cellStarts.has(index) }
+      labels.push({ slot, row: 0, text: isScrambling ? reveal.noise[index] : strokes[index], color: isScrambling ? 'var(--text-muted)' : undefined })
+      labels.push({ slot, row: 1, text: countLabel(slot, rate.notesPerBeat) })
+    }
+    return { voices: [{ stem: 1, hits }], labels }
+  }, [cells, strokes, rate, accents, reveal])
+
+  function generate(next = {}) {
+    const nextRate = HAND_RATES.find((item) => item.id === (next.rateId ?? rateId))
+    const nextBeats = next.beats ?? beats
+    const nextCells = getRandomHandSticking(nextBeats * nextRate.notesPerBeat, nextRate.id, downvotedRef.current)
+    setPattern({ cells: nextCells, tempo: randomInt(...tempoRange) })
+    setUpvoted(null)
+    return nextCells
+  }
+
+  function stopReveal() {
+    window.clearInterval(revealTimerRef.current)
+    setReveal(null)
+  }
+
+  function generateByHand(next) {
+    stopReveal()
+    generate(next)
+    setManualCount((count) => count + 1)
+  }
+
+  // A new sticking in a session scrambles for a moment, then settles left to right.
+  function revealNew() {
+    const length = generate().flatMap((cell) => cell.strokes).length
+    const frameMs = 70
+    let frame = 0
+
+    function step() {
+      const progress = (frame * frameMs) / PRACTICE_REVEAL_MS
+      frame += 1
+      if (progress >= 1) {
+        stopReveal()
+        return
+      }
+      setReveal({
+        settled: Math.floor(Math.max(0, (progress - 0.3) / 0.7) * length),
+        noise: Array.from({ length }, () => 'RL'[randomInt(0, 1)]),
+      })
+    }
+
+    window.clearInterval(revealTimerRef.current)
+    step()
+    revealTimerRef.current = window.setInterval(step, frameMs)
+  }
+
+  function updateTempoRange(nextRange) {
+    setTempoRange(nextRange)
+    setPattern((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
+  }
+
+  function describe() {
+    return {
+      strokes: strokes.join(''),
+      rateId,
+      beats,
+      accents,
+      tempo: pattern.tempo,
+      cells: cells.map((cell) => cell.pattern),
+    }
+  }
+
+  function upvote() {
+    sendFeedback('sticking', { vote: 'up', ...describe() })
+    setUpvoted(pattern)
+  }
+
+  function downvote() {
+    sessionControlRef.current?.pause()
+    setIsFeedbackOpen(true)
+  }
+
+  function submitDownvote({ tags, note }) {
+    const described = describe()
+    sendFeedback('sticking', { vote: 'down', ...described, tags, note })
+    downvotedRef.current.add(described.strokes)
+    rememberDownvote('sticking', described.strokes)
+
+    setIsFeedbackOpen(false)
+    setManualCount((count) => count + 1)
+    if (sessionControlRef.current) {
+      sessionControlRef.current.resume({ newFill: true })
+    } else {
+      revealNew()
+    }
+  }
+
+  function cancelDownvote() {
+    setIsFeedbackOpen(false)
+    sessionControlRef.current?.resume()
+  }
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools · Drums</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sticking Generator</h1>
+        <p style={introStyle}>
+          Hands-only stickings built from rudiments. A short cycle repeats through the bar, so play it on a loop
+          and move it around the kit once it sits.
+        </p>
+
+        <div className="sticking-toolbar">
+          <div className="control-card">
+            <span className="control-label">Rate</span>
+            <div className="sticking-chips">
+              {HAND_RATES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`ear-level-chip${item.id === rateId ? ' is-active' : ''}`}
+                  aria-pressed={item.id === rateId}
+                  onClick={() => {
+                    setRateId(item.id)
+                    generateByHand({ rateId: item.id })
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Cycle</span>
+            <div className="sticking-chips">
+              {HAND_CYCLE_BEATS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`ear-level-chip${item === beats ? ' is-active' : ''}`}
+                  aria-pressed={item === beats}
+                  onClick={() => {
+                    setBeats(item)
+                    generateByHand({ beats: item })
+                  }}
+                >
+                  {item} {item === 1 ? 'beat' : 'beats'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Accents</span>
+            <div className="sticking-chips">
+              {[true, false].map((item) => (
+                <button
+                  key={String(item)}
+                  type="button"
+                  className={`ear-level-chip${item === accents ? ' is-active' : ''}`}
+                  aria-pressed={item === accents}
+                  onClick={() => setAccents(item)}
+                >
+                  {item ? 'On' : 'Off'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="hand-tempo-range">Tempo Range</label>
+            <div className="range-value">{tempoRange[0]}–{tempoRange[1]} BPM</div>
+            <TempoRangeSlider id="hand-tempo-range" value={tempoRange} onChange={updateTempoRange} />
+          </div>
+        </div>
+
+        <PracticeSession
+          itemName="sticking"
+          tempo={pattern.tempo}
+          onNewItem={revealNew}
+          manualFillCount={manualCount}
+          controlRef={sessionControlRef}
+        />
+
+        <div className="sticking-board surface-card">
+          <GrooveNotation
+            label={`Sticking: ${strokes.join(' ')}, repeated through the bar`}
+            fallback={strokes.join(' ')}
+            slotsPerBeat={rate.notesPerBeat}
+            bars={1}
+            voices={notation.voices}
+            labels={notation.labels}
+            repeat
+          />
+
+          <div className="sticking-board-actions">
+            <button
+              className={`sticking-vote${upvoted === pattern ? ' is-active' : ''}`}
+              type="button"
+              disabled={reveal !== null || upvoted === pattern}
+              onClick={upvote}
+              aria-label={upvoted === pattern ? 'Liked' : 'Thumbs up'}
+              title={upvoted === pattern ? 'Liked' : 'Thumbs up'}
+            >
+              <ThumbIcon />
+            </button>
+            <button
+              className="sticking-vote"
+              type="button"
+              disabled={reveal !== null}
+              onClick={downvote}
+              aria-label="Thumbs down"
+              title="Thumbs down"
+            >
+              <ThumbIcon down />
+            </button>
+            <button className="primary-button" type="button" onClick={() => generateByHand()}>
+              Generate Sticking
+            </button>
+          </div>
+        </div>
+
+        <div className={`surface-card sticking-built-from${reveal ? ' is-hidden' : ''}`} style={cardStyle}>
+          <div className="stat-label">Built From</div>
+          <ol className="sticking-cells">
+            {cells.map((cell, index) => (
+              <li key={index}>
+                <span className="sticking-line">{cell.pattern}</span>
+                <span className="sticking-cell-name">{cell.name}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <GeneratorFeedbackDialog
+          open={isFeedbackOpen}
+          summary={cells.map((cell) => cell.pattern).join(' ')}
+          tags={STICKING_FEEDBACK_TAGS}
+          submitLabel="Log & New Sticking"
+          onSubmit={submitDownvote}
+          onCancel={cancelDownvote}
+        />
+      </section>
+    </div>
+  )
+}
+
+const INDEPENDENCE_DEFAULT_TEMPO_RANGE = [60, 120]
+const INDEPENDENCE_FEELS = [
+  { id: null, label: 'Either' },
+  { id: 'swing', label: 'Swing' },
+  { id: 'straight', label: 'Straight' },
+]
+
+function getRandomExercise(feel, downvoted) {
+  return drawFresh('independence', () => generateIndependenceExercise(feel), {
+    idOf: (exercise) => exercise.key,
+    downvoteKeyOf: (exercise) => exercise.key,
+    downvoted,
+    attempts: 300,
+  })
+}
+
+// Hands in the stems-up voice, feet stems down; limbs sharing a slot become
+// one chord.
+function exerciseNotation(exercise) {
+  const up = {}
+  const down = {}
+  const labels = []
+  const slots = new Set()
+
+  exercise.parts.forEach((item) => {
+    item.hits.forEach((hit) => {
+      const target = isHand(item.limb) ? up : down
+      const key = DRUM_KEYS[INSTRUMENTS[hit.inst].id]
+      target[hit.slot] ??= { keys: [], accent: false }
+      if (!target[hit.slot].keys.includes(key)) target[hit.slot].keys.push(key)
+      if (hit.accent) target[hit.slot].accent = true
+      if (hit.sticking) labels.push({ slot: hit.slot, row: 0, text: hit.sticking })
+      slots.add(hit.slot)
+    })
+  })
+
+  slots.forEach((slot) => labels.push({ slot, row: 1, text: countLabel(slot, exercise.slotsPerBeat) }))
+  return { voices: [{ stem: 1, hits: up }, { stem: -1, hits: down }], labels }
+}
+
+function IndependencePage() {
+  const [feel, setFeel] = useState(null)
+  const [tempoRange, setTempoRange] = useState(INDEPENDENCE_DEFAULT_TEMPO_RANGE)
+  const downvotedRef = useDownvotes('independence', (entry) => entry.key)
+  const [exercise, setExercise] = useState(() => ({
+    ...getRandomExercise(null, new Set(readStoredList(downvotesKey('independence')))),
+    tempo: randomInt(...INDEPENDENCE_DEFAULT_TEMPO_RANGE),
+  }))
+  const [manualCount, setManualCount] = useState(0)
+  const [upvoted, setUpvoted] = useState(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const sessionControlRef = useRef(null)
+  const notation = useMemo(() => exerciseNotation(exercise), [exercise])
+  const newTempo = exercise.newTempoRatio
+    ? Math.round((exercise.tempo * exercise.newTempoRatio[0]) / exercise.newTempoRatio[1])
+    : null
+
+  useEffect(() => {
+    rememberInHistory('independence', exercise.key)
+  }, [exercise.key])
+
+  function generate(nextFeel = feel) {
+    setExercise({ ...getRandomExercise(nextFeel, downvotedRef.current), tempo: randomInt(...tempoRange) })
+    setUpvoted(null)
+  }
+
+  function generateByHand(nextFeel) {
+    generate(nextFeel)
+    setManualCount((count) => count + 1)
+  }
+
+  function updateTempoRange(nextRange) {
+    setTempoRange(nextRange)
+    setExercise((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
+  }
+
+  function describe() {
+    return { key: exercise.key, title: exercise.title, feel: exercise.feel, tempo: exercise.tempo }
+  }
+
+  function upvote() {
+    sendFeedback('independence', { vote: 'up', ...describe() })
+    setUpvoted(exercise)
+  }
+
+  function downvote() {
+    sessionControlRef.current?.pause()
+    setIsFeedbackOpen(true)
+  }
+
+  function submitDownvote({ tags, note }) {
+    sendFeedback('independence', { vote: 'down', ...describe(), tags, note })
+    downvotedRef.current.add(exercise.key)
+    rememberDownvote('independence', exercise.key)
+
+    setIsFeedbackOpen(false)
+    setManualCount((count) => count + 1)
+    if (sessionControlRef.current) {
+      sessionControlRef.current.resume({ newFill: true })
+    } else {
+      generate()
+    }
+  }
+
+  function cancelDownvote() {
+    setIsFeedbackOpen(false)
+    sessionControlRef.current?.resume()
+  }
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools · Drums</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Independence</h1>
+        <p style={introStyle}>
+          Four-limb coordination exercises: some limbs hold an ostinato while the others move against it. They
+          run from comping and groove basics to ideas drawn from Ari Hoenig, like foot ostinatos under a hand
+          phrase, groupings that cycle against the bar, and metric modulation.
+        </p>
+
+        <div className="sticking-toolbar independence-toolbar">
+          <div className="control-card">
+            <span className="control-label">Feel</span>
+            <div className="sticking-chips">
+              {INDEPENDENCE_FEELS.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={`ear-level-chip${item.id === feel ? ' is-active' : ''}`}
+                  aria-pressed={item.id === feel}
+                  onClick={() => {
+                    setFeel(item.id)
+                    generateByHand(item.id)
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="independence-tempo-range">Tempo Range</label>
+            <div className="range-value">{tempoRange[0]}–{tempoRange[1]} BPM</div>
+            <TempoRangeSlider id="independence-tempo-range" value={tempoRange} onChange={updateTempoRange} />
+          </div>
+        </div>
+
+        <PracticeSession
+          itemName="exercise"
+          tempo={exercise.tempo}
+          cycleBars={exercise.bars}
+          onNewItem={() => generate()}
+          manualFillCount={manualCount}
+          controlRef={sessionControlRef}
+        />
+
+        <div className="sticking-board surface-card">
+          <div key={exercise.key} className="independence-exercise">
+            <h2 className="card-title independence-title">{exercise.title}</h2>
+            <GrooveNotation
+              label={`${exercise.title}. ${exercise.parts.map((item) => `${limbName(item.limb)}: ${item.text}`).join('. ')}`}
+              fallback={exercise.parts.map((item) => `${limbName(item.limb)}: ${item.text}`).join(' · ')}
+              slotsPerBeat={exercise.slotsPerBeat}
+              bars={exercise.bars}
+              voices={notation.voices}
+              labels={notation.labels}
+              feel={exercise.feel === 'swing' ? 'Swing' : 'Straight'}
+              repeat
+            />
+          </div>
+
+          <div className="sticking-board-actions">
+            <button
+              className={`sticking-vote${upvoted === exercise ? ' is-active' : ''}`}
+              type="button"
+              disabled={upvoted === exercise}
+              onClick={upvote}
+              aria-label={upvoted === exercise ? 'Liked' : 'Thumbs up'}
+              title={upvoted === exercise ? 'Liked' : 'Thumbs up'}
+            >
+              <ThumbIcon />
+            </button>
+            <button className="sticking-vote" type="button" onClick={downvote} aria-label="Thumbs down" title="Thumbs down">
+              <ThumbIcon down />
+            </button>
+            <button className="primary-button" type="button" onClick={() => generateByHand()}>
+              New Exercise
+            </button>
+          </div>
+        </div>
+
+        <div className="surface-card independence-notes" style={cardStyle}>
+          <div className="stat-label">How To Play It</div>
+          <p style={mutedTextStyle}>{exercise.idea}</p>
+          {exercise.bars > 1 ? (
+            <p style={mutedTextStyle}>Comes back around after {exercise.bars} bars; a new exercise waits for the end of the cycle.</p>
+          ) : null}
+          {newTempo ? (
+            <p style={mutedTextStyle}>At {exercise.tempo} BPM, the new tempo is about {newTempo} BPM.</p>
+          ) : null}
+          <ul className="independence-parts">
+            {exercise.parts.map((item) => (
+              <li key={item.limb}>
+                <span className="independence-limb">{limbName(item.limb)}</span>
+                <span className="independence-part-instrument">{item.instrument}</span>
+                <span className="sticking-cell-name">{item.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <GeneratorFeedbackDialog
+          open={isFeedbackOpen}
+          summary={exercise.title}
+          tags={INDEPENDENCE_FEEDBACK_TAGS}
+          submitLabel="Log & New Exercise"
           onSubmit={submitDownvote}
           onCancel={cancelDownvote}
         />
@@ -4221,7 +4921,9 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/tempo-guessr" element={<TempoGuessrPage />} />
         <Route path="/metronome" element={<MetronomePage />} />
+        <Route path="/fill-generator" element={<FillGeneratorPage />} />
         <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
+        <Route path="/independence" element={<IndependencePage />} />
         <Route path="/ear-training" element={<EarTrainerPage />} />
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />

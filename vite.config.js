@@ -2,11 +2,10 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFile, writeFile } from 'node:fs/promises'
 import { getLiveStatus } from './netlify/lib/twitch.mjs'
-import { handleFeedbackRequest } from './netlify/lib/stickingFeedback.mjs'
+import { handleFeedbackRequest } from './netlify/lib/practiceFeedback.mjs'
 
 const TWITCH_STATUS_PATH = '/.netlify/functions/twitch-status'
-const STICKING_FEEDBACK_PATH = '/.netlify/functions/sticking-feedback'
-const STICKING_FEEDBACK_DEV_FILE = 'feedback/sticking-feedback.dev.json'
+const PRACTICE_FEEDBACK_PATH = '/.netlify/functions/practice-feedback'
 
 // `vite` alone does not run Netlify functions, so serve the Twitch endpoint
 // from the same module during local dev. Without this the card is simply never
@@ -27,31 +26,37 @@ function twitchStatusDevEndpoint(env) {
   }
 }
 
-// Netlify Blobs only exists on Netlify, so local votes go to a gitignored file
-// instead, through the same request handling as production.
-function stickingFeedbackDevEndpoint() {
-  const store = {
-    async list() {
-      try {
-        return JSON.parse(await readFile(STICKING_FEEDBACK_DEV_FILE, 'utf8'))
-      } catch {
-        return []
-      }
-    },
-    async add(entry) {
-      const entries = await store.list()
-      await writeFile(STICKING_FEEDBACK_DEV_FILE, `${JSON.stringify([...entries, entry], null, 2)}\n`)
-    },
+// Netlify Blobs only exists on Netlify, so local votes go to gitignored files
+// (feedback/<tool>-feedback.dev.json) instead, through the same request
+// handling as production.
+function practiceFeedbackDevEndpoint() {
+  function storeFor(tool) {
+    const file = `feedback/${tool}-feedback.dev.json`
+    const store = {
+      async list() {
+        try {
+          return JSON.parse(await readFile(file, 'utf8'))
+        } catch {
+          return []
+        }
+      },
+      async add(entry) {
+        const entries = await store.list()
+        await writeFile(file, `${JSON.stringify([...entries, entry], null, 2)}\n`)
+      },
+    }
+    return store
   }
 
   return {
-    name: 'sticking-feedback-dev-endpoint',
+    name: 'practice-feedback-dev-endpoint',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use(STICKING_FEEDBACK_PATH, async (req, res) => {
+      server.middlewares.use(PRACTICE_FEEDBACK_PATH, async (req, res) => {
         let bodyText = ''
         for await (const chunk of req) bodyText += chunk
-        const { statusCode, payload } = await handleFeedbackRequest({ method: req.method, bodyText }, store)
+        const tool = new URL(req.url, 'http://localhost').searchParams.get('tool')
+        const { statusCode, payload } = await handleFeedbackRequest({ method: req.method, tool, bodyText }, storeFor)
 
         res.statusCode = statusCode
         res.setHeader('Content-Type', 'application/json')
@@ -68,6 +73,6 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react(), twitchStatusDevEndpoint(env), stickingFeedbackDevEndpoint()],
+    plugins: [react(), twitchStatusDevEndpoint(env), practiceFeedbackDevEndpoint()],
   }
 })

@@ -23,21 +23,26 @@ section of `README.md` for the full workflow and its gotchas.
 
 Every practice tool gets a session timer. Drop in the shared `<PracticeTimer />`
 (pass `onComplete` to stop the tool's own playback when time is up). Tools with
-their own Start/Stop transport, like the metronome and the sticking generator,
+their own Start/Stop transport, like the metronome and the drum generators,
 run the countdown off that transport instead, finishing with
 `playSessionCompleteSound`.
 
-## Sticking generator feedback
+## Practice generator feedback
 
-Luke votes on generated stickings mid-practice, and downvotes carry notes
-meant for you. After the start-of-session pull, fetch them:
+Luke votes mid-practice on what the Fill Generator, Sticking Generator and
+Independence tool produce, and downvotes carry notes meant for you. After the
+start-of-session pull, fetch each tool's entries:
 
-    curl -s https://lukemarkham.netlify.app/.netlify/functions/sticking-feedback
+    for tool in fill sticking independence; do
+      curl -s "https://lukemarkham.netlify.app/.netlify/functions/practice-feedback?tool=$tool"
+    done
 
 Entries come back oldest first. Compare their `id`s with
-`feedback/sticking-feedback.json`, the committed archive of entries already
+`feedback/<tool>-feedback.json`, the committed archive of entries already
 reviewed. If there are new ones, summarise them for Luke, propose (or make)
 the generator changes they point to, then append them to the archive with a
-`review` field saying what was done, and commit. Votes cast against the local
-dev server land in the gitignored `feedback/sticking-feedback.dev.json`, so
-check that too on the machine that ran it.
+`review` field saying what was done, and commit. Independence entries carry a
+`key` that spells out the whole exercise (format in `exerciseKey`,
+`src/lib/independence.js`). Votes cast against the local dev server land in
+the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
+machine that ran it.

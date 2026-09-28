@@ -1589,6 +1589,69 @@ h3 {
   font-size: 0.92rem;
 }
 
+.independence-toolbar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.independence-title {
+  margin: 0 0 12px;
+}
+
+.independence-exercise {
+  animation: independence-enter 320ms ease-out;
+}
+
+@keyframes independence-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.independence-notes p {
+  margin: 8px 0 0;
+}
+
+.independence-parts {
+  display: grid;
+  gap: 10px;
+  max-width: 680px;
+  margin: 18px auto 0;
+  text-align: left;
+  padding: 0;
+  list-style: none;
+}
+
+.independence-parts li {
+  display: grid;
+  grid-template-columns: 110px 130px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.independence-limb {
+  color: var(--accent-strong);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.independence-part-instrument {
+  color: var(--text);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .independence-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .independence-parts li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
 .sticking-line {
   overflow-wrap: anywhere;
   color: var(--accent-strong);
@@ -1866,7 +1929,8 @@ code {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sticking-session-banner > span:last-child {
+  .sticking-session-banner > span:last-child,
+  .independence-exercise {
     animation: none;
   }
 

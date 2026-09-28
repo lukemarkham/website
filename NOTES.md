@@ -3,6 +3,51 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-09-28 (later) — Fill Generator rename, new Sticking Generator, Independence
+
+### What changed
+
+- **Fill Generator** (`/fill-generator`): the old Sticking Generator, renamed.
+  Behaviour unchanged. This browser's fill history, downvotes and unsent votes
+  move from `lm-sticking-*` to `lm-fill-*` keys once, on first load.
+- **Sticking Generator** (`/sticking-generator`), new and hands-only: a 1, 2
+  or 4-beat cycle chained from rudiment cells (`src/lib/handStickings.js`),
+  repeated through a bar in 16ths or triplets, with optional accents on each
+  cell's first stroke. No hand plays three in a row, including across the loop.
+- **Independence** (`/independence`), new: four-limb exercises from
+  `src/lib/independence.js`, in five families. Two are basics: comping under a
+  swing ride, and a moving bass drum or ghost notes under a straight groove.
+  Three draw on Ari Hoenig: a hand phrase with sticking over a foot ostinato
+  (clave, bossa, samba, tumbao, Charleston, feathered 4), groupings that cycle
+  against the bar (3s and 6s in 16ths, 3s in swung 8ths, 2s and 4s in
+  triplets), and metric modulation, with either the hands or the feet playing
+  time in the new tempo. Filter by Swing, Straight or Either. Every exercise
+  is marked Swing or Straight. Swing is written in 8ths; straight is written in
+  16ths or explicit triplets. Multi-bar exercises show the whole cycle, and a
+  session's new exercise waits for the cycle to finish.
+- **Notation**: `src/lib/drumNotation.js` draws grid-based grooves in
+  VexFlow: hands stems up, feet stems down, with sticking and count rows and
+  repeat barlines. Fills still use `fillNotation.js`.
+- **Shared pieces**: `PracticeSession` (was `StickingPracticeSession`) takes
+  an `itemName` and `cycleBars`. `GeneratorFeedbackDialog` takes the tool's
+  tags. `drawFresh` handles history and downvotes for all three generators.
+- **Feedback**: one function, `practice-feedback?tool=fill|sticking|independence`
+  (`netlify/lib/practiceFeedback.mjs`), with a Blobs store per tool
+  (`feedback-<tool>`). Archives are in `feedback/<tool>-feedback.json`. The
+  old `sticking-feedback` function is gone. Its Blobs store holds only the
+  archived deploy check.
+- The Drums menu now lists Fill Generator, Sticking Generator and
+  Independence, and the home page has cards for all three.
+
+### Open items / ideas
+
+- Luke is sending specific Ari Hoenig and Steve Lyman exercises. Steve Lyman's
+  approach isn't modelled yet.
+- Independence plays only a click. Playing the exercise back on drum sounds
+  would help with the modulations and groupings.
+- No quintuplet or 5- and 7-groupings yet: they take five or more bars to
+  come around, and the grid has no quintuplets.
+
 ## 2026-09-28 — Practice Tools menu split into Drums and Keys
 
 ### What changed
