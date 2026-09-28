@@ -9,6 +9,6 @@
 export const STUDENTS = {
   'oliver-otto': {
     name: 'Oliver Otto',
-    doc: '',
+    doc: 'https://docs.google.com/document/d/1Y73iwtkq96EIpXOwqZnZx7U4YhKqOovXz6HbtVIZBoM/edit?tab=t.0',
   },
 }

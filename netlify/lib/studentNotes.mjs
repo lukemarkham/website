@@ -80,7 +80,8 @@ function isAllowedImage(src) {
   }
 }
 
-const BLOCKS = { h1: 'h2', h2: 'h3', h3: 'h4', h4: 'h5', h5: 'h6', h6: 'h6', p: 'p', li: 'li', td: 'td', th: 'th', tr: 'tr' }
+const BLOCKS = { p: 'p', li: 'li', td: 'td', th: 'th', tr: 'tr' }
+const HEADINGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
 
 // Inline content: text, emphasis, links, images and line breaks.
 function renderInline(node, classStyles) {
@@ -119,32 +120,41 @@ function listLevel(node) {
   return match ? Math.min(Number(match[1]), 6) : 0
 }
 
-function renderBlock(node, classStyles) {
+// The page's own title is the <h1>, so a Doc's largest heading becomes an
+// <h2> and the rest follow from there, whichever heading styles it uses.
+function renderBlock(node, classStyles, headingShift) {
   if (node.nodeType !== NodeType.ELEMENT_NODE) return ''
   const tag = node.rawTagName?.toLowerCase()
   const classes = node.getAttribute('class') ?? ''
 
   if (tag === 'hr') return '<hr>'
   if (tag === 'ul' || tag === 'ol') {
-    const items = node.childNodes.map((child) => renderBlock(child, classStyles)).join('')
+    const items = node.childNodes.map((child) => renderBlock(child, classStyles, headingShift)).join('')
     if (!items) return ''
     const level = listLevel(node)
     return `<${tag}${level ? ` class="level-${level}"` : ''}>${items}</${tag}>`
   }
   if (tag === 'table') {
-    const rows = node.querySelectorAll('tr').map((row) => renderBlock(row, classStyles)).join('')
+    const rows = node.querySelectorAll('tr').map((row) => renderBlock(row, classStyles, headingShift)).join('')
     return rows ? `<div class="notes-table"><table>${rows}</table></div>` : ''
   }
   if (tag === 'tr') {
-    const cells = node.childNodes.map((child) => renderBlock(child, classStyles)).join('')
+    const cells = node.childNodes.map((child) => renderBlock(child, classStyles, headingShift)).join('')
     return `<tr>${cells}</tr>`
   }
   if (tag === 'td' || tag === 'th') {
     // Cells hold paragraphs of their own; keep their breaks, drop the <p>s.
     const paragraphs = node.childNodes
-      .map((child) => (child.rawTagName?.toLowerCase() === 'p' ? renderInline(child, classStyles) : renderBlock(child, classStyles) || renderInline(child, classStyles)))
+      .map((child) => (child.rawTagName?.toLowerCase() === 'p' ? renderInline(child, classStyles) : renderBlock(child, classStyles, headingShift) || renderInline(child, classStyles)))
       .filter(Boolean)
     return `<${tag}>${paragraphs.join('<br>')}</${tag}>`
+  }
+
+  if (HEADINGS.includes(tag)) {
+    const inner = node.childNodes.map((child) => renderInline(child, classStyles)).join('').trim()
+    if (!inner) return ''
+    const level = Math.min(6, Number(tag[1]) + headingShift)
+    return `<h${level}>${inner}</h${level}>`
   }
 
   if (BLOCKS[tag]) {
@@ -156,14 +166,16 @@ function renderBlock(node, classStyles) {
   }
 
   // Anything else (a wrapping div, say) is looked through.
-  return node.childNodes.map((child) => renderBlock(child, classStyles)).join('')
+  return node.childNodes.map((child) => renderBlock(child, classStyles, headingShift)).join('')
 }
 
 export function docHtmlToNotes(exportHtml) {
   const root = parse(exportHtml, { comment: false, blockTextElements: { style: true, script: false } })
   const classStyles = readClassStyles(root)
   const body = root.querySelector('body') ?? root
-  return body.childNodes.map((node) => renderBlock(node, classStyles)).join('\n')
+  const levels = HEADINGS.filter((tag) => body.querySelector(tag)).map((tag) => Number(tag[1]))
+  const headingShift = levels.length > 0 ? 2 - Math.min(...levels) : 0
+  return body.childNodes.map((node) => renderBlock(node, classStyles, headingShift)).join('\n')
 }
 
 // fetchImpl is passed in so dev and tests can swap it.
