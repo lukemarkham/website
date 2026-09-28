@@ -29,6 +29,7 @@ import {
   limbName,
 } from './lib/independence'
 import { MIN_NOTES, matchesChord, randomTwoFive } from './lib/twoFives'
+import { createPianoSampler } from './lib/pianoSampler'
 import {
   BASS_INSTRUMENTS,
   CHORD_INSTRUMENTS,
@@ -761,7 +762,7 @@ function HomePage() {
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">ii-Vs</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A random major or minor key comes up; play its ii-V on a MIDI keyboard to move on.
+              A random major or minor key comes up; play its ii-V-I on a MIDI keyboard to move on.
             </p>
             <Link className="text-link" to="/ii-vs">Go to ii-Vs</Link>
           </div>
@@ -4931,14 +4932,14 @@ const TWO_FIVE_MODE_OPTIONS = [
 const TWO_FIVE_NEXT_DELAY_MS = 1400
 const TWO_FIVE_SOUND_KEY = 'lm-ii-v-sound'
 
-// A key comes up; play its ii and then its V on a MIDI keyboard. Each chord
-// is checked as it is held (see src/lib/twoFives.js), and once the V lands
-// the next key follows on its own.
+// A key comes up; play its ii, V and I on a MIDI keyboard. Each chord is
+// checked as it is held (see src/lib/twoFives.js), and once the resolution
+// lands the next key follows on its own.
 function TwoFivePage() {
   const [modeId, setModeId] = useState('both')
   const modes = TWO_FIVE_MODE_OPTIONS.find((item) => item.id === modeId).modes
   const [question, setQuestion] = useState(() => randomTwoFive(['major', 'minor'], null))
-  // 0 waits for the ii, 1 for the V, 2 is solved.
+  // The index of the chord being waited for; past the last one is solved.
   const [step, setStep] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [miss, setMiss] = useState(null)
@@ -4955,6 +4956,9 @@ function TwoFivePage() {
   const midiRef = useRef(null)
   const engineRef = useRef(null)
   const liveVoicesRef = useRef(new Map())
+  const pianoRef = useRef(null)
+  // Keys let go of while the pedal is down keep sounding until it comes up.
+  const pedalRef = useRef({ down: false, sustained: new Set() })
   const nextTimeoutRef = useRef(null)
   const askedAtRef = useRef(null)
   // The MIDI callbacks are made once, on connect, so they read the question
@@ -5005,13 +5009,37 @@ function TwoFivePage() {
     ask()
   }
 
+  // The sampled piano once it has loaded, the synth piano until then.
   function soundLiveNote({ note, on, velocity }) {
     const engine = engineRef.current
     const voices = liveVoicesRef.current
+    const pedal = pedalRef.current
+    if (!on) {
+      if (pedal.down && voices.has(note)) {
+        pedal.sustained.add(note)
+        return
+      }
+      voices.get(note)?.release()
+      voices.delete(note)
+      return
+    }
+
     voices.get(note)?.release()
     voices.delete(note)
-    if (!on || !liveRef.current.soundOn || !engine || engine.ctx.state !== 'running') return
-    voices.set(note, playLiveNote(engine, note, velocity))
+    pedal.sustained.delete(note)
+    if (!liveRef.current.soundOn || !engine || engine.ctx.state !== 'running') return
+    voices.set(note, pianoRef.current?.play(note, velocity) ?? playLiveNote(engine, note, velocity))
+  }
+
+  function sustain(down) {
+    const pedal = pedalRef.current
+    pedal.down = down
+    if (down) return
+    pedal.sustained.forEach((note) => {
+      liveVoicesRef.current.get(note)?.release()
+      liveVoicesRef.current.delete(note)
+    })
+    pedal.sustained.clear()
   }
 
   // Held is what's down right now, so a chord counts the moment the last of
@@ -5020,7 +5048,7 @@ function TwoFivePage() {
   function hearChord({ chord, held: heldNow }) {
     const live = liveRef.current
     setHeld(heldNow)
-    if (live.step > 1) {
+    if (live.step >= live.question.chords.length) {
       if (heldNow.length === 0) live.matchedThisGesture = false
       return
     }
@@ -5031,7 +5059,7 @@ function TwoFivePage() {
       live.step += 1
       setStep(live.step)
       setMiss(null)
-      if (live.step === 2) live.solve()
+      if (live.step === live.question.chords.length) live.solve()
       return
     }
 
@@ -5051,9 +5079,15 @@ function TwoFivePage() {
       // The connect button is the user gesture the audio clock needs.
       if (!engineRef.current) engineRef.current = createEngine()
       await engineRef.current.ensure()
+      if (!pianoRef.current) {
+        const piano = createPianoSampler(engineRef.current.ctx, engineRef.current.monitorBus())
+        pianoRef.current = piano
+        piano.load()
+      }
       const connection = await connectMidi({
         onNote: soundLiveNote,
         onChord: hearChord,
+        onSustain: sustain,
         onDevices: (devices) => setMidi((previous) => ({ ...previous, devices })),
         onError: (error) => setMidi((previous) => ({ ...previous, error: String(error?.message ?? error) })),
       })
@@ -5080,6 +5114,7 @@ function TwoFivePage() {
   })
 
   const accidental = question.key.accidental
+  const isSolved = step === question.chords.length
   const averageSeconds = stats.solved > 0 ? stats.totalSeconds / stats.solved : null
 
   return (
@@ -5090,8 +5125,8 @@ function TwoFivePage() {
         <div style={metaStyle}>Practice Tools · Keys</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>ii-Vs</h1>
         <p style={introStyle}>
-          A key comes up. Play its ii and then its V on your MIDI keyboard, in any voicing with the third and
-          seventh in it, and the next key follows as soon as the V lands.
+          A key comes up. Play its ii, V and I on your MIDI keyboard, in any voicing with the third and
+          seventh in it, and the next key follows as soon as the resolution lands.
         </p>
 
         <div className="twofive-layout">
@@ -5134,7 +5169,7 @@ function TwoFivePage() {
               </div>
             </div>
 
-            <div className={`surface-card twofive-question${step === 2 ? ' is-solved' : ''}`} style={cardStyle}>
+            <div className={`surface-card twofive-question${isSolved ? ' is-solved' : ''}`} style={cardStyle}>
               <span className="control-label">Your key</span>
               <div key={`${question.key.pc}-${question.mode}`} className="twofive-key">{question.key.label}</div>
 
@@ -5155,12 +5190,12 @@ function TwoFivePage() {
               </div>
 
               <div className="twofive-status" aria-live="polite">
-                {step === 2
+                {isSolved
                   ? 'Got it. Next key coming up.'
                   : miss
                     ? `Not the ${miss.role}${miss.heard ? `: that sounded like ${miss.heard}` : ''}.`
                     : midi.status === 'ready'
-                      ? `Play the ${question.chords[Math.min(step, 1)].role}.`
+                      ? `Play the ${question.chords[step].role}.`
                       : ''}
               </div>
 
@@ -5190,7 +5225,7 @@ function TwoFivePage() {
               </div>
 
               <div className="twofive-actions">
-                <button className="secondary-button" type="button" disabled={revealed || step === 2} onClick={() => setRevealed(true)}>
+                <button className="secondary-button" type="button" disabled={revealed || isSolved} onClick={() => setRevealed(true)}>
                   Show Answer
                 </button>
                 <button className="primary-button" type="button" onClick={skip}>
@@ -5224,6 +5259,11 @@ function TwoFivePage() {
             </div>
           </aside>
         </div>
+
+        <p className="twofive-credit">
+          Piano: Salamander Grand Piano by Alexander Holm, used under{' '}
+          <a className="text-link" href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>.
+        </p>
       </section>
     </div>
   )

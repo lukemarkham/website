@@ -2240,6 +2240,13 @@ code {
   }
 }
 
+.twofive-credit {
+  margin: 22px 0 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-align: center;
+}
+
 .ear-question-meta {
   display: flex;
   flex-wrap: wrap;

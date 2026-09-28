@@ -3,7 +3,7 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
-## 2026-09-28 (evening) — ii-Vs, Ear Trainer moved
+## 2026-09-28 (evening) — ii-Vs, Ear Trainer moved, piano samples
 
 ### What changed
 
@@ -21,10 +21,20 @@ either machine. Newest first.
 - **Ear Trainer** is now a top-level Practice Tools item, next to Metronome
   and Tempo Guessr. Keys holds only ii-Vs.
 
+- ii-Vs now wants the resolution too: ii, V, then I, before moving on. The
+  I needs its 3rd plus a 7th or 6th (maj7 or 6 in major). The minor i takes
+  m6, m7 or m(maj7), and is shown as m6.
+- ii-Vs plays what you play on a sampled acoustic piano: Salamander Grand
+  Piano, CC BY 3.0, credited on the page. There are 21 MP3s in
+  `public/audio/piano` (C2–C7, one every minor third, 1.3 MB), played through
+  `src/lib/pianoSampler.js`, which also follows the sustain pedal. The synth
+  piano covers the moment before the samples load.
+
 ### Open items / ideas
 
 - Next for ii-Vs: specific extensions on the V (for example ♭9 in minor, 13
-  in major), and possibly requiring the I, or a voice-led ii-V-I.
+  in major), and maybe voice-leading checks.
+- The Ear Trainer could use the sampled piano for its live notes too.
 
 ## 2026-09-28 (later) — Fill Generator rename, new Sticking Generator, Independence
 
