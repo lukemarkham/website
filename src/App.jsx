@@ -301,6 +301,24 @@ function TwitchLiveCard() {
   )
 }
 
+const practiceToolGroups = [
+  {
+    label: 'General',
+    tools: [
+      { label: 'Tempo Guessr', to: '/tempo-guessr' },
+      { label: 'Metronome', to: '/metronome' },
+    ],
+  },
+  {
+    label: 'Drums',
+    tools: [{ label: 'Sticking Generator', to: '/sticking-generator' }],
+  },
+  {
+    label: 'Keys',
+    tools: [{ label: 'Ear Trainer', to: '/ear-training' }],
+  },
+]
+
 function SiteNav({ showHomeLink = false }) {
   return (
     <nav className="site-nav">
@@ -335,18 +353,16 @@ function SiteNav({ showHomeLink = false }) {
             Practice Tools
           </button>
           <div className="nav-dropdown-menu" role="menu">
-            <Link className="dropdown-link" to="/tempo-guessr">
-              Tempo Guessr
-            </Link>
-            <Link className="dropdown-link" to="/metronome">
-              Metronome
-            </Link>
-            <Link className="dropdown-link" to="/sticking-generator">
-              Sticking Generator
-            </Link>
-            <Link className="dropdown-link" to="/ear-training">
-              Ear Trainer
-            </Link>
+            {practiceToolGroups.map((group) => (
+              <div className="dropdown-group" role="group" aria-label={group.label} key={group.label}>
+                <div className="dropdown-group-label" aria-hidden="true">{group.label}</div>
+                {group.tools.map((tool) => (
+                  <Link className="dropdown-link" to={tool.to} key={tool.to}>
+                    {tool.label}
+                  </Link>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
         <a className="nav-link" href="/#store">Beat Store</a>

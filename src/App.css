@@ -291,6 +291,22 @@ h3 {
   color: var(--accent-strong);
 }
 
+.dropdown-group + .dropdown-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--surface-border);
+}
+
+.dropdown-group-label {
+  padding: 8px 11px 4px;
+  color: var(--accent-strong);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
 .hero-shell {
   position: relative;
   overflow: hidden;
