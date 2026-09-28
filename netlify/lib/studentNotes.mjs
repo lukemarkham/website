@@ -26,6 +26,11 @@ export function docIdFrom(doc) {
   return match ? match[1] : null
 }
 
+export function folderIdFrom(folder) {
+  const match = /\/folders\/([\w-]{20,})/.exec(folder) ?? /[?&]id=([\w-]{20,})/.exec(folder) ?? /^([\w-]{20,})$/.exec(folder)
+  return match ? match[1] : null
+}
+
 function escapeHtml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
@@ -178,13 +183,88 @@ export function docHtmlToNotes(exportHtml) {
   return body.childNodes.map((node) => renderBlock(node, classStyles, headingShift)).join('\n')
 }
 
+// A shared Drive folder's embed view is a plain HTML list of what's in it, so
+// the folder can be listed in the site's styling instead of framed. Folders
+// come first, as in Drive. Everything returned is plain data: names are shown
+// as text, and links are only ever to Google's own Drive and Docs.
+const FILE_KINDS = [
+  [/docs\.google\.com\/document\//, 'Doc'],
+  [/docs\.google\.com\/spreadsheets\//, 'Sheet'],
+  [/docs\.google\.com\/presentation\//, 'Slides'],
+]
+const EXTENSION_KINDS = {
+  pdf: 'PDF',
+  mscz: 'MuseScore',
+  mp4: 'Video',
+  mov: 'Video',
+  m4v: 'Video',
+  mp3: 'Audio',
+  wav: 'Audio',
+  m4a: 'Audio',
+  aif: 'Audio',
+  aiff: 'Audio',
+  jpg: 'Image',
+  jpeg: 'Image',
+  png: 'Image',
+  gp: 'Guitar Pro',
+  gpx: 'Guitar Pro',
+  xml: 'MusicXML',
+  musicxml: 'MusicXML',
+  zip: 'Zip',
+}
+
+function isGoogleLink(href) {
+  try {
+    const url = new URL(href)
+    return url.protocol === 'https:' && ['drive.google.com', 'docs.google.com'].includes(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+export function folderHtmlToListing(embedHtml) {
+  const root = parse(embedHtml)
+  const entries = root.querySelectorAll('.flip-entry').flatMap((entry) => {
+    const href = entry.querySelector('a')?.getAttribute('href') ?? ''
+    const title = entry.querySelector('.flip-entry-title')?.text.trim() ?? ''
+    if (!title || !isGoogleLink(href)) return []
+
+    const isFolder = /\/drive\/folders\//.test(href)
+    const extension = /\.([a-z0-9]{2,8})$/i.exec(title)?.[1].toLowerCase()
+    const kind = isFolder
+      ? 'Folder'
+      : FILE_KINDS.find(([pattern]) => pattern.test(href))?.[1] ?? EXTENSION_KINDS[extension] ?? 'File'
+    // The badge says what it is, so a known extension needn't be in the name too.
+    const name = !isFolder && EXTENSION_KINDS[extension] ? title.slice(0, -(extension.length + 1)).trim() : title
+    // Drive gives a time for anything changed today, in the server's time
+    // zone, which isn't Luke's or the student's.
+    const modified = entry.querySelector('.flip-entry-last-modified')?.text.trim() ?? ''
+    return [{ name, kind, modified: /^\d{1,2}:\d{2}\s*[ap]m$/i.test(modified) ? 'Today' : modified, url: href }]
+  })
+  return { title: root.querySelector('title')?.text.trim() ?? '', entries }
+}
+
+async function fetchFolder(folderId, fetchImpl) {
+  try {
+    const response = await fetchImpl(`https://drive.google.com/embeddedfolderview?id=${folderId}`, { redirect: 'follow' })
+    if (!response.ok || response.url.includes('accounts.google.com')) return { error: "The materials folder isn't shared as \"anyone with the link can view\"" }
+    const listing = folderHtmlToListing(await response.text())
+    return { ...listing, url: `https://drive.google.com/drive/folders/${folderId}` }
+  } catch {
+    return { error: "Couldn't reach Google Drive" }
+  }
+}
+
 // fetchImpl is passed in so dev and tests can swap it.
 export async function handleStudentNotesRequest({ slug }, fetchImpl = fetch) {
   const student = findStudent(slug)
   if (!student) return { statusCode: 404, payload: { error: 'No such page' } }
 
+  const folderId = folderIdFrom(student.folder ?? '')
+  const folderPromise = folderId ? fetchFolder(folderId, fetchImpl) : Promise.resolve(null)
+
   const docId = docIdFrom(student.doc ?? '')
-  if (!docId) return { statusCode: 200, payload: { name: student.name, html: null } }
+  if (!docId) return { statusCode: 200, payload: { name: student.name, html: null, folder: await folderPromise } }
 
   let response
   try {
@@ -200,5 +280,8 @@ export async function handleStudentNotesRequest({ slug }, fetchImpl = fetch) {
     return { statusCode: 502, payload: { error: "The notes Doc isn't shared as \"anyone with the link can view\"" } }
   }
 
-  return { statusCode: 200, payload: { name: student.name, html: docHtmlToNotes(await response.text()) } }
+  return {
+    statusCode: 200,
+    payload: { name: student.name, html: docHtmlToNotes(await response.text()), folder: await folderPromise },
+  }
 }

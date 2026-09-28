@@ -5335,7 +5335,42 @@ function StudentPage() {
             <div className="student-notes" dangerouslySetInnerHTML={{ __html: state.html }} />
           ) : null}
         </div>
+
+        {state.status === 'ready' && state.folder ? <StudentMaterials folder={state.folder} /> : null}
       </section>
+    </div>
+  )
+}
+
+// The student's Drive folder of teaching materials, listed rather than framed
+// so it matches the page. Everything opens in Drive.
+function StudentMaterials({ folder }) {
+  return (
+    <div className="surface-card student-notes-card student-materials" style={cardStyle}>
+      <div className="student-materials-header">
+        <h2 className="card-title">Lesson Materials</h2>
+        {folder.url ? (
+          <a className="text-link" href={folder.url} target="_blank" rel="noopener noreferrer">Open in Google Drive</a>
+        ) : null}
+      </div>
+
+      {folder.error ? <p className="student-notes-status">{folder.error}.</p> : null}
+      {folder.entries?.length === 0 ? <p className="student-notes-status">Nothing here yet.</p> : null}
+      {folder.entries?.length ? (
+        <ul className="student-materials-list">
+          {folder.entries.map((entry) => (
+            <li key={entry.url}>
+              <a href={entry.url} target="_blank" rel="noopener noreferrer">
+                <span className="student-material-name">{entry.name}</span>
+                <span className="student-material-meta">
+                  <span className={`student-material-kind is-${entry.kind.toLowerCase().replace(/\s+/g, '-')}`}>{entry.kind}</span>
+                  <span className="student-material-date">{entry.modified}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

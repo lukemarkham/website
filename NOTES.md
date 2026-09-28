@@ -19,10 +19,12 @@ either machine. Newest first.
   `src/assets/reviews/` with no entry in `reviews.js`, and transcribe them.
   There never was an automated tool; past sessions did it when they noticed.
 
-### Open items / ideas
+- Oliver Otto's Doc and his Drive materials folder are connected. The folder
+  is read from Drive's embed view and listed in the site's styling (folders
+  first, each with a type badge and date, opening in Drive), not framed.
+  Student pages are centred throughout.
 
-- Oliver Otto's page exists, but his Doc link isn't set yet, so it shows
-  "Notes from your lessons will show up here."
+### Open items / ideas
 - Once lukemarkham.com points at Netlify, the old Bandzoogle student links
   keep working as-is.
 

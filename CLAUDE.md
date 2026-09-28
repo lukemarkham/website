@@ -41,9 +41,11 @@ Each student has an unlisted notes page at `/<first-last>` (for example
 content is a Google Doc Luke edits directly; the page fetches it on every
 load through `netlify/functions/student-notes.mjs` and restyles it, so note
 updates never touch the code. To add a student, add an entry to
-`netlify/lib/students.mjs` with their name and the Doc's sharing link. The Doc
-must be shared as "anyone with the link can view", or the page shows an error
-saying so. The roster is server-only, so the site's code never lists students.
+`netlify/lib/students.mjs` with their name, the Doc's sharing link, and
+optionally a Google Drive folder of teaching materials, which is listed at the
+bottom of the page. The Doc and folder must be shared as "anyone with the link
+can view", or the page shows an error saying so. Student pages are centred
+throughout, at Luke's request. The roster is server-only, so the site's code never lists students.
 
 ## Practice tools
 
