@@ -122,4 +122,10 @@ export const reviews = [
     source: 'Jonas B.',
     stars: 5,
   },
+  {
+    id: 'review-726944',
+    quote: '9th song with Luke, highly recommend!',
+    source: 'Jaima',
+    stars: 5,
+  },
 ]
