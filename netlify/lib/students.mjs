@@ -12,6 +12,7 @@ export const STUDENTS = {
   'chuck-anello': {
     name: 'Chuck Anello',
     doc: 'https://docs.google.com/document/d/19Q82u8BfgEXt72935dp15XToa4ibK_OnjvZNA5wCBzg/edit?tab=t.0',
+    folder: 'https://drive.google.com/drive/folders/1jTfNfwqeYFYATZt3FHmLfNi4emIGfoRd',
   },
   'oliver-otto': {
     name: 'Oliver Otto',

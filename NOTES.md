@@ -8,7 +8,7 @@ either machine. Newest first.
 ### What changed
 
 - Added `/chuck-anello`, connected to his practice log Doc (checked it's
-  shared publicly). No Drive materials folder yet.
+  shared publicly), plus his Drive materials folder.
 
 ## 2026-09-28 (night) — Student notes pages, review check
 
