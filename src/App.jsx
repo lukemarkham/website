@@ -5269,6 +5269,317 @@ function TwoFivePage() {
   )
 }
 
+const FLOATING_METRONOME_KEY = 'lm-floating-metronome'
+const FLOATING_METRONOME_SUBDIVISIONS = [
+  { id: 'quarter', label: '♩', title: 'Quarter notes', perBeat: 1 },
+  { id: 'eighth', label: '♫', title: 'Eighth notes', perBeat: 2 },
+  { id: 'triplet', label: '3', title: 'Eighth-note triplets', perBeat: 3 },
+  { id: 'sixteenth', label: '16', title: 'Sixteenth notes', perBeat: 4 },
+]
+const FLOATING_METRONOME_DEFAULTS = { tempo: 80, beats: 4, subdivision: 'quarter', accent: true, volume: 80 }
+
+// Counts down against the wall clock so a throttled background tab still ends
+// on time. Returns the interval id.
+function startWallClockCountdown(seconds, onTick, onDone) {
+  const endsAt = Date.now() + seconds * 1000
+  const intervalId = window.setInterval(() => {
+    const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+    onTick(left)
+    if (left === 0) {
+      window.clearInterval(intervalId)
+      onDone()
+    }
+  }, 250)
+  return intervalId
+}
+
+function readFloatingMetronomeSettings() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(FLOATING_METRONOME_KEY) || '{}')
+    return { ...FLOATING_METRONOME_DEFAULTS, ...stored }
+  } catch {
+    return FLOATING_METRONOME_DEFAULTS
+  }
+}
+
+// A compact metronome that floats on student pages: tempo and play/pause, with
+// beats, subdivision, accent, volume, tap tempo and a session timer one tap
+// away. Settings are remembered per browser.
+function FloatingMetronome() {
+  const [settings, setSettings] = useState(readFloatingMetronomeSettings)
+  const [tempoDraft, setTempoDraft] = useState(() => String(settings.tempo))
+  const [expanded, setExpanded] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [activeBeat, setActiveBeat] = useState(null)
+  const [sessionMinutes, setSessionMinutes] = useState('0')
+  const [remainingSeconds, setRemainingSeconds] = useState(null)
+  const audioContextRef = useRef(null)
+  const schedulerRef = useRef(null)
+  const sessionIntervalRef = useRef(null)
+  const nextTickTimeRef = useRef(0)
+  const tickRef = useRef(0)
+  const visualTimeoutsRef = useRef([])
+  const tapTimesRef = useRef([])
+  const settingsRef = useRef(settings)
+
+  useEffect(() => {
+    settingsRef.current = settings
+    try {
+      window.localStorage.setItem(FLOATING_METRONOME_KEY, JSON.stringify(settings))
+    } catch {
+      // Remembering settings is only a convenience.
+    }
+  }, [settings])
+
+  useEffect(() => {
+    return () => {
+      window.clearInterval(schedulerRef.current)
+      window.clearInterval(sessionIntervalRef.current)
+      visualTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
+    }
+  }, [])
+
+  function update(changes) {
+    setSettings((current) => ({ ...current, ...changes }))
+  }
+
+  function setTempo(value) {
+    const nextTempo = Math.round(clamp(value, 30, 300))
+    update({ tempo: nextTempo })
+    setTempoDraft(String(nextTempo))
+  }
+
+  // Same rule as the metronome page: keep partial entries like "9" while typing.
+  function updateTempoDraft(event) {
+    const { value } = event.target
+    setTempoDraft(value)
+    const parsed = Number(value)
+    if (value.trim() !== '' && Number.isFinite(parsed) && parsed >= 30 && parsed <= 300) {
+      update({ tempo: parsed })
+    }
+  }
+
+  function commitTempo() {
+    const parsed = Number(tempoDraft)
+    setTempo(tempoDraft.trim() === '' || !Number.isFinite(parsed) ? settings.tempo : parsed)
+  }
+
+  function tapTempo() {
+    const now = performance.now()
+    const taps = tapTimesRef.current.filter((time) => now - time < 2500)
+    taps.push(now)
+    tapTimesRef.current = taps.slice(-6)
+    if (tapTimesRef.current.length >= 2) {
+      const intervals = tapTimesRef.current.slice(1).map((time, index) => time - tapTimesRef.current[index])
+      const average = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length
+      setTempo(60000 / average)
+    }
+  }
+
+  function scheduleTick(ctx, tick, time) {
+    const { beats, subdivision, accent, volume } = settingsRef.current
+    const perBeat = FLOATING_METRONOME_SUBDIVISIONS.find((option) => option.id === subdivision)?.perBeat ?? 1
+    const tickInBar = tick % (beats * perBeat)
+    const level = volume / 100
+
+    if (tickInBar % perBeat === 0) {
+      const beat = tickInBar / perBeat
+      if (beat === 0 && accent) playMetronomeClick(ctx, time, 1320, 0.36 * level, 0.055)
+      else playMetronomeClick(ctx, time, 920, 0.26 * level)
+
+      const delay = Math.max(0, (time - ctx.currentTime) * 1000)
+      visualTimeoutsRef.current.push(
+        window.setTimeout(() => setActiveBeat(beat), delay),
+        window.setTimeout(() => setActiveBeat(null), delay + 100),
+      )
+      if (visualTimeoutsRef.current.length > 64) visualTimeoutsRef.current.splice(0, 32)
+    } else {
+      playMetronomeClick(ctx, time, 720, 0.16 * level)
+    }
+  }
+
+  async function start() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext
+    if (!audioContextRef.current) audioContextRef.current = new AudioContextClass()
+    const ctx = audioContextRef.current
+    if (ctx.state === 'suspended') await ctx.resume()
+
+    tickRef.current = 0
+    nextTickTimeRef.current = ctx.currentTime + 0.08
+    schedulerRef.current = window.setInterval(() => {
+      while (nextTickTimeRef.current < ctx.currentTime + METRONOME_SCHEDULE_AHEAD_SECONDS) {
+        scheduleTick(ctx, tickRef.current, nextTickTimeRef.current)
+        const { tempo, subdivision } = settingsRef.current
+        const perBeat = FLOATING_METRONOME_SUBDIVISIONS.find((option) => option.id === subdivision)?.perBeat ?? 1
+        nextTickTimeRef.current += 60 / tempo / perBeat
+        tickRef.current += 1
+      }
+    }, METRONOME_LOOKAHEAD_MS)
+    setIsPlaying(true)
+  }
+
+  // The session timer runs off the transport, against the wall clock.
+  function startSessionTimer() {
+    const minutes = clampWholeNumber(sessionMinutes, 0, 240)
+    if (minutes === 0) return
+    setRemainingSeconds(minutes * 60)
+    sessionIntervalRef.current = startWallClockCountdown(minutes * 60, setRemainingSeconds, () => stop({ playCompletion: true }))
+  }
+
+  function stop({ playCompletion = false } = {}) {
+    window.clearInterval(schedulerRef.current)
+    window.clearInterval(sessionIntervalRef.current)
+    schedulerRef.current = null
+    sessionIntervalRef.current = null
+    visualTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    visualTimeoutsRef.current = []
+    setActiveBeat(null)
+    setRemainingSeconds(null)
+    setIsPlaying(false)
+    if (playCompletion && audioContextRef.current) playSessionCompleteSound(audioContextRef.current)
+  }
+
+  function togglePlayback() {
+    if (isPlaying) {
+      stop()
+    } else {
+      startSessionTimer()
+      start()
+    }
+  }
+
+  return (
+    <div className={`floating-metronome${expanded ? ' is-expanded' : ''}`} role="region" aria-label="Metronome">
+      {expanded ? (
+        <div className="floating-metronome-panel" id="floating-metronome-settings">
+          <div className="floating-metronome-beats" aria-hidden="true">
+            {Array.from({ length: settings.beats }, (_, index) => (
+              <span key={index} className={activeBeat === index ? 'is-active' : undefined} />
+            ))}
+          </div>
+
+          <div className="floating-metronome-row">
+            <button className="floating-metronome-step" type="button" onClick={() => setTempo(settings.tempo - 1)} aria-label="Slower">−</button>
+            <input
+              className="floating-metronome-slider"
+              type="range"
+              min="30"
+              max="300"
+              value={settings.tempo}
+              onChange={(event) => setTempo(Number(event.target.value))}
+              aria-label="Tempo"
+            />
+            <button className="floating-metronome-step" type="button" onClick={() => setTempo(settings.tempo + 1)} aria-label="Faster">+</button>
+          </div>
+
+          <button className="secondary-button floating-metronome-tap" type="button" onClick={tapTempo}>Tap Tempo</button>
+
+          <div className="floating-metronome-field">
+            <span className="control-label">Beats per bar</span>
+            <div className="floating-metronome-row">
+              <button className="floating-metronome-step" type="button" onClick={() => update({ beats: Math.max(1, settings.beats - 1) })} aria-label="Fewer beats">−</button>
+              <span className="floating-metronome-value">{settings.beats}</span>
+              <button className="floating-metronome-step" type="button" onClick={() => update({ beats: Math.min(12, settings.beats + 1) })} aria-label="More beats">+</button>
+            </div>
+          </div>
+
+          <div className="floating-metronome-field">
+            <span className="control-label">Subdivision</span>
+            <div className="floating-metronome-segments" role="group" aria-label="Subdivision">
+              {FLOATING_METRONOME_SUBDIVISIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  title={option.title}
+                  aria-label={option.title}
+                  aria-pressed={settings.subdivision === option.id}
+                  onClick={() => update({ subdivision: option.id })}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="floating-metronome-check">
+            <input type="checkbox" checked={settings.accent} onChange={(event) => update({ accent: event.target.checked })} />
+            Accent beat 1
+          </label>
+
+          <label className="floating-metronome-field">
+            <span className="control-label">Volume</span>
+            <input
+              className="floating-metronome-slider"
+              type="range"
+              min="5"
+              max="100"
+              value={settings.volume}
+              onChange={(event) => update({ volume: Number(event.target.value) })}
+            />
+          </label>
+
+          <label className="floating-metronome-field">
+            <span className="control-label">Session timer (minutes, 0 = off)</span>
+            <input
+              className="control-input floating-metronome-minutes"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              max="240"
+              value={sessionMinutes}
+              disabled={isPlaying}
+              onChange={(event) => setSessionMinutes(event.target.value)}
+            />
+          </label>
+        </div>
+      ) : null}
+
+      <div className="floating-metronome-bar">
+        <button
+          className={`floating-metronome-play${activeBeat != null ? ' is-pulsing' : ''}`}
+          type="button"
+          onClick={togglePlayback}
+          aria-label={isPlaying ? 'Pause metronome' : 'Play metronome'}
+        >
+          {isPlaying ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" /></svg>
+          )}
+        </button>
+        <input
+          className="floating-metronome-tempo"
+          type="number"
+          inputMode="numeric"
+          min="30"
+          max="300"
+          value={tempoDraft}
+          onChange={updateTempoDraft}
+          onBlur={commitTempo}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+          }}
+          aria-label="Tempo in BPM"
+        />
+        <span className="floating-metronome-unit">{remainingSeconds != null ? formatSessionTime(remainingSeconds) : 'BPM'}</span>
+        <button
+          className="floating-metronome-toggle"
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          aria-expanded={expanded}
+          aria-controls="floating-metronome-settings"
+          aria-label={expanded ? 'Hide metronome settings' : 'Show metronome settings'}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // A student's lesson notes, from the Google Doc Luke keeps for them (see
 // netlify/lib/studentNotes.mjs). The address is the student's name, like
 // /oliver-otto. Pages are unlisted: nothing links to them and search engines
@@ -5338,6 +5649,8 @@ function StudentPage() {
 
         {state.status === 'ready' && state.folder ? <StudentMaterials folder={state.folder} /> : null}
       </section>
+
+      <FloatingMetronome />
     </div>
   )
 }

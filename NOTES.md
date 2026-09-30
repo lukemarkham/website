@@ -3,12 +3,19 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
-## 2026-09-30 — Chuck Anello's page
+## 2026-09-30 — Chuck Anello's page, floating metronome
 
 ### What changed
 
 - Added `/chuck-anello`, connected to his practice log Doc (checked it's
   shared publicly), plus his Drive materials folder.
+- **Floating metronome on every student page** (`FloatingMetronome` in
+  `App.jsx`): a bottom-left pill with play/pause and a BPM field (bottom-right
+  is the Twitch card). The chevron opens beat dots, a tempo slider with ±1,
+  tap tempo, beats per bar, subdivision (quarter, eighth, triplet, sixteenth),
+  an accent on beat 1, volume and a session timer run off its transport.
+  Settings are remembered per browser. Checked in headless Chrome: stays
+  pinned while scrolling, and 120 BPM eighths land 0.25 s apart.
 
 ## 2026-09-28 (night) — Student notes pages, review check
 
