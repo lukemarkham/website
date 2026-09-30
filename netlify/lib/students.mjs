@@ -9,6 +9,10 @@
 // doesn't reveal who has a page.
 
 export const STUDENTS = {
+  'chuck-anello': {
+    name: 'Chuck Anello',
+    doc: 'https://docs.google.com/document/d/19Q82u8BfgEXt72935dp15XToa4ibK_OnjvZNA5wCBzg/edit?tab=t.0',
+  },
   'oliver-otto': {
     name: 'Oliver Otto',
     doc: 'https://docs.google.com/document/d/1Y73iwtkq96EIpXOwqZnZx7U4YhKqOovXz6HbtVIZBoM/edit?tab=t.0',

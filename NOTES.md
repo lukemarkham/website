@@ -3,6 +3,13 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-09-30 — Chuck Anello's page
+
+### What changed
+
+- Added `/chuck-anello`, connected to his practice log Doc (checked it's
+  shared publicly). No Drive materials folder yet.
+
 ## 2026-09-28 (night) — Student notes pages, review check
 
 ### What changed
