@@ -37,6 +37,29 @@ export function createPianoSampler(ctx, destination = ctx.destination) {
       return buffers.size === SAMPLES.length
     },
 
+    // Scheduled ahead, for a part played to a clock: starts at `time` and
+    // lets go after `duration`. Returns false while the samples aren't in.
+    playAt(midi, velocity, time, duration) {
+      const sample = nearest(midi)
+      const buffer = buffers.get(sample.midi)
+      if (!buffer) return false
+
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      source.playbackRate.value = 2 ** ((midi - sample.midi) / 12)
+      const amp = ctx.createGain()
+      const level = 0.12 + velocity ** 1.6 * 0.75
+      const releaseAt = time + duration
+      amp.gain.setValueAtTime(level, time)
+      amp.gain.setValueAtTime(level, releaseAt)
+      amp.gain.exponentialRampToValueAtTime(0.0001, releaseAt + RELEASE_SECONDS)
+      source.connect(amp)
+      amp.connect(destination)
+      source.start(time)
+      source.stop(releaseAt + RELEASE_SECONDS + 0.05)
+      return true
+    },
+
     // Returns a voice with release(), or null while the samples aren't in.
     play(midi, velocity) {
       const sample = nearest(midi)

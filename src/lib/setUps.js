@@ -7,7 +7,11 @@
 // bar 1, slot 1 its &, and so on, 8 slots to a bar. A note is
 // { slot, slots, articulation, role }, where articulation is 'marcato' (^,
 // short), 'accent' (>, held for its length), 'tenuto' (-, a full quarter) or
-// 'staccato' (.), and role is 'setup' or 'cue'. Notes may be tied over a barline.
+// 'staccato' (.), and role is 'setup', 'fillHit' (a band hit inside a fill,
+// written in the staff as rhythmic slashes) or 'cue'.
+//
+// A phrase always ends on a set-up in its last two bars, so a practice run
+// finishes on an ensemble hit rather than a bar of comping. Notes may be tied over a barline.
 
 export const SLOTS_PER_BAR = 8
 
@@ -67,6 +71,9 @@ const CUE_FIGURES = [
   [[7, 1, 'marcato']],
 ]
 
+// The chance a fill of 2 beats or a bar has the band hitting inside it.
+const FILL_HIT_CHANCE = { 2: 0.3, 4: 0.5 }
+
 // The chance a free bar gets a rhythm cue, when cues are on.
 const CUE_CHANCE = 0.6
 // Breathing room, in slots, between one figure and the next fill or figure.
@@ -99,13 +106,16 @@ function figureEnd(notes) {
 }
 
 function setUpDescription(setUp) {
-  const { fill, notes } = setUp
+  const { fill, notes, fillHits } = setUp
   const beats = (fill.end - fill.start) / 2
   const length = beats === 4 ? 'a bar' : `${beats} ${beats === 1 ? 'beat' : 'beats'}`
   const first = notes[0]
   const crosses = Math.floor(first.slot / SLOTS_PER_BAR) !== Math.floor((first.slot + first.slots - 1) / SLOTS_PER_BAR)
   const what = notes.length > 1 ? `a ${notes.length}-note figure starting on` : first.articulation === 'accent' ? 'a held hit on' : 'a short hit on'
-  return `Fill for ${length} into ${what} ${describeSlot(first.slot)}${crosses ? ', tied over the barline' : ''}.`
+  const catching = fillHits.length
+    ? `, catching the band on ${fillHits.map((hit) => describeSlot(hit.slot)).join(' and ')},`
+    : ''
+  return `Fill for ${length}${catching} into ${what} ${describeSlot(first.slot)}${crosses ? ', tied over the barline' : ''}.`
 }
 
 const ARTICULATION_CODES = { marcato: 'm', accent: 'a', staccato: 's', tenuto: 't' }
@@ -114,8 +124,26 @@ function encodeNotes(notes) {
   return notes.map((note) => `${note.slot}-${note.slots}${ARTICULATION_CODES[note.articulation]}`).join(',')
 }
 
+// Short band hits inside a fill: none in its first 8th or its last, one to a
+// beat at most, a marcato quarter on a beat or 8th on an &.
+function placeFillHits(fill) {
+  const beats = (fill.end - fill.start) / 2
+  if (!(Math.random() < (FILL_HIT_CHANCE[beats] ?? 0))) return []
+  const wanted = beats === 4 && Math.random() < 0.4 ? 2 : 1
+  const hits = []
+  for (let attempt = 0; attempt < 20 && hits.length < wanted; attempt += 1) {
+    const slot = fill.start + 1 + Math.floor(Math.random() * (fill.end - fill.start - 2))
+    const slots = slot % 2 === 0 ? 2 : 1
+    if (slot + slots > fill.end - 1) continue
+    if (hits.some((hit) => Math.floor(hit.slot / 2) === Math.floor(slot / 2) || Math.abs(hit.slot - slot) < 2)) continue
+    hits.push({ slot, slots, articulation: 'marcato', role: 'fillHit' })
+  }
+  return hits.sort((a, b) => a.slot - b.slot)
+}
+
 // Draws set-ups one per stretch of the phrase, left to right. Each fill
-// starts in bar 2 at the earliest and clear of the figure before it.
+// starts in bar 2 at the earliest and clear of the figure before it, and the
+// last figure starts in the last two bars.
 function placeSetUps(bars, fillBeats) {
   const total = bars * SLOTS_PER_BAR
   const count = bars === 8 ? 2 : pick([3, 4])
@@ -131,7 +159,8 @@ function placeSetUps(bars, fillBeats) {
     const options = []
     for (const figure of SETUP_FIGURES) {
       const length = Math.max(...figure.notes.map(([offset, slots]) => offset + slots))
-      const earliest = Math.max(stretchStart + fillSlots, previousEnd + GAP + fillSlots)
+      const isLast = index === count - 1
+      const earliest = Math.max(stretchStart + fillSlots, previousEnd + GAP + fillSlots, isLast ? total - 2 * SLOTS_PER_BAR : 0)
       for (let slot = earliest; slot < stretchEnd; slot += 1) {
         if (slot % 2 !== figure.parity || slot + length > total) continue
         // Pushes (the & of 4, tied into the next bar) and downbeats are what
@@ -145,7 +174,8 @@ function placeSetUps(bars, fillBeats) {
 
     const { figure, slot } = pickWeighted(options, (option) => option.weight)
     const notes = figure.notes.map(([offset, slots, articulation]) => ({ slot: slot + offset, slots, articulation, role: 'setup' }))
-    setUps.push({ fill: { start: slot - fillSlots, end: slot }, notes })
+    const fill = { start: slot - fillSlots, end: slot }
+    setUps.push({ fill, notes, fillHits: placeFillHits(fill) })
     previousEnd = figureEnd(notes)
   }
   return setUps
@@ -156,6 +186,8 @@ function placeSetUps(bars, fillBeats) {
 function placeCues(bars, setUps) {
   const busy = []
   setUps.forEach(({ fill, notes }) => busy.push([fill.start, figureEnd(notes)]))
+  // Nothing after the final set-up: the phrase ends on it.
+  busy.push([setUps[setUps.length - 1].fill.start, bars * SLOTS_PER_BAR])
   const cues = []
 
   for (let bar = 1; bar < bars; bar += 1) {
@@ -178,13 +210,13 @@ export function generateSetUpPhrase({ bars, fillBeats, feel, cues }) {
   let setUps = null
   while (!setUps) setUps = placeSetUps(bars, fillBeats)
   const cueNotes = cues ? placeCues(bars, setUps) : []
-  const notes = [...setUps.flatMap((setUp) => setUp.notes), ...cueNotes].sort((a, b) => a.slot - b.slot)
+  const notes = [...setUps.flatMap((setUp) => [...setUp.fillHits, ...setUp.notes]), ...cueNotes].sort((a, b) => a.slot - b.slot)
 
   return {
     key: [
       feel,
       bars,
-      setUps.map((setUp) => `${(setUp.fill.end - setUp.fill.start) / 2}@${encodeNotes(setUp.notes)}`).join(';'),
+      setUps.map((setUp) => `${(setUp.fill.end - setUp.fill.start) / 2}@${encodeNotes(setUp.notes)}${setUp.fillHits.length ? `+${encodeNotes(setUp.fillHits)}` : ''}`).join(';'),
       encodeNotes(cueNotes),
     ].join('|'),
     feel,

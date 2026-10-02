@@ -18,6 +18,9 @@
 //   before a figure that starts on an &: without it the figure is easy to
 //   misread as on the beat.
 // - Figures sit exactly over the slashes they line up with.
+// - Band hits inside a fill are written in the staff itself as rhythmic
+//   slashes (stemmed slash noteheads, an 8th rest before an &), not cued
+//   above, which keeps them clear of the fill bracket.
 
 const SLOTS_PER_BAR = 8
 const SLASH_KEY = 'b/4'
@@ -85,7 +88,9 @@ function spacerPieces(position, length) {
  * @param {object} VF          the loaded VexFlow module
  * @param {object} options
  *   bars: how many 4/4 bars
- *   notes: [{ slot, slots, articulation: 'marcato' | 'accent' | 'staccato' | 'tenuto' }]
+ *   notes: [{ slot, slots, articulation: 'marcato' | 'accent' | 'staccato' | 'tenuto', role }]
+ *     role 'fillHit' is drawn in the staff as rhythmic slashes; one beat at
+ *     most, a quarter on the beat or an 8th on the &
  *   fills: [{ start, end }] in slots; each ends where its figure starts
  *   feel: the style marking over bar 1 ('Swing'), or null
  *   tempo: quarter-note BPM for the tempo marking, or null
@@ -116,9 +121,10 @@ export function renderChartNotation(host, VF, options) {
   ctx.setFillStyle(colors.ink)
   ctx.setStrokeStyle(colors.ink)
 
-  // Each note cut at the barlines: { bar, position, length, note, isFirst }.
+  const fillHits = notes.filter((note) => note.role === 'fillHit')
+  // Each cued note cut at the barlines: { bar, position, length, note, isFirst }.
   const runs = []
-  notes.forEach((note) => {
+  notes.filter((note) => note.role !== 'fillHit').forEach((note) => {
     let slot = note.slot
     const end = note.slot + note.slots
     while (slot < end) {
@@ -216,12 +222,27 @@ export function renderChartNotation(host, VF, options) {
     // under a fill bracket take its colour. Their (invisible) stems point
     // down: two stems-up voices make VexFlow nudge one aside, which pushed
     // the figures off the slashes.
-    const slashes = [0, 1, 2, 3].map((beat) => {
+    const slashes = [0, 1, 2, 3].flatMap((beat) => {
       const slot = bar * SLOTS_PER_BAR + beat * 2
+      const hit = fillHits.find((note) => Math.floor(note.slot / 2) === slot / 2)
+      if (hit) {
+        // A band hit inside the fill, in rhythm: a stemmed slash, with an
+        // 8th rest first when it falls on the &.
+        const marked = new StaveNote({ keys: [SLASH_KEY], duration: hit.slots === 1 ? '8' : 'q', type: 's', stemDirection: 1 }).setStyle(ink)
+        marked.addModifier(new Articulation(ARTICULATIONS[hit.articulation]).setPosition(Modifier.Position.ABOVE), 0)
+        noteAt.set(hit.slot, marked)
+        if (hit.slot % 2 === 0) {
+          slashAt.set(slot, marked)
+          return [marked]
+        }
+        const rest = new StaveNote({ keys: [SLASH_KEY], duration: '8r' }).setStyle(ink)
+        slashAt.set(slot, rest)
+        return [rest, marked]
+      }
       const note = new StaveNote({ keys: [SLASH_KEY], duration: 'q', type: 's', stemDirection: -1 }).setStyle(inFill(slot) ? fillInk : ink)
       note.setStemStyle({ fillStyle: 'transparent', strokeStyle: 'transparent' })
       slashAt.set(slot, note)
-      return note
+      return [note]
     })
     const voices = [new Voice({ numBeats: 4, beatValue: 4 }).addTickables(slashes)]
     const cue = cueVoice(bar)
@@ -310,7 +331,10 @@ export function renderChartNotation(host, VF, options) {
       const hitOnThisLine = lineOf(Math.floor(fill.end / SLOTS_PER_BAR)) === line && fill.end < bars * SLOTS_PER_BAR
       const x1 = from === fill.start ? slotX(from) - 3 : staves[Math.floor(from / SLOTS_PER_BAR)].getNoteStartX() - 6
       const x2 = closesHere && hitOnThisLine ? slotX(fill.end) - 4 : lineEnd - 2
-      const y = staves[Math.floor(from / SLOTS_PER_BAR)].getYForLine(0) - 11
+      // Over a fill with band hits in it, the bracket clears their stems and
+      // accents.
+      const hasHits = fillHits.some((hit) => hit.slot >= fill.start && hit.slot < fill.end)
+      const y = staves[Math.floor(from / SLOTS_PER_BAR)].getYForLine(0) - (hasHits ? 48 : 11)
 
       ctx.beginPath()
       if (from === fill.start) {

@@ -12,6 +12,7 @@ import {
   gradeAnswer,
   keyForMode,
   midiNoteLabel,
+  midiToFreq,
   qualityLabel,
   recogniseChord,
   romanLabel,
@@ -22,6 +23,7 @@ import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
 import { renderChartNotation } from './lib/chartNotation'
 import { SET_UP_FEELS, SET_UP_FILL_LENGTHS, SET_UP_LENGTHS, generateSetUpPhrase } from './lib/setUps'
+import { arrangeBand } from './lib/setUpBand'
 import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
 import {
   COUNT_SYLLABLES,
@@ -36,6 +38,7 @@ import {
   BASS_INSTRUMENTS,
   CHORD_INSTRUMENTS,
   PATTERNS,
+  REFERENCE_INSTRUMENT,
   buildArrangement,
   createEngine,
   playArrangement,
@@ -2262,6 +2265,7 @@ function PracticeSession({
   controlRef,
   rotationOptions = PRACTICE_ROTATION_OPTIONS,
   defaultRotation = 60,
+  click = true,
 }) {
   const [sessionMinutes, setSessionMinutes] = useState(10)
   const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
@@ -2278,6 +2282,7 @@ function PracticeSession({
   const tempoRef = useRef(tempo)
   const onNewFillRef = useRef(onNewItem)
   const onBeatRef = useRef(onBeat)
+  const clickRef = useRef(click)
   const cycleBarsRef = useRef(cycleBars)
   const itemTitle = itemName[0].toUpperCase() + itemName.slice(1)
 
@@ -2292,6 +2297,10 @@ function PracticeSession({
   useEffect(() => {
     onBeatRef.current = onBeat
   }, [onBeat])
+
+  useEffect(() => {
+    clickRef.current = click
+  }, [click])
 
   useEffect(() => {
     cycleBarsRef.current = cycleBars
@@ -2374,7 +2383,10 @@ function PracticeSession({
         onBeatRef.current?.(ctx, time, (run.beatIndex - COUNT_OFF_BEATS) % (4 * cycleBarsRef.current), beatSeconds)
       }
       if (!isCountIn || count !== null) {
-        playMetronomeClick(ctx, time, beatInBar === 0 ? 1320 : 920, beatInBar === 0 ? 0.36 : 0.26)
+        // The count-off always clicks; time only if the page wants it.
+        if (isCountIn || clickRef.current) {
+          playMetronomeClick(ctx, time, beatInBar === 0 ? 1320 : 920, beatInBar === 0 ? 0.36 : 0.26)
+        }
         atAudioTime(ctx, time, () => {
           setActiveBeat(beatInBar)
           setBanner(count)
@@ -3668,13 +3680,10 @@ function IndependencePage() {
   )
 }
 
-// The band's hit: a brass section voicing (F6/9 with the 13th on top) on
-// detuned saws through an opening filter. Short hits bark and stop; long
-// ones hold for their written length. `level` scales the whole thing, so
-// rhythm cues can sit under the set-ups.
-const HORN_HIT_FREQUENCIES = [87.31, 174.61, 220, 293.66, 392, 523.25, 587.33]
-
-function playHornHit(ctx, time, { long, seconds, level = 1 }) {
+// The horns: the chord voicing on detuned saws through an opening filter.
+// Short hits bark and stop; long ones hold for their written length.
+// `level` scales the whole thing, so rhythm cues can sit under the set-ups.
+function playHornHit(ctx, out, time, { midi, long, seconds, level = 1 }) {
   const holdUntil = time + (long ? Math.max(0.2, seconds - 0.05) : 0.09)
   const endsAt = holdUntil + (long ? 0.18 : 0.14)
   const output = ctx.createGain()
@@ -3691,16 +3700,18 @@ function playHornHit(ctx, time, { long, seconds, level = 1 }) {
   output.gain.setValueAtTime((long ? 0.2 : 0.16) * level, holdUntil)
   output.gain.exponentialRampToValueAtTime(0.0001, endsAt)
   filter.connect(output)
-  output.connect(ctx.destination)
+  output.connect(out)
 
-  HORN_HIT_FREQUENCIES.forEach((frequency) => {
+  // Balanced for seven voices, however many the chord has.
+  const voiceLevel = 0.05 * Math.min(1.4, 7 / midi.length)
+  midi.forEach((note, index) => {
     ;[-6, 6].forEach((cents) => {
       const oscillator = ctx.createOscillator()
       const gain = ctx.createGain()
       oscillator.type = 'sawtooth'
-      oscillator.frequency.value = frequency
+      oscillator.frequency.value = midiToFreq(note)
       oscillator.detune.value = cents
-      gain.gain.value = frequency < 100 ? 0.09 : 0.05
+      gain.gain.value = index === 0 ? voiceLevel * 1.8 : voiceLevel
       oscillator.connect(gain)
       gain.connect(filter)
       oscillator.start(time)
@@ -3709,11 +3720,22 @@ function playHornHit(ctx, time, { long, seconds, level = 1 }) {
   })
 }
 
+const SET_UP_BAND_OPTIONS = [
+  { id: 'full', label: 'Full band' },
+  { id: 'horns', label: 'Horns only' },
+  { id: 'off', label: 'Off' },
+]
+
 const SET_UP_DEFAULT_TEMPO_RANGE = [100, 180]
 const SET_UP_ROTATION_OPTIONS = [
   { seconds: PRACTICE_EVERY_CYCLE, label: 'Every phrase' },
   ...PRACTICE_ROTATION_OPTIONS,
 ]
+
+// A phrase with its tempo and the band's part for it.
+function withBand(phrase, tempo) {
+  return { ...phrase, tempo, band: arrangeBand(phrase) }
+}
 
 function getRandomSetUpPhrase(options, downvoted) {
   return drawFresh('setups', () => generateSetUpPhrase(options), {
@@ -3807,25 +3829,27 @@ function SetUpsPage() {
   const [fillBeats, setFillBeats] = useState(null)
   const [cues, setCues] = useState(true)
   const [tempoRange, setTempoRange] = useState(SET_UP_DEFAULT_TEMPO_RANGE)
-  const [bandOn, setBandOn] = useState(true)
+  const [band, setBand] = useState('full')
+  const [click, setClick] = useState(true)
+  const bandBusRef = useRef(null)
   const downvotedRef = useDownvotes('setups', (entry) => entry.key)
-  const [phrase, setPhrase] = useState(() => ({
-    ...getRandomSetUpPhrase({ bars: 8, fillBeats: null, feel: 'swing', cues: true }, new Set(readStoredList(downvotesKey('setups')))),
-    tempo: randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
-  }))
+  const [phrase, setPhrase] = useState(() => withBand(
+    getRandomSetUpPhrase({ bars: 8, fillBeats: null, feel: 'swing', cues: true }, new Set(readStoredList(downvotesKey('setups')))),
+    randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
+  ))
   const [manualCount, setManualCount] = useState(0)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const sessionControlRef = useRef(null)
   const feelLabel = SET_UP_FEELS.find((item) => item.id === phrase.feel).label
 
-  // The notes the band plays on each beat of the phrase.
-  const notesByBeat = useMemo(() => {
+  // What the band plays on each beat of the phrase.
+  const eventsByBeat = useMemo(() => {
     const byBeat = new Map()
-    phrase.notes.forEach((note) => {
-      const beat = Math.floor(note.slot / 2)
+    phrase.band.events.forEach((event) => {
+      const beat = Math.floor(event.slot / 2)
       if (!byBeat.has(beat)) byBeat.set(beat, [])
-      byBeat.get(beat).push(note)
+      byBeat.get(beat).push(event)
     })
     return byBeat
   }, [phrase])
@@ -3841,7 +3865,7 @@ function SetUpsPage() {
       feel: next.feel ?? feel,
       cues: next.cues ?? cues,
     }
-    setPhrase({ ...getRandomSetUpPhrase(options, downvotedRef.current), tempo: randomInt(...tempoRange) })
+    setPhrase(withBand(getRandomSetUpPhrase(options, downvotedRef.current), randomInt(...tempoRange)))
     setUpvoted(null)
   }
 
@@ -3855,17 +3879,45 @@ function SetUpsPage() {
     setPhrase((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
   }
 
-  // The band plays each figure where it's written, an & swung to the last
-  // third of the beat. Set-ups are full band; rhythm cues sit underneath.
+  // One bus for the band on the session's audio context, with the sampled
+  // piano loading into it the first time the band plays.
+  function bandBus(ctx) {
+    if (bandBusRef.current?.ctx !== ctx) {
+      const out = ctx.createDynamicsCompressor()
+      out.threshold.value = -12
+      out.ratio.value = 3
+      out.connect(ctx.destination)
+      const piano = createPianoSampler(ctx, out)
+      piano.load()
+      bandBusRef.current = { ctx, out, piano }
+    }
+    return bandBusRef.current
+  }
+
+  // Each event where it's written, an & swung to the last third of the beat.
   function playBand(ctx, time, beatInCycle, beatSeconds) {
-    if (!bandOn) return
-    notesByBeat.get(beatInCycle)?.forEach((note) => {
-      const offset = note.slot % 2 === 0 ? 0 : phrase.feel === 'swing' ? 2 / 3 : 1 / 2
-      playHornHit(ctx, time + offset * beatSeconds, {
-        long: note.articulation === 'accent' || note.articulation === 'tenuto',
-        seconds: (note.slots / 2) * beatSeconds,
-        level: note.role === 'cue' ? 0.55 : 1,
-      })
+    if (band === 'off') return
+    const events = eventsByBeat.get(beatInCycle)
+    if (!events) return
+    const { out, piano } = bandBus(ctx)
+    const swing = phrase.feel === 'swing' ? 2 / 3 : 1 / 2
+    events.forEach((event) => {
+      if (band === 'horns' && event.instrument !== 'horns') return
+      const at = time + (event.slot % 2 === 0 ? 0 : swing) * beatSeconds
+      const written = (event.slots / 2) * beatSeconds
+      if (event.instrument === 'horns') {
+        playHornHit(ctx, out, at, { midi: event.midi, long: !event.short, seconds: written, level: event.level })
+      } else if (event.instrument === 'bass') {
+        const duration = event.short ? beatSeconds * 0.3 : Math.max(beatSeconds * 0.4, written * 0.95)
+        BASS_INSTRUMENTS.upright.play(ctx, out, { midi: event.midi[0], time: at, duration, velocity: 0.95 * event.level })
+      } else {
+        const duration = event.short ? beatSeconds * 0.35 : written * 0.95
+        event.midi.forEach((midi) => {
+          if (!piano.playAt(midi, 0.42 * event.level, at, duration)) {
+            REFERENCE_INSTRUMENT.play(ctx, out, { midi, time: at, duration, velocity: 0.5 * event.level })
+          }
+        })
+      }
     })
   }
 
@@ -3912,7 +3964,8 @@ function SetUpsPage() {
         <p style={introStyle}>
           A phrase of time with ensemble figures, written the way a big band chart cues them. Keep time
           through the slashes, catch the rhythm cues, play a fill for the length of each bracket, and land
-          the figure with the band.
+          the figure with the band. A rhythm section walks and comps over standard changes, and the horns
+          play every figure, so you can hear whether you read it right.
         </p>
 
         <div className="sticking-toolbar">
@@ -3950,7 +4003,12 @@ function SetUpsPage() {
 
           <div className="control-card">
             <span className="control-label">Band</span>
-            <ChoiceChips items={SET_UP_CUE_OPTIONS} isActive={(item) => item.on === bandOn} onPick={(item) => setBandOn(item.on)} />
+            <ChoiceChips items={SET_UP_BAND_OPTIONS} isActive={(item) => item.id === band} onPick={(item) => setBand(item.id)} />
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Click</span>
+            <ChoiceChips items={SET_UP_CUE_OPTIONS} isActive={(item) => item.on === click} onPick={(item) => setClick(item.on)} />
           </div>
 
           <div className="control-card">
@@ -3966,6 +4024,7 @@ function SetUpsPage() {
           cycleBars={phrase.bars}
           onNewItem={() => generate()}
           onBeat={playBand}
+          click={click}
           manualFillCount={manualCount}
           controlRef={sessionControlRef}
           rotationOptions={SET_UP_ROTATION_OPTIONS}
@@ -4012,7 +4071,8 @@ function SetUpsPage() {
             ))}
           </ol>
           <p style={mutedTextStyle}>
-            A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a line
+            Slashes with stems inside a fill bracket are band hits in the middle of the fill: catch them and
+            keep filling. A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a line
             (tenuto) is held for a full quarter; a dot is short and light. The figures outside the brackets are rhythm cues: catch them on the snare, or just
             read them while you keep time.
           </p>

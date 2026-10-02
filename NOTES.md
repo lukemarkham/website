@@ -3,6 +3,42 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-03 — Set Ups: hits inside fills, ending on a hit, a rhythm section
+
+### What changed
+
+- **Hits inside fills** (`role: 'fillHit'`): 30% of 2-beat fills and 50% of
+  1-bar fills have one or two short band hits in them, never in the fill's
+  first or last 8th. They're written in the staff as rhythmic slashes
+  (stemmed slash noteheads with ^, an 8th rest before an &), and the bracket
+  rises over them. Key: `beats@figure+fillHits`.
+- **Phrases end on a hit**: the last set-up's figure starts in the last two
+  bars, and no rhythm cue comes after its fill.
+- **Band** (`src/lib/setUpBand.js`): each 8 bars takes one of five
+  standard-style progressions (rhythm changes A, I–VI–ii–V, A Train II7,
+  Autumn Leaves-style cycle, Bird-style ii–Vs) in F, B♭, E♭, C, G or A♭, all
+  ending on the tonic.
+  - The bass walks in quarters: the root on each chord change, chord tones
+    in between, and a chromatic or fifth-below approach into the next root.
+    It catches set-ups and fill hits with the horns, then walks on.
+  - The piano (sampled Salamander, new `playAt` in `pianoSampler.js`) comps
+    in bars with nothing written, plays every figure, and lays out under
+    fills.
+  - The horns voice the chord sounding at the time; a figure on an &
+    anticipates the next beat's chord.
+  - Walking and comping stop at the final set-up.
+- Settings: Band (Full band / Horns only / Off) and Click (On / Off). The
+  count-off always clicks (`click` prop on `PracticeSession`).
+- Checked: 4,000 phrases break no rule (including band range, no comping in
+  fills, nothing after the final hit). In headless Chrome every bass, piano
+  and horn note lands on the beat or the swung &.
+
+### Open items / ideas
+
+- Mix levels and sounds are set by reasoning, not by ear: Luke to listen.
+- Next towards full charts: rehearsal letters, ensemble 8th-note lines,
+  dynamics, more forms (blues, AABA 32).
+
 ## 2026-10-02 (late night) — Set Ups engraving rules from Luke's notes
 
 ### What changed
