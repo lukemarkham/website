@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "id": "2026-10-02T18-35-51-855Z-68b8or",
+    "createdAt": "2026-10-02T18:35:51.855Z",
+    "tool": "setups",
+    "key": "swing:25:long:2",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 106,
+    "note": "This is an example of 2 quarter rests next to each other, which should instead be notated as a half rest",
+    "tags": [],
+    "review": "Engraving fixed 2026-10-02: rests now combine (half rest on beats 1 or 3, dotted half from beat 1 or 2, whole rest for a bar). The phrase itself was fine. Old-format key; the 8-bar phrase format replaced it, so this downvote no longer hides anything."
+  },
+  {
+    "id": "2026-10-02T18-36-39-579Z-4deodf",
+    "createdAt": "2026-10-02T18:36:39.579Z",
+    "tool": "setups",
+    "key": "swing:24:short:2",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 176,
+    "note": "This has 3 quarter rests simultaneously, which should instead be a dotted half rest",
+    "tags": [],
+    "review": "Engraving fixed 2026-10-02: rests now combine (half rest on beats 1 or 3, dotted half from beat 1 or 2, whole rest for a bar). The phrase itself was fine. Old-format key; the 8-bar phrase format replaced it, so this downvote no longer hides anything."
+  },
+  {
+    "id": "2026-10-02T18-36-54-000Z-4xudla",
+    "createdAt": "2026-10-02T18:36:54.000Z",
+    "tool": "setups",
+    "key": "swing:10:short:1",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 118,
+    "note": "Again, 2 quarter rests simultaeously",
+    "tags": [],
+    "review": "Engraving fixed 2026-10-02: rests now combine (half rest on beats 1 or 3, dotted half from beat 1 or 2, whole rest for a bar). The phrase itself was fine. Old-format key; the 8-bar phrase format replaced it, so this downvote no longer hides anything."
+  }
+]

@@ -21,7 +21,7 @@ import { connectMidi, isMidiSupported } from './lib/midiInput'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
 import { renderChartNotation } from './lib/chartNotation'
-import { SET_UP_BARS, SET_UP_FEELS, SET_UP_FILL_LENGTHS, generateSetUp } from './lib/setUps'
+import { SET_UP_FEELS, SET_UP_FILL_LENGTHS, SET_UP_LENGTHS, generateSetUpPhrase } from './lib/setUps'
 import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
 import {
   COUNT_SYLLABLES,
@@ -2106,7 +2106,9 @@ const STICKING_FEEDBACK_TAGS = [
 ]
 
 const SET_UP_FEEDBACK_TAGS = [
+  'Engraving',
   'Figure hard to read',
+  'Rhythm cues too busy',
   'Fill too short',
   'Fill too long',
   'Hit in an odd place',
@@ -3668,10 +3670,11 @@ function IndependencePage() {
 
 // The band's hit: a brass section voicing (F6/9 with the 13th on top) on
 // detuned saws through an opening filter. Short hits bark and stop; long
-// ones hold for their written length.
+// ones hold for their written length. `level` scales the whole thing, so
+// rhythm cues can sit under the set-ups.
 const HORN_HIT_FREQUENCIES = [87.31, 174.61, 220, 293.66, 392, 523.25, 587.33]
 
-function playHornHit(ctx, time, { long, seconds }) {
+function playHornHit(ctx, time, { long, seconds, level = 1 }) {
   const holdUntil = time + (long ? Math.max(0.2, seconds - 0.05) : 0.09)
   const endsAt = holdUntil + (long ? 0.18 : 0.14)
   const output = ctx.createGain()
@@ -3683,9 +3686,9 @@ function playHornHit(ctx, time, { long, seconds }) {
   filter.frequency.exponentialRampToValueAtTime(4200, time + 0.025)
   filter.frequency.exponentialRampToValueAtTime(long ? 2200 : 1400, time + 0.18)
   output.gain.setValueAtTime(0.0001, time)
-  output.gain.exponentialRampToValueAtTime(0.32, time + 0.012)
-  output.gain.exponentialRampToValueAtTime(long ? 0.2 : 0.16, time + 0.1)
-  output.gain.setValueAtTime(long ? 0.2 : 0.16, holdUntil)
+  output.gain.exponentialRampToValueAtTime(0.32 * level, time + 0.012)
+  output.gain.exponentialRampToValueAtTime((long ? 0.2 : 0.16) * level, time + 0.1)
+  output.gain.setValueAtTime((long ? 0.2 : 0.16) * level, holdUntil)
   output.gain.exponentialRampToValueAtTime(0.0001, endsAt)
   filter.connect(output)
   output.connect(ctx.destination)
@@ -3712,18 +3715,18 @@ const SET_UP_ROTATION_OPTIONS = [
   ...PRACTICE_ROTATION_OPTIONS,
 ]
 
-function getRandomSetUp(options, downvoted) {
-  return drawFresh('setups', () => generateSetUp(options), {
-    idOf: (setUp) => setUp.key,
-    downvoteKeyOf: (setUp) => setUp.key,
+function getRandomSetUpPhrase(options, downvoted) {
+  return drawFresh('setups', () => generateSetUpPhrase(options), {
+    idOf: (phrase) => phrase.key,
+    downvoteKeyOf: (phrase) => phrase.key,
     downvoted,
-    attempts: 200,
+    attempts: 20,
   })
 }
 
-// A set-up drawn as a chart (see src/lib/chartNotation.js): four bars on a
-// line on wide screens, two on phones.
-function ChartNotation({ label, fallback, bars, figures, fill, feel }) {
+// A set-up phrase drawn as a chart (see src/lib/chartNotation.js): four bars
+// to a line on wide screens, two on phones.
+function ChartNotation({ label, fallback, bars, notes, fills, feel, tempo }) {
   const hostRef = useRef(null)
   const [vexflow, setVexflow] = useState(null)
   const [failed, setFailed] = useState(false)
@@ -3758,44 +3761,87 @@ function ChartNotation({ label, fallback, bars, figures, fill, feel }) {
     const token = (name) => style.getPropertyValue(name).trim()
     renderChartNotation(host, vexflow, {
       bars,
-      figures,
-      fill,
+      notes,
+      fills,
       feel,
-      barsPerLine: isWide ? bars : 2,
+      tempo,
+      barsPerLine: isWide ? 4 : 2,
       barWidth: isWide ? 230 : 160,
       colors: { ink: token('--text'), muted: token('--text-muted'), accent: token('--accent-quiet') },
       font: style.fontFamily,
     })
-  }, [vexflow, bars, figures, fill, feel, isWide])
+  }, [vexflow, bars, notes, fills, feel, tempo, isWide])
 
   if (failed) return <div className="sticking-line fill-notation-fallback">{fallback}</div>
   return <div ref={hostRef} className="fill-notation chart-notation" role="img" aria-label={label} />
 }
 
+function ChoiceChips({ items, isActive, onPick }) {
+  return (
+    <div className="sticking-chips">
+      {items.map((item) => (
+        <button
+          key={item.label}
+          type="button"
+          className={`ear-level-chip${isActive(item) ? ' is-active' : ''}`}
+          aria-pressed={isActive(item)}
+          onClick={() => onPick(item)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+const SET_UP_LENGTH_OPTIONS = SET_UP_LENGTHS.map((count) => ({ count, label: `${count} bars` }))
+
+const SET_UP_CUE_OPTIONS = [
+  { on: true, label: 'On' },
+  { on: false, label: 'Off' },
+]
+
 function SetUpsPage() {
   const [feel, setFeel] = useState('swing')
+  const [bars, setBars] = useState(8)
   const [fillBeats, setFillBeats] = useState(null)
+  const [cues, setCues] = useState(true)
   const [tempoRange, setTempoRange] = useState(SET_UP_DEFAULT_TEMPO_RANGE)
   const [bandOn, setBandOn] = useState(true)
   const downvotedRef = useDownvotes('setups', (entry) => entry.key)
-  const [setUp, setSetUp] = useState(() => ({
-    ...getRandomSetUp({ fillBeats: null, feel: 'swing' }, new Set(readStoredList(downvotesKey('setups')))),
+  const [phrase, setPhrase] = useState(() => ({
+    ...getRandomSetUpPhrase({ bars: 8, fillBeats: null, feel: 'swing', cues: true }, new Set(readStoredList(downvotesKey('setups')))),
     tempo: randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
   }))
   const [manualCount, setManualCount] = useState(0)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const sessionControlRef = useRef(null)
-  const figures = useMemo(() => [setUp.hit], [setUp])
-  const feelLabel = SET_UP_FEELS.find((item) => item.id === setUp.feel).label
+  const feelLabel = SET_UP_FEELS.find((item) => item.id === phrase.feel).label
+
+  // The notes the band plays on each beat of the phrase.
+  const notesByBeat = useMemo(() => {
+    const byBeat = new Map()
+    phrase.notes.forEach((note) => {
+      const beat = Math.floor(note.slot / 2)
+      if (!byBeat.has(beat)) byBeat.set(beat, [])
+      byBeat.get(beat).push(note)
+    })
+    return byBeat
+  }, [phrase])
 
   useEffect(() => {
-    rememberInHistory('setups', setUp.key)
-  }, [setUp.key])
+    rememberInHistory('setups', phrase.key)
+  }, [phrase.key])
 
   function generate(next = {}) {
-    const options = { fillBeats: next.fillBeats !== undefined ? next.fillBeats : fillBeats, feel: next.feel ?? feel }
-    setSetUp({ ...getRandomSetUp(options, downvotedRef.current), tempo: randomInt(...tempoRange) })
+    const options = {
+      bars: next.bars ?? bars,
+      fillBeats: next.fillBeats !== undefined ? next.fillBeats : fillBeats,
+      feel: next.feel ?? feel,
+      cues: next.cues ?? cues,
+    }
+    setPhrase({ ...getRandomSetUpPhrase(options, downvotedRef.current), tempo: randomInt(...tempoRange) })
     setUpvoted(null)
   }
 
@@ -3806,26 +3852,30 @@ function SetUpsPage() {
 
   function updateTempoRange(nextRange) {
     setTempoRange(nextRange)
-    setSetUp((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
+    setPhrase((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
   }
 
-  // The band plays the figure on the beat it's written, an & swung to the
-  // last third of the beat.
+  // The band plays each figure where it's written, an & swung to the last
+  // third of the beat. Set-ups are full band; rhythm cues sit underneath.
   function playBand(ctx, time, beatInCycle, beatSeconds) {
     if (!bandOn) return
-    const { hit } = setUp
-    if (Math.floor(hit.slot / 2) !== beatInCycle) return
-    const offset = hit.slot % 2 === 0 ? 0 : setUp.feel === 'swing' ? 2 / 3 : 1 / 2
-    playHornHit(ctx, time + offset * beatSeconds, { long: hit.length === 'long', seconds: (hit.slots / 2) * beatSeconds })
+    notesByBeat.get(beatInCycle)?.forEach((note) => {
+      const offset = note.slot % 2 === 0 ? 0 : phrase.feel === 'swing' ? 2 / 3 : 1 / 2
+      playHornHit(ctx, time + offset * beatSeconds, {
+        long: note.articulation === 'accent',
+        seconds: (note.slots / 2) * beatSeconds,
+        level: note.role === 'cue' ? 0.55 : 1,
+      })
+    })
   }
 
   function describe() {
-    return { key: setUp.key, feel: setUp.feel, tempo: setUp.tempo }
+    return { key: phrase.key, feel: phrase.feel, tempo: phrase.tempo }
   }
 
   function upvote() {
     sendFeedback('setups', { vote: 'up', ...describe() })
-    setUpvoted(setUp)
+    setUpvoted(phrase)
   }
 
   function downvote() {
@@ -3835,8 +3885,8 @@ function SetUpsPage() {
 
   function submitDownvote({ tags, note }) {
     sendFeedback('setups', { vote: 'down', ...describe(), tags, note })
-    downvotedRef.current.add(setUp.key)
-    rememberDownvote('setups', setUp.key)
+    downvotedRef.current.add(phrase.key)
+    rememberDownvote('setups', phrase.key)
 
     setIsFeedbackOpen(false)
     setManualCount((count) => count + 1)
@@ -3860,66 +3910,47 @@ function SetUpsPage() {
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Set Ups</h1>
         <p style={introStyle}>
-          Four bars of time with one ensemble figure, written the way a big band chart cues it. Keep time
-          through the slashes, play a fill for the length of the bracket, and land the hit with the band.
+          A phrase of time with ensemble figures, written the way a big band chart cues them. Keep time
+          through the slashes, catch the rhythm cues, play a fill for the length of each bracket, and land
+          the figure with the band.
         </p>
 
         <div className="sticking-toolbar">
           <div className="control-card">
             <span className="control-label">Feel</span>
-            <div className="sticking-chips">
-              {SET_UP_FEELS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`ear-level-chip${item.id === feel ? ' is-active' : ''}`}
-                  aria-pressed={item.id === feel}
-                  onClick={() => {
-                    setFeel(item.id)
-                    generateByHand({ feel: item.id })
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <ChoiceChips items={SET_UP_FEELS} isActive={(item) => item.id === feel} onPick={(item) => {
+              setFeel(item.id)
+              generateByHand({ feel: item.id })
+            }} />
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Length</span>
+            <ChoiceChips items={SET_UP_LENGTH_OPTIONS} isActive={(item) => item.count === bars} onPick={(item) => {
+              setBars(item.count)
+              generateByHand({ bars: item.count })
+            }} />
           </div>
 
           <div className="control-card">
             <span className="control-label">Fill Length</span>
-            <div className="sticking-chips">
-              {SET_UP_FILL_LENGTHS.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`ear-level-chip${item.beats === fillBeats ? ' is-active' : ''}`}
-                  aria-pressed={item.beats === fillBeats}
-                  onClick={() => {
-                    setFillBeats(item.beats)
-                    generateByHand({ fillBeats: item.beats })
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <ChoiceChips items={SET_UP_FILL_LENGTHS} isActive={(item) => item.beats === fillBeats} onPick={(item) => {
+              setFillBeats(item.beats)
+              generateByHand({ fillBeats: item.beats })
+            }} />
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Rhythm Cues</span>
+            <ChoiceChips items={SET_UP_CUE_OPTIONS} isActive={(item) => item.on === cues} onPick={(item) => {
+              setCues(item.on)
+              generateByHand({ cues: item.on })
+            }} />
           </div>
 
           <div className="control-card">
             <span className="control-label">Band</span>
-            <div className="sticking-chips">
-              {[true, false].map((on) => (
-                <button
-                  key={String(on)}
-                  type="button"
-                  className={`ear-level-chip${on === bandOn ? ' is-active' : ''}`}
-                  aria-pressed={on === bandOn}
-                  onClick={() => setBandOn(on)}
-                >
-                  {on ? 'On' : 'Off'}
-                </button>
-              ))}
-            </div>
+            <ChoiceChips items={SET_UP_CUE_OPTIONS} isActive={(item) => item.on === bandOn} onPick={(item) => setBandOn(item.on)} />
           </div>
 
           <div className="control-card">
@@ -3931,8 +3962,8 @@ function SetUpsPage() {
 
         <PracticeSession
           itemName="phrase"
-          tempo={setUp.tempo}
-          cycleBars={SET_UP_BARS}
+          tempo={phrase.tempo}
+          cycleBars={phrase.bars}
           onNewItem={() => generate()}
           onBeat={playBand}
           manualFillCount={manualCount}
@@ -3943,23 +3974,24 @@ function SetUpsPage() {
 
         <div className="sticking-board surface-card">
           <ChartNotation
-            key={setUp.key}
-            label={`${feelLabel}. ${setUp.description}`}
-            fallback={setUp.description}
-            bars={SET_UP_BARS}
-            figures={figures}
-            fill={setUp.fill}
+            key={phrase.key}
+            label={`${feelLabel}, quarter note = ${phrase.tempo}. ${phrase.descriptions.join(' ')}`}
+            fallback={phrase.descriptions.join(' ')}
+            bars={phrase.bars}
+            notes={phrase.notes}
+            fills={phrase.fills}
             feel={feelLabel}
+            tempo={phrase.tempo}
           />
 
           <div className="sticking-board-actions">
             <button
-              className={`sticking-vote${upvoted === setUp ? ' is-active' : ''}`}
+              className={`sticking-vote${upvoted === phrase ? ' is-active' : ''}`}
               type="button"
-              disabled={upvoted === setUp}
+              disabled={upvoted === phrase}
               onClick={upvote}
-              aria-label={upvoted === setUp ? 'Liked' : 'Thumbs up'}
-              title={upvoted === setUp ? 'Liked' : 'Thumbs up'}
+              aria-label={upvoted === phrase ? 'Liked' : 'Thumbs up'}
+              title={upvoted === phrase ? 'Liked' : 'Thumbs up'}
             >
               <ThumbIcon />
             </button>
@@ -3974,17 +4006,21 @@ function SetUpsPage() {
 
         <div className="surface-card" style={cardStyle}>
           <div className="stat-label">How To Play It</div>
-          <p style={mutedTextStyle}>{setUp.description}</p>
+          <ol className="set-ups-list">
+            {phrase.descriptions.map((description) => (
+              <li key={description} style={mutedTextStyle}>{description}</li>
+            ))}
+          </ol>
           <p style={mutedTextStyle}>
-            {setUp.hit.length === 'short'
-              ? 'The roof-top accent (^) marks a short, punched note: catch it and get off it.'
-              : 'The accent (>) on a held note means the band sustains it: catch it and let it ring through its length.'}
+            A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a dot is
+            short and light. The figures outside the brackets are rhythm cues: catch them on the snare, or just
+            read them while you keep time.
           </p>
         </div>
 
         <GeneratorFeedbackDialog
           open={isFeedbackOpen}
-          summary={setUp.description}
+          summary={phrase.descriptions.join(' ')}
           tags={SET_UP_FEEDBACK_TAGS}
           submitLabel="Log & New Phrase"
           onSubmit={submitDownvote}

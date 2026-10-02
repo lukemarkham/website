@@ -68,10 +68,11 @@ const SANITIZERS = {
     return { key, title, feel }
   },
 
-  // feel:hitSlot:length:fillBeats (see src/lib/setUps.js).
+  // The key spells out the phrase: feel|bars|set-ups|cues (see
+  // generateSetUpPhrase in src/lib/setUps.js).
   setups(body) {
     const { key, feel } = body
-    if (typeof key !== 'string' || !/^(swing|straight):\d{1,2}:(short|long):[124]$/.test(key)) return null
+    if (typeof key !== 'string' || !/^(swing|straight)\|(8|16)\|[0-9@;,|mas-]{4,1200}$/.test(key)) return null
     if (!['swing', 'straight'].includes(feel)) return null
     return { key, feel }
   },

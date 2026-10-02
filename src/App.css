@@ -1558,6 +1558,15 @@ h3 {
   transition: none;
 }
 
+.set-ups-list {
+  margin: 8px 0 12px;
+  padding-left: 1.3em;
+}
+
+.set-ups-list li {
+  margin: 4px 0;
+}
+
 .sticking-built-from {
   transition: opacity 200ms ease;
 }

@@ -76,7 +76,9 @@ reviewed. If there are new ones, summarise them for Luke, propose (or make)
 the generator changes they point to, then append them to the archive with a
 `review` field saying what was done, and commit. Independence entries carry a
 `key` that spells out the whole exercise (format in `exerciseKey`,
-`src/lib/independence.js`), and Set Ups keys are
-`feel:hitSlot:length:fillBeats` (`src/lib/setUps.js`). Votes cast against the local dev server land in
+`src/lib/independence.js`), and Set Ups keys spell out the phrase as
+`feel|bars|fillBeats@notes;…|cueNotes`, each note `slot-slots` plus `m`
+(marcato), `a` (accent) or `s` (staccato) (`generateSetUpPhrase`,
+`src/lib/setUps.js`). Votes cast against the local dev server land in
 the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
 machine that ran it.

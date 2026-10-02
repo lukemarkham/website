@@ -3,6 +3,35 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-02 (night) — Set Ups: 8-bar phrases, engraving, rhythm cues
+
+### What changed
+
+- **Phrases** are 8 bars (2 set-ups) or 16 bars (3 or 4), one set-up per
+  stretch of the phrase. The fill starts in bar 2 at the earliest and always
+  runs straight into its figure, with at least a beat of space after the
+  figure before it.
+- **Figures** (`SETUP_FIGURES`): single short or held hits, pushes on the &
+  of 4 tied over the barline, "doo-DAT" (& into a short beat), "da-DAT",
+  held-then-kick, staccato quarters into a punch, and off-beat stabs.
+  Pushes and downbeats come up twice as often.
+- **Rhythm cues** (on by default): free bars after bar 1 get a one-bar
+  comping rhythm 60% of the time (`CUE_FIGURES`). The band plays them
+  quieter than the set-ups.
+- **Engraving** (Luke's three downvotes, archived): rests combine, so beats
+  1–2 or 3–4 make a half rest, three beats from beat 1 or 2 a dotted half, and
+  an empty bar a whole rest. Beats 2–3 stay two quarters so beat 3 shows,
+  per the usual 4/4 rule. Notes split at beats and barlines with ties drawn
+  over the notes, and a tie across a line break is drawn in two halves.
+  No rests are printed under a fill.
+- **Fill bracket**: now just over the staff, ticked at both ends, from the
+  first fill slash to the figure. The slashes under it take the bracket's
+  colour.
+- **Tempo marking**: "Swing ♩ = 160" over bar 1, as on a part. Bar numbers
+  at the start of each line.
+- Checked: 5,000 generated phrases break no placement rule, and in headless
+  Chrome the band's hits land on every written slot.
+
 ## 2026-10-02 (evening) — Set Ups
 
 ### What changed
@@ -34,7 +63,7 @@ either machine. Newest first.
   harmony with a walking bass, simple piano comping, and horn hits on the
   figures, so students can hear whether they're reading it correctly.
   Get Set Ups right first.
-- Next for Set Ups: figures of two or more notes, anticipations tied over
+- (Done in the night entry.) Next for Set Ups: figures of two or more notes, anticipations tied over
   the barline (the & of 4 pushed into the next bar), staccato quarters.
 
 ## 2026-10-02 (later) — Click count-off replaces the spoken count-in

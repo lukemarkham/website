@@ -1,11 +1,17 @@
 // Draws a drum chart the way big band parts are written: time as stemless
-// slashes on the middle line, ensemble figures cued in rhythm above the staff,
-// and a "Fill" bracket over the stretch to fill. Set Ups draws four-bar
+// slashes on the middle line, ensemble figures cued in rhythm above the
+// staff, and a "FILL" bracket over the slashes to fill. Set Ups draws its
 // phrases with it; it is meant to grow into whole charts.
 //
 // Bars are 4/4 and figures sit on an 8th-note grid: slot 0 is beat 1 of the
-// first bar, slot 1 its &, 8 slots to a bar. A figure must stay inside its
-// bar (no ties over the barline yet).
+// first bar, slot 1 its &, 8 slots to a bar. A note can run over a barline;
+// it is drawn tied.
+//
+// Engraving follows the usual rules for 4/4: rests and notes show where the
+// beat falls. An off-beat start takes an 8th to reach the beat. Rests then
+// combine: a whole rest for an empty bar, a dotted half for three beats from
+// beat 1 or 2, a half from beat 1 or 3 (never across the middle of the bar,
+// so beats 2 and 3 stay two quarters), otherwise quarters.
 
 const SLOTS_PER_BAR = 8
 const SLASH_KEY = 'b/4'
@@ -15,54 +21,85 @@ const CUE_KEY = 'g/5'
 const CUE_REST_KEY = 'e/6'
 const CLEF_WIDTH = 36
 const TIME_SIG_WIDTH = 26
-const LINE_TOP_PADDING = 70
-const LINE_HEIGHT = 140
-const ARTICULATION = { short: 'a^', long: 'a>' }
+const FIRST_LINE_TOP = 92
+const LINE_HEIGHT = 136
+const ARTICULATIONS = { marcato: 'a^', accent: 'a>', staccato: 'a.' }
+// SMuFL's metronome-mark quarter note (metNoteQuarterUp), in Bravura.
+const QUARTER_NOTE_GLYPH = '\uECA5'
+const VALUE = { 1: '8', 2: 'q', 3: 'qd', 4: 'h', 6: 'hd', 8: 'w' }
 
-// One cued note split at beat boundaries into tied pieces, each a plain
-// note value: an off-beat start takes an 8th to reach the beat, then halves
-// on beats 1 and 3, dotted quarters and quarters, and an 8th to finish.
-function pieces(start, length) {
+// A note's run inside one bar, split into plain values that show the beat.
+function notePieces(position, length) {
   const result = []
-  let position = start
-  let left = length
-  while (left > 0) {
+  while (length > 0) {
     let size
-    if (position % 2 === 1 || left === 1) size = 1
-    else if (left >= 4 && position % 4 === 0) size = 4
-    else if (left === 3) size = 3
+    if (position % 2 === 1 || length === 1) size = 1
+    else if (length >= 4 && position % 4 === 0) size = 4
+    else if (length === 3) size = 3
     else size = 2
     result.push({ position, size })
     position += size
-    left -= size
+    length -= size
   }
   return result
 }
 
-const NOTE_VALUE = { 1: '8', 2: 'q', 3: 'qd', 4: 'h' }
+function restPieces(position, length) {
+  const result = []
+  while (length > 0) {
+    let size
+    if (position % 2 === 1 || length === 1) size = 1
+    else if (position === 0 && length >= 8) size = 8
+    else if ((position === 0 || position === 2) && length >= 6) size = 6
+    else if ((position === 0 || position === 4) && length >= 4) size = 4
+    else size = 2
+    result.push({ position, size })
+    position += size
+    length -= size
+  }
+  return result
+}
+
+// Invisible spacers under a fill: the band rests, but the bracket says what
+// to do, so no rests are printed there.
+function spacerPieces(position, length) {
+  const result = []
+  while (length > 0) {
+    const size = position % 2 === 1 || length === 1 ? 1 : 2
+    result.push({ position, size })
+    position += size
+    length -= size
+  }
+  return result
+}
 
 /**
  * @param {HTMLElement} host   emptied and filled with the SVG
  * @param {object} VF          the loaded VexFlow module
  * @param {object} options
  *   bars: how many 4/4 bars
- *   figures: [{ slot, slots, length: 'short' | 'long' }] cued above the staff
- *   fill: { start, end } in slots, or null
- *   feel: text over the first bar ('Swing'), or null
+ *   notes: [{ slot, slots, articulation: 'marcato' | 'accent' | 'staccato' }]
+ *   fills: [{ start, end }] in slots; each ends where its figure starts
+ *   feel: the style marking over bar 1 ('Swing'), or null
+ *   tempo: quarter-note BPM for the tempo marking, or null
  *   barsPerLine
  *   barWidth: room for each bar's notes (narrower bars draw larger on phones)
  *   colors: { ink, muted, accent }
  *   font: the family for the text
  */
 export function renderChartNotation(host, VF, options) {
-  const { Renderer, Stave, StaveNote, Voice, Formatter, Beam, Dot, Articulation, Modifier, Fraction, StaveTie } = VF
-  const { bars, figures = [], fill = null, feel = null, colors, font } = options
+  const { Renderer, Stave, StaveNote, GhostNote, Voice, Formatter, Beam, Dot, Articulation, Modifier, StaveTie } = VF
+  const { bars, notes = [], fills = [], feel = null, tempo = null, colors, font } = options
   const barsPerLine = Math.max(1, Math.min(options.barsPerLine ?? bars, bars))
   const noteWidth = options.barWidth ?? 230
   const lineCount = Math.ceil(bars / barsPerLine)
   const width = 10 + CLEF_WIDTH + TIME_SIG_WIDTH + barsPerLine * noteWidth + 10
-  const height = LINE_TOP_PADDING + (lineCount - 1) * LINE_HEIGHT + 70
+  const height = FIRST_LINE_TOP + (lineCount - 1) * LINE_HEIGHT + 64
   const ink = { fillStyle: colors.ink, strokeStyle: colors.ink }
+  const fillInk = { fillStyle: colors.accent, strokeStyle: colors.accent }
+  const inFill = (slot) => fills.some((fill) => slot >= fill.start && slot < fill.end)
+  const lineOf = (bar) => Math.floor(bar / barsPerLine)
+  const lineTop = (line) => FIRST_LINE_TOP + line * LINE_HEIGHT
 
   host.innerHTML = ''
   const renderer = new Renderer(host, Renderer.Backends.SVG)
@@ -71,55 +108,93 @@ export function renderChartNotation(host, VF, options) {
   ctx.setFillStyle(colors.ink)
   ctx.setStrokeStyle(colors.ink)
 
+  // Each note cut at the barlines: { bar, position, length, note, isFirst }.
+  const runs = []
+  notes.forEach((note) => {
+    let slot = note.slot
+    const end = note.slot + note.slots
+    while (slot < end) {
+      const bar = Math.floor(slot / SLOTS_PER_BAR)
+      const barEnd = (bar + 1) * SLOTS_PER_BAR
+      runs.push({ bar, position: slot - bar * SLOTS_PER_BAR, length: Math.min(end, barEnd) - slot, note, isFirst: slot === note.slot })
+      slot = Math.min(end, barEnd)
+    }
+  })
+
   const slashAt = new Map()
-  const cueAt = new Map()
+  const noteAt = new Map()
+  const piecesOf = new Map()
   const staves = []
   const drawLater = []
 
-  function cueTickables(bar) {
-    const first = bar * SLOTS_PER_BAR
-    const inBar = figures.filter((figure) => figure.slot >= first && figure.slot < first + SLOTS_PER_BAR)
-    if (inBar.length === 0) return null
+  function cueVoice(bar) {
+    const barRuns = runs.filter((run) => run.bar === bar).sort((a, b) => a.position - b.position)
+    if (barRuns.length === 0) return null
 
     const tickables = []
-    const ties = []
-    let position = 0
-    const sorted = [...inBar].sort((a, b) => a.slot - b.slot)
-    for (const figure of [...sorted, null]) {
-      const start = figure ? figure.slot - first : SLOTS_PER_BAR
-      // Rests up to the figure: an 8th to reach the beat, then quarters.
-      while (position < start) {
-        const size = position % 2 === 1 || start - position === 1 ? 1 : 2
-        tickables.push(new StaveNote({ keys: [CUE_REST_KEY], duration: `${NOTE_VALUE[size]}r` }).setStyle(ink))
-        position += size
-      }
-      if (!figure) break
-
-      const notes = pieces(start, figure.slots).map(({ size }) => {
-        const note = new StaveNote({ keys: [CUE_KEY], duration: NOTE_VALUE[size], stemDirection: 1 }).setStyle(ink)
-        if (size === 3) Dot.buildAndAttach([note], { all: true })
-        return note
-      })
-      notes[0].addModifier(new Articulation(ARTICULATION[figure.length]).setPosition(Modifier.Position.ABOVE), 0)
-      for (let index = 1; index < notes.length; index += 1) {
-        ties.push(new StaveTie({ firstNote: notes[index - 1], lastNote: notes[index], firstIndexes: [0], lastIndexes: [0] }))
-      }
-      cueAt.set(figure.slot, notes[0])
-      tickables.push(...notes)
-      position = start + figure.slots
+    const beats = new Map()
+    const add = (tickable, position, isNote) => {
+      tickables.push(tickable)
+      const beat = Math.floor(position / 2)
+      if (!beats.has(beat)) beats.set(beat, [])
+      beats.get(beat).push({ tickable, isNote, size: tickable.getDuration() === '8' ? 1 : 0 })
     }
 
-    const beams = Beam.generateBeams(tickables, { groups: [new Fraction(1, 4)], stemDirection: 1, beamRests: false })
-    return { tickables, beams, ties }
+    // The gap before a run: spacers under a fill, rests elsewhere.
+    function fillGap(from, to) {
+      let position = from
+      while (position < to) {
+        const spacer = inFill(bar * SLOTS_PER_BAR + position)
+        let end = position
+        while (end < to && inFill(bar * SLOTS_PER_BAR + end) === spacer) end += 1
+        const pieces = spacer ? spacerPieces(position, end - position) : restPieces(position, end - position)
+        pieces.forEach(({ position: at, size }) => {
+          const tickable = spacer
+            ? new GhostNote({ duration: VALUE[size] })
+            : new StaveNote({ keys: [CUE_REST_KEY], duration: `${VALUE[size]}r` }).setStyle(ink)
+          if (!spacer && size === 6) Dot.buildAndAttach([tickable], { all: true })
+          add(tickable, at, false)
+        })
+        position = end
+      }
+    }
+
+    let position = 0
+    barRuns.forEach((run) => {
+      fillGap(position, run.position)
+      const pieces = notePieces(run.position, run.length).map(({ position: at, size }) => {
+        const tickable = new StaveNote({ keys: [CUE_KEY], duration: VALUE[size], stemDirection: 1 }).setStyle(ink)
+        if (size === 3) Dot.buildAndAttach([tickable], { all: true })
+        add(tickable, at, true)
+        return tickable
+      })
+      if (run.isFirst) {
+        pieces[0].addModifier(new Articulation(ARTICULATIONS[run.note.articulation]).setPosition(Modifier.Position.ABOVE), 0)
+        noteAt.set(run.note.slot, pieces[0])
+      }
+      piecesOf.set(run, pieces)
+      position = run.position + run.length
+    })
+    fillGap(position, SLOTS_PER_BAR)
+
+    // Two 8th notes in one beat share a beam; an 8th beside a rest keeps
+    // its flag.
+    const beams = []
+    beats.forEach((items) => {
+      if (items.length === 2 && items.every((item) => item.isNote && item.size === 1)) {
+        beams.push(new Beam(items.map((item) => item.tickable)))
+      }
+    })
+    return { tickables, beams }
   }
 
   for (let bar = 0; bar < bars; bar += 1) {
-    const line = Math.floor(bar / barsPerLine)
+    const line = lineOf(bar)
     const column = bar % barsPerLine
     const isLineStart = column === 0
     const x = 10 + (isLineStart ? 0 : CLEF_WIDTH + TIME_SIG_WIDTH + column * noteWidth)
     const staveWidth = noteWidth + (isLineStart ? CLEF_WIDTH + TIME_SIG_WIDTH : 0)
-    const y = LINE_TOP_PADDING + line * LINE_HEIGHT
+    const y = lineTop(line)
 
     const stave = new Stave(x, y, staveWidth)
     if (isLineStart) stave.addClef('percussion')
@@ -129,92 +204,122 @@ export function renderChartNotation(host, VF, options) {
     stave.setContext(ctx).draw()
     staves.push(stave)
 
-    // Stemless slashes: the stem is drawn, but in no colour at all.
+    // Stemless slashes: the stem is drawn, but in no colour at all. The ones
+    // under a fill bracket take its colour.
     const slashes = [0, 1, 2, 3].map((beat) => {
-      const note = new StaveNote({ keys: [SLASH_KEY], duration: 'q', type: 's', stemDirection: 1 }).setStyle(ink)
+      const slot = bar * SLOTS_PER_BAR + beat * 2
+      const note = new StaveNote({ keys: [SLASH_KEY], duration: 'q', type: 's', stemDirection: 1 }).setStyle(inFill(slot) ? fillInk : ink)
       note.setStemStyle({ fillStyle: 'transparent', strokeStyle: 'transparent' })
-      slashAt.set(bar * SLOTS_PER_BAR + beat * 2, note)
+      slashAt.set(slot, note)
       return note
     })
     const voices = [new Voice({ numBeats: 4, beatValue: 4 }).addTickables(slashes)]
-    const cue = cueTickables(bar)
+    const cue = cueVoice(bar)
     if (cue) {
       voices.push(new Voice({ numBeats: 4, beatValue: 4 }).addTickables(cue.tickables))
-      drawLater.push(...cue.beams, ...cue.ties)
+      drawLater.push(...cue.beams)
     }
 
     new Formatter().joinVoices(voices).format(voices, stave.getNoteEndX() - stave.getNoteStartX() - 14)
     voices.forEach((voice) => voice.draw(ctx, stave))
 
-    if (bar === 0 && feel) {
-      ctx.setFont(font, 15, 'bold')
-      ctx.setFillStyle(colors.ink)
-      ctx.fillText(feel, x + 4, y - 44)
+    // Bar numbers at the start of each line after the first, as on a part.
+    if (isLineStart && bar > 0) {
+      ctx.setFont(font, 11, 'normal')
+      ctx.setFillStyle(colors.muted)
+      ctx.fillText(String(bar + 1), x, y + 8)
     }
   }
 
   drawLater.forEach((item) => item.setContext(ctx).draw())
 
+  // Ties, within a note and across barlines. One that crosses a line break
+  // is drawn as two halves, off the end of one line and into the next.
+  const tied = []
+  notes.forEach((note) => {
+    const pieces = runs.filter((run) => run.note === note).flatMap((run) => piecesOf.get(run).map((piece) => ({ piece, bar: run.bar })))
+    for (let index = 1; index < pieces.length; index += 1) tied.push([pieces[index - 1], pieces[index]])
+  })
+  // Ties curve over the cued notes, as on a part, clear of the staff.
+  const drawTie = (firstNote, lastNote) => {
+    new StaveTie({ firstNote, lastNote, firstIndexes: [0], lastIndexes: [0] }).setDirection(-1).setStyle(ink).setContext(ctx).draw()
+  }
+  tied.forEach(([from, to]) => {
+    if (lineOf(from.bar) === lineOf(to.bar)) {
+      drawTie(from.piece, to.piece)
+    } else {
+      drawTie(from.piece, null)
+      drawTie(null, to.piece)
+    }
+  })
+
+  // The style and tempo over bar 1, as a chart prints them: "Swing ♩ = 160".
+  if (feel || tempo) {
+    const y = lineTop(0) - 46
+    let x = 14
+    if (feel) {
+      ctx.setFont(font, 17, 'bold')
+      ctx.setFillStyle(colors.ink)
+      ctx.fillText(feel, x, y)
+      x += ctx.measureText(feel).width + 10
+    }
+    if (tempo) {
+      ctx.setFont('Bravura', 22, 'normal')
+      ctx.fillText(QUARTER_NOTE_GLYPH, x, y)
+      x += ctx.measureText(QUARTER_NOTE_GLYPH).width + 5
+      ctx.setFont(font, 17, 'bold')
+      ctx.fillText(`= ${tempo}`, x, y)
+    }
+  }
+
   // Where a slot sits across the page: at its note if it has one, otherwise
-  // between the slashes either side of it. Slot `bars * 8` is the final
-  // barline.
+  // its slash, or halfway between slashes for an &.
   function slotX(slot) {
-    if (cueAt.has(slot)) return cueAt.get(slot).getNoteHeadBeginX()
+    if (noteAt.has(slot)) return noteAt.get(slot).getNoteHeadBeginX()
     if (slashAt.has(slot)) return slashAt.get(slot).getNoteHeadBeginX()
-    const before = slashAt.get(slot - 1)
     const bar = Math.floor(slot / SLOTS_PER_BAR)
     const after = slashAt.get(slot + 1)
     const end = after && Math.floor((slot + 1) / SLOTS_PER_BAR) === bar ? after.getNoteHeadBeginX() : staves[bar].getNoteEndX()
-    return (before.getNoteHeadBeginX() + end) / 2
+    return (slashAt.get(slot - 1).getNoteHeadBeginX() + end) / 2
   }
 
-  // The fill bracket, as on a printed part: "(FILL - - - - |", broken at
-  // the end of a line if it runs onto the next.
-  if (fill) {
-    const startBar = Math.floor(fill.start / SLOTS_PER_BAR)
-    const endBar = Math.floor((fill.end - 1) / SLOTS_PER_BAR)
-    let segmentStart = fill.start
-    for (let line = Math.floor(startBar / barsPerLine); line <= Math.floor(endBar / barsPerLine); line += 1) {
+  // Each fill bracket sits just over the staff, from its first slash to the
+  // figure it sets up, with "FILL" at its start. One that runs past the end
+  // of a line carries on over the next.
+  ctx.setStrokeStyle(colors.accent)
+  ctx.setFillStyle(colors.accent)
+  ctx.setLineWidth(1.5)
+  fills.forEach((fill) => {
+    const lastBar = Math.floor((fill.end - 1) / SLOTS_PER_BAR)
+    let from = fill.start
+    while (from < fill.end) {
+      const line = lineOf(Math.floor(from / SLOTS_PER_BAR))
       const lastBarOfLine = Math.min(bars - 1, (line + 1) * barsPerLine - 1)
-      const endsHere = endBar <= lastBarOfLine
-      const x1 = slotX(segmentStart) - 2
-      // A hit on the first beat of the next line closes the bracket at this
-      // line's final barline.
-      const lineEndX = staves[lastBarOfLine].getX() + staves[lastBarOfLine].getWidth()
-      const hitOnThisLine = Math.floor(fill.end / SLOTS_PER_BAR) <= lastBarOfLine
-      const x2 = endsHere && hitOnThisLine ? slotX(fill.end) + 2 : lineEndX
-      const y = LINE_TOP_PADDING + line * LINE_HEIGHT - 30
-      const isFirst = segmentStart === fill.start
+      const lineEnd = staves[lastBarOfLine].getX() + staves[lastBarOfLine].getWidth()
+      const closesHere = lastBar <= lastBarOfLine
+      const hitOnThisLine = lineOf(Math.floor(fill.end / SLOTS_PER_BAR)) === line && fill.end < bars * SLOTS_PER_BAR
+      const x1 = from === fill.start ? slotX(from) - 3 : staves[Math.floor(from / SLOTS_PER_BAR)].getNoteStartX() - 6
+      const x2 = closesHere && hitOnThisLine ? slotX(fill.end) - 4 : lineEnd - 2
+      const y = staves[Math.floor(from / SLOTS_PER_BAR)].getYForLine(0) - 11
 
-      ctx.setStrokeStyle(colors.accent)
-      ctx.setFillStyle(colors.accent)
-      ctx.setLineWidth(1.4)
-      let textEnd = x1
-      if (isFirst) {
-        ctx.beginPath()
-        ctx.moveTo(x1 + 5, y - 9)
-        ctx.quadraticCurveTo(x1, y - 4, x1, y + 2)
-        ctx.quadraticCurveTo(x1, y + 7, x1 + 5, y + 10)
-        ctx.stroke()
-        ctx.setFont(font, 13, 'bold')
-        ctx.fillText('FILL', x1 + 7, y + 5)
-        textEnd = x1 + 9 + ctx.measureText('FILL').width
+      ctx.beginPath()
+      if (from === fill.start) {
+        ctx.moveTo(x1, y + 8)
+        ctx.lineTo(x1, y)
+      } else {
+        ctx.moveTo(x1, y)
       }
-      for (let dash = textEnd + 4; dash < x2 - 3; dash += 9) {
-        ctx.beginPath()
-        ctx.moveTo(dash, y)
-        ctx.lineTo(Math.min(dash + 5, x2 - 3), y)
-        ctx.stroke()
+      ctx.lineTo(x2, y)
+      if (closesHere) ctx.lineTo(x2, y + 8)
+      ctx.stroke()
+
+      if (from === fill.start) {
+        ctx.setFont(font, 11, 'bold')
+        ctx.fillText('FILL', x1, y - 5)
       }
-      if (endsHere) {
-        ctx.beginPath()
-        ctx.moveTo(x2, y - 6)
-        ctx.lineTo(x2, y + 6)
-        ctx.stroke()
-      }
-      segmentStart = (lastBarOfLine + 1) * SLOTS_PER_BAR
+      from = (lastBarOfLine + 1) * SLOTS_PER_BAR
     }
-  }
+  })
 
   const svg = host.querySelector('svg')
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
