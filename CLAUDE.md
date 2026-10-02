@@ -78,7 +78,7 @@ the generator changes they point to, then append them to the archive with a
 `key` that spells out the whole exercise (format in `exerciseKey`,
 `src/lib/independence.js`), and Set Ups keys spell out the phrase as
 `feel|bars|fillBeats@notes;…|cueNotes`, each note `slot-slots` plus `m`
-(marcato), `a` (accent) or `s` (staccato) (`generateSetUpPhrase`,
+(marcato), `a` (accent), `t` (tenuto) or `s` (staccato) (`generateSetUpPhrase`,
 `src/lib/setUps.js`). Votes cast against the local dev server land in
 the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
 machine that ran it.

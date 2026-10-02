@@ -3,6 +3,23 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-02 (late night) — Set Ups engraving rules from Luke's notes
+
+### What changed
+
+Seven downvotes, all engraving (archived in `feedback/setups-feedback.json`).
+The rules now sit at the top of `src/lib/chartNotation.js`:
+
+- A note on the & of 1 or the & of 3 that lasts to the middle or end of the
+  bar is a dotted quarter (tied on over the barline if it carries on).
+- Under a fill, the 8th rest before an off-beat figure is always printed.
+- Figures sit exactly over their slashes. Both voices had stems up, so
+  VexFlow nudged the cue noteheads aside; the slashes' hidden stems now
+  point down.
+- A lone held hit on the beat is a quarter with a tenuto (new articulation,
+  key code `t`), not a dotted quarter and an 8th rest. A dotted quarter
+  straight into another note stays.
+
 ## 2026-10-02 (night) — Set Ups: 8-bar phrases, engraving, rhythm cues
 
 ### What changed

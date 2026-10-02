@@ -34,5 +34,93 @@
     "note": "Again, 2 quarter rests simultaeously",
     "tags": [],
     "review": "Engraving fixed 2026-10-02: rests now combine (half rest on beats 1 or 3, dotted half from beat 1 or 2, whole rest for a bar). The phrase itself was fine. Old-format key; the 8-bar phrase format replaced it, so this downvote no longer hides anything."
+  },
+  {
+    "id": "2026-10-02T19-17-29-675Z-6ps59w",
+    "createdAt": "2026-10-02T19:17:29.677Z",
+    "tool": "setups",
+    "key": "swing|8|2@29-5a;2@53-1m|63-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 116,
+    "note": "Normally we like to see hits on the \"and of 3\" which last for the rest of the measure to be notated as a dotted quarter note on the offbeat of 3. This should be an engraving rule moving forward",
+    "tags": [],
+    "review": "Rule added: a note on the & of 1 or & of 3 lasting to the middle or end of the bar is a dotted quarter (tied on if it carries over the barline)."
+  },
+  {
+    "id": "2026-10-02T19-19-03-590Z-o6nj87",
+    "createdAt": "2026-10-02T19:19:03.590Z",
+    "tool": "setups",
+    "key": "swing|8|2@12-3a,15-1m;2@37-1m,39-1m|51-3a,54-2m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 178,
+    "note": "Even if a fill line goes into an offbeat hit, we always need the hit figure showing the 8th note rest prior to the hit on the offbeat. In this example, it is too easy to misread the figure in the 5th measure due to the lack of 8th note rest",
+    "tags": [
+      "Figure hard to read"
+    ],
+    "review": "Rule added: under a fill, the 8th rest before an off-beat figure is always printed."
+  },
+  {
+    "id": "2026-10-02T19-19-35-516Z-vxj3zd",
+    "createdAt": "2026-10-02T19:19:35.516Z",
+    "tool": "setups",
+    "key": "swing|8|4@24-1a,25-1m;2@49-1m,51-1m|58-1s,59-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 108,
+    "note": "Same issue here. The offbeat hit on the and of 1 needs the 8th note rest preceeding it in order to be most readable",
+    "tags": [],
+    "review": "Same fix as the previous entry: the 8th rest before an off-beat figure is printed even under a fill."
+  },
+  {
+    "id": "2026-10-02T19-20-44-204Z-b3hq5j",
+    "createdAt": "2026-10-02T19:20:44.204Z",
+    "tool": "setups",
+    "key": "swing|8|2@26-3a,29-1m;2@59-3a|11-3a,14-2m,40-3a,43-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 150,
+    "note": "",
+    "tags": [
+      "Figure hard to read"
+    ],
+    "review": "No note; most likely the figures sitting off the slashes. Fixed: the slashes' hidden stems now point down, so VexFlow no longer nudges the cue noteheads sideways."
+  },
+  {
+    "id": "2026-10-02T19-22-24-934Z-m57vjz",
+    "createdAt": "2026-10-02T19:22:24.934Z",
+    "tool": "setups",
+    "key": "swing|8|2@22-2m;1@59-1m|8-3a,11-1m,32-2s,35-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 177,
+    "note": "The hit figure in measure 3 does not line up evenly over the slashes indicating the downbeats. This always needs to be consistent between figures and slashes.",
+    "tags": [],
+    "review": "Fixed: figures were nudged off the slashes because both voices had stems up. The slashes' hidden stems now point down, so figures line up exactly."
+  },
+  {
+    "id": "2026-10-02T19-24-14-318Z-0ce8ol",
+    "createdAt": "2026-10-02T19:24:14.318Z",
+    "tool": "setups",
+    "key": "swing|8|2@16-3a;4@52-3a|24-1a,25-1m,28-2s",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 134,
+    "note": "The drummer does not ever need to see figures such as the one in measure three where there is a dotted quarter note followed by an 8th rest. The \"length\" of that note is not particularly useful and looks a bit messy. A simple quarter note with a legato marking would suffice here.",
+    "tags": [],
+    "review": "Generator change: a lone held hit on the beat is now a quarter with a tenuto, not a dotted quarter followed by an 8th rest."
+  },
+  {
+    "id": "2026-10-02T19-25-14-877Z-en7atj",
+    "createdAt": "2026-10-02T19:25:14.877Z",
+    "tool": "setups",
+    "key": "swing|8|4@27-1a,28-2m;2@48-3a|8-3a,11-1m,32-2s,35-1m,57-1m,58-2s,62-2m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 140,
+    "note": "Again the figure landing on beat one of measure 2 is not vertically aligned with the slashes",
+    "tags": [],
+    "review": "Same alignment fix as above."
   }
 ]

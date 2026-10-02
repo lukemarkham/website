@@ -6,8 +6,8 @@
 // Everything sits on an 8th-note grid across the phrase: slot 0 is beat 1 of
 // bar 1, slot 1 its &, and so on, 8 slots to a bar. A note is
 // { slot, slots, articulation, role }, where articulation is 'marcato' (^,
-// short), 'accent' (>, held for its length) or 'staccato' (.), and role is
-// 'setup' or 'cue'. Notes may be tied over a barline.
+// short), 'accent' (>, held for its length), 'tenuto' (-, a full quarter) or
+// 'staccato' (.), and role is 'setup' or 'cue'. Notes may be tied over a barline.
 
 export const SLOTS_PER_BAR = 8
 
@@ -34,7 +34,9 @@ const SETUP_FIGURES = [
   { parity: 0, weight: 4, notes: [[0, 2, 'marcato']] },
   { parity: 1, weight: 4, notes: [[0, 1, 'marcato']] },
   { parity: 0, weight: 2, notes: [[0, 4, 'accent']] },
-  { parity: 0, weight: 2, notes: [[0, 3, 'accent']] },
+  // A held quarter. (A lone dotted quarter on the beat tells the drummer
+  // nothing a tenuto quarter doesn't, and reads messier.)
+  { parity: 0, weight: 2, notes: [[0, 2, 'tenuto']] },
   { parity: 1, weight: 3, notes: [[0, 3, 'accent']] },
   { parity: 1, weight: 2, notes: [[0, 5, 'accent']] },
   // "doo-DAT": an & into a short beat.
@@ -106,7 +108,7 @@ function setUpDescription(setUp) {
   return `Fill for ${length} into ${what} ${describeSlot(first.slot)}${crosses ? ', tied over the barline' : ''}.`
 }
 
-const ARTICULATION_CODES = { marcato: 'm', accent: 'a', staccato: 's' }
+const ARTICULATION_CODES = { marcato: 'm', accent: 'a', staccato: 's', tenuto: 't' }
 
 function encodeNotes(notes) {
   return notes.map((note) => `${note.slot}-${note.slots}${ARTICULATION_CODES[note.articulation]}`).join(',')

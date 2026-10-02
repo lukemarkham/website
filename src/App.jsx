@@ -3862,7 +3862,7 @@ function SetUpsPage() {
     notesByBeat.get(beatInCycle)?.forEach((note) => {
       const offset = note.slot % 2 === 0 ? 0 : phrase.feel === 'swing' ? 2 / 3 : 1 / 2
       playHornHit(ctx, time + offset * beatSeconds, {
-        long: note.articulation === 'accent',
+        long: note.articulation === 'accent' || note.articulation === 'tenuto',
         seconds: (note.slots / 2) * beatSeconds,
         level: note.role === 'cue' ? 0.55 : 1,
       })
@@ -4012,8 +4012,8 @@ function SetUpsPage() {
             ))}
           </ol>
           <p style={mutedTextStyle}>
-            A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a dot is
-            short and light. The figures outside the brackets are rhythm cues: catch them on the snare, or just
+            A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a line
+            (tenuto) is held for a full quarter; a dot is short and light. The figures outside the brackets are rhythm cues: catch them on the snare, or just
             read them while you keep time.
           </p>
         </div>

@@ -7,11 +7,17 @@
 // first bar, slot 1 its &, 8 slots to a bar. A note can run over a barline;
 // it is drawn tied.
 //
-// Engraving follows the usual rules for 4/4: rests and notes show where the
-// beat falls. An off-beat start takes an 8th to reach the beat. Rests then
-// combine: a whole rest for an empty bar, a dotted half for three beats from
-// beat 1 or 2, a half from beat 1 or 3 (never across the middle of the bar,
-// so beats 2 and 3 stay two quarters), otherwise quarters.
+// Engraving follows the usual rules for 4/4, plus Luke's for drum parts:
+// - Rests and notes show where the beat falls. An off-beat start takes an
+//   8th to reach the beat, except that a note on the & of 1 or the & of 3
+//   lasting to the middle or end of the bar is a dotted quarter.
+// - Rests combine: a whole rest for an empty bar, a dotted half for three
+//   beats from beat 1 or 2, a half from beat 1 or 3 (never across the middle
+//   of the bar, so beats 2 and 3 stay two quarters), otherwise quarters.
+// - Nothing is printed in the cue line under a fill, except the 8th rest
+//   before a figure that starts on an &: without it the figure is easy to
+//   misread as on the beat.
+// - Figures sit exactly over the slashes they line up with.
 
 const SLOTS_PER_BAR = 8
 const SLASH_KEY = 'b/4'
@@ -23,7 +29,7 @@ const CLEF_WIDTH = 36
 const TIME_SIG_WIDTH = 26
 const FIRST_LINE_TOP = 92
 const LINE_HEIGHT = 136
-const ARTICULATIONS = { marcato: 'a^', accent: 'a>', staccato: 'a.' }
+const ARTICULATIONS = { marcato: 'a^', accent: 'a>', staccato: 'a.', tenuto: 'a-' }
 // SMuFL's metronome-mark quarter note (metNoteQuarterUp), in Bravura.
 const QUARTER_NOTE_GLYPH = '\uECA5'
 const VALUE = { 1: '8', 2: 'q', 3: 'qd', 4: 'h', 6: 'hd', 8: 'w' }
@@ -33,7 +39,8 @@ function notePieces(position, length) {
   const result = []
   while (length > 0) {
     let size
-    if (position % 2 === 1 || length === 1) size = 1
+    if ((position === 1 || position === 5) && length >= 3) size = 3
+    else if (position % 2 === 1 || length === 1) size = 1
     else if (length >= 4 && position % 4 === 0) size = 4
     else if (length === 3) size = 3
     else size = 2
@@ -78,7 +85,7 @@ function spacerPieces(position, length) {
  * @param {object} VF          the loaded VexFlow module
  * @param {object} options
  *   bars: how many 4/4 bars
- *   notes: [{ slot, slots, articulation: 'marcato' | 'accent' | 'staccato' }]
+ *   notes: [{ slot, slots, articulation: 'marcato' | 'accent' | 'staccato' | 'tenuto' }]
  *   fills: [{ start, end }] in slots; each ends where its figure starts
  *   feel: the style marking over bar 1 ('Swing'), or null
  *   tempo: quarter-note BPM for the tempo marking, or null
@@ -98,6 +105,7 @@ export function renderChartNotation(host, VF, options) {
   const ink = { fillStyle: colors.ink, strokeStyle: colors.ink }
   const fillInk = { fillStyle: colors.accent, strokeStyle: colors.accent }
   const inFill = (slot) => fills.some((fill) => slot >= fill.start && slot < fill.end)
+  const isSpacer = (slot) => inFill(slot) && !fills.some((fill) => fill.end % 2 === 1 && slot === fill.end - 1)
   const lineOf = (bar) => Math.floor(bar / barsPerLine)
   const lineTop = (line) => FIRST_LINE_TOP + line * LINE_HEIGHT
 
@@ -144,9 +152,9 @@ export function renderChartNotation(host, VF, options) {
     function fillGap(from, to) {
       let position = from
       while (position < to) {
-        const spacer = inFill(bar * SLOTS_PER_BAR + position)
+        const spacer = isSpacer(bar * SLOTS_PER_BAR + position)
         let end = position
-        while (end < to && inFill(bar * SLOTS_PER_BAR + end) === spacer) end += 1
+        while (end < to && isSpacer(bar * SLOTS_PER_BAR + end) === spacer) end += 1
         const pieces = spacer ? spacerPieces(position, end - position) : restPieces(position, end - position)
         pieces.forEach(({ position: at, size }) => {
           const tickable = spacer
@@ -205,10 +213,12 @@ export function renderChartNotation(host, VF, options) {
     staves.push(stave)
 
     // Stemless slashes: the stem is drawn, but in no colour at all. The ones
-    // under a fill bracket take its colour.
+    // under a fill bracket take its colour. Their (invisible) stems point
+    // down: two stems-up voices make VexFlow nudge one aside, which pushed
+    // the figures off the slashes.
     const slashes = [0, 1, 2, 3].map((beat) => {
       const slot = bar * SLOTS_PER_BAR + beat * 2
-      const note = new StaveNote({ keys: [SLASH_KEY], duration: 'q', type: 's', stemDirection: 1 }).setStyle(inFill(slot) ? fillInk : ink)
+      const note = new StaveNote({ keys: [SLASH_KEY], duration: 'q', type: 's', stemDirection: -1 }).setStyle(inFill(slot) ? fillInk : ink)
       note.setStemStyle({ fillStyle: 'transparent', strokeStyle: 'transparent' })
       slashAt.set(slot, note)
       return note
