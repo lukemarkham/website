@@ -62,11 +62,11 @@ the words' attacks never sit on the beat.
 
 ## Practice generator feedback
 
-Luke votes mid-practice on what the Fill Generator, Sticking Generator and
-Independence tool produce, and downvotes carry notes meant for you. After the
+Luke votes mid-practice on what the Fill Generator, Sticking Generator,
+Independence tool and Set Ups produce, and downvotes carry notes meant for you. After the
 start-of-session pull, fetch each tool's entries:
 
-    for tool in fill sticking independence; do
+    for tool in fill sticking independence setups; do
       curl -s "https://lukemarkham.netlify.app/.netlify/functions/practice-feedback?tool=$tool"
     done
 
@@ -76,6 +76,7 @@ reviewed. If there are new ones, summarise them for Luke, propose (or make)
 the generator changes they point to, then append them to the archive with a
 `review` field saying what was done, and commit. Independence entries carry a
 `key` that spells out the whole exercise (format in `exerciseKey`,
-`src/lib/independence.js`). Votes cast against the local dev server land in
+`src/lib/independence.js`), and Set Ups keys are
+`feel:hitSlot:length:fillBeats` (`src/lib/setUps.js`). Votes cast against the local dev server land in
 the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
 machine that ran it.

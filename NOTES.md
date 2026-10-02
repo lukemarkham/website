@@ -3,6 +3,40 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-02 (evening) — Set Ups
+
+### What changed
+
+- **Set Ups** (`/set-ups`, under Drums, and on the home page): four bars of
+  time with one ensemble hit, drawn like a big band drum part
+  (`src/lib/chartNotation.js`): stemless slashes, the figure cued in rhythm
+  above the staff, and a "(FILL - - -|" bracket that always runs straight
+  into the hit. The fill starts in bar 2 at the earliest. Hits are short
+  (^: a quarter on the beat, an 8th off it) or long (>: a half note on the
+  beat, an 8th tied into the next beat off it), and stay inside their bar.
+  Settings: Swing / Straight, fill length (1 beat, 2 beats, 1 bar, Mix),
+  Band on/off, tempo range (default 100–180).
+- The band plays the hit on a synthesized brass voicing (`playHornHit`), with
+  an & swung to the last third of the beat. Checked in headless Chrome:
+  hits land on the written bar and beat, 2/3 of a beat after the click in
+  swing, 1/2 in straight.
+- `PracticeSession` gained `onBeat` (lets a page play along with the click),
+  `rotationOptions` and `defaultRotation`, and an "Every phrase" rotation
+  (`PRACTICE_EVERY_CYCLE`), which Set Ups uses by default.
+- Feedback: tool `setups`, archive `feedback/setups-feedback.json`.
+
+### Open items / ideas
+
+- Where this is heading (Luke's goal): generated big band sight-reading
+  charts, modelled on real drum parts (rehearsal letters, figures over
+  slashes, ties across barlines, staccatos, ensemble 8th-note lines, fill
+  brackets, dynamics, repeats). The play-along would follow jazz standard
+  harmony with a walking bass, simple piano comping, and horn hits on the
+  figures, so students can hear whether they're reading it correctly.
+  Get Set Ups right first.
+- Next for Set Ups: figures of two or more notes, anticipations tied over
+  the barline (the & of 4 pushed into the next bar), staccato quarters.
+
 ## 2026-10-02 (later) — Click count-off replaces the spoken count-in
 
 ### What changed

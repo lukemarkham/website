@@ -20,6 +20,8 @@ import {
 import { connectMidi, isMidiSupported } from './lib/midiInput'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
+import { renderChartNotation } from './lib/chartNotation'
+import { SET_UP_BARS, SET_UP_FEELS, SET_UP_FILL_LENGTHS, generateSetUp } from './lib/setUps'
 import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
 import {
   COUNT_SYLLABLES,
@@ -320,6 +322,7 @@ const practiceToolMenu = [
       { label: 'Fill Generator', to: '/fill-generator' },
       { label: 'Sticking Generator', to: '/sticking-generator' },
       { label: 'Independence', to: '/independence' },
+      { label: 'Set Ups', to: '/set-ups' },
     ],
   },
   { label: 'Keys', tools: [{ label: 'ii-Vs', to: '/ii-vs' }] },
@@ -751,6 +754,13 @@ function HomePage() {
               Four-limb coordination exercises, from comping basics to ostinatos, groupings and metric modulation.
             </p>
             <Link className="text-link" to="/independence">Go to Independence</Link>
+          </div>
+          <div className="surface-card" style={cardStyle}>
+            <h3 className="card-title">Set Ups</h3>
+            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
+              Read a big band figure and set it up with a fill, then hear the band hit it with you.
+            </p>
+            <Link className="text-link" to="/set-ups">Go to Set Ups</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Progression Ear Trainer</h3>
@@ -2042,6 +2052,9 @@ const PRACTICE_ROTATION_OPTIONS = [
   { seconds: 300, label: 'Every 5 min' },
 ]
 
+// A rotation of -1 brings in a new item every time the cycle comes around.
+const PRACTICE_EVERY_CYCLE = -1
+
 const PRACTICE_TEMPO_LIMITS = { min: 40, max: 240 }
 const FILL_DEFAULT_TEMPO_RANGE = [90, 150]
 const PRACTICE_CHIME_SECONDS = 0.7
@@ -2090,6 +2103,16 @@ const STICKING_FEEDBACK_TAGS = [
   'Too easy',
   'Too hard',
   'Not musical',
+]
+
+const SET_UP_FEEDBACK_TAGS = [
+  'Figure hard to read',
+  'Fill too short',
+  'Fill too long',
+  'Hit in an odd place',
+  'Band sound off the beat',
+  'Too easy',
+  'Too hard',
 ]
 
 const INDEPENDENCE_FEEDBACK_TAGS = [
@@ -2224,9 +2247,22 @@ function playFillChangeChime(ctx, time) {
 // back. The page can
 // also pause it (while a downvote is explained) and resume it, with or
 // without a new one.
-function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFillCount, controlRef }) {
+// onBeat(ctx, time, beatInCycle, beatSeconds), if given, is called for each
+// beat of time (not the count-off) as it is scheduled, so a page can play
+// along with the click.
+function PracticeSession({
+  itemName,
+  tempo,
+  cycleBars = 1,
+  onNewItem,
+  onBeat,
+  manualFillCount,
+  controlRef,
+  rotationOptions = PRACTICE_ROTATION_OPTIONS,
+  defaultRotation = 60,
+}) {
   const [sessionMinutes, setSessionMinutes] = useState(10)
-  const [rotationSeconds, setRotationSeconds] = useState(60)
+  const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
   const [isPlaying, setIsPlaying] = useState(false)
   const [activeBeat, setActiveBeat] = useState(null)
   const [banner, setBanner] = useState(null)
@@ -2239,6 +2275,7 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
   const runRef = useRef(null)
   const tempoRef = useRef(tempo)
   const onNewFillRef = useRef(onNewItem)
+  const onBeatRef = useRef(onBeat)
   const cycleBarsRef = useRef(cycleBars)
   const itemTitle = itemName[0].toUpperCase() + itemName.slice(1)
 
@@ -2249,6 +2286,10 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
   useEffect(() => {
     onNewFillRef.current = onNewItem
   }, [onNewItem])
+
+  useEffect(() => {
+    onBeatRef.current = onBeat
+  }, [onBeat])
 
   useEffect(() => {
     cycleBarsRef.current = cycleBars
@@ -2314,6 +2355,9 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
       if (run.beatIndex === COUNT_OFF_BEATS && run.rotationSeconds > 0) {
         run.nextFillAt = time + run.rotationSeconds
       }
+      if (run.beatIndex === COUNT_OFF_BEATS && run.rotationSeconds === PRACTICE_EVERY_CYCLE) {
+        run.nextFillAt = time + 0.001
+      }
 
       // Changes wait for the end of the cycle, so a figure that takes a few
       // bars to come around gets played through.
@@ -2323,6 +2367,10 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
         continue
       }
 
+      if (!isCountIn) {
+        const beatSeconds = 60 / tempoRef.current
+        onBeatRef.current?.(ctx, time, (run.beatIndex - COUNT_OFF_BEATS) % (4 * cycleBarsRef.current), beatSeconds)
+      }
       if (!isCountIn || count !== null) {
         playMetronomeClick(ctx, time, beatInBar === 0 ? 1320 : 920, beatInBar === 0 ? 0.36 : 0.26)
         atAudioTime(ctx, time, () => {
@@ -2498,7 +2546,7 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
             disabled={isPlaying}
             onChange={(event) => setRotationSeconds(Number(event.target.value))}
           >
-            {PRACTICE_ROTATION_OPTIONS.map((option) => (
+            {rotationOptions.map((option) => (
               <option key={option.seconds} value={option.seconds}>{option.label}</option>
             ))}
           </select>
@@ -2535,9 +2583,11 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
           </span>
           <span>
             <span className="stat-label">Next {itemTitle}</span>
-            {clock.nextFill !== null
-              ? formatSessionTime(clock.nextFill)
-              : rotationSeconds > 0 ? formatSessionTime(rotationSeconds) : 'Off'}
+            {rotationSeconds === PRACTICE_EVERY_CYCLE
+              ? 'Each time'
+              : clock.nextFill !== null
+                ? formatSessionTime(clock.nextFill)
+                : rotationSeconds > 0 ? formatSessionTime(rotationSeconds) : 'Off'}
           </span>
         </div>
       </div>
@@ -3608,6 +3658,335 @@ function IndependencePage() {
           summary={exercise.title}
           tags={INDEPENDENCE_FEEDBACK_TAGS}
           submitLabel="Log & New Exercise"
+          onSubmit={submitDownvote}
+          onCancel={cancelDownvote}
+        />
+      </section>
+    </div>
+  )
+}
+
+// The band's hit: a brass section voicing (F6/9 with the 13th on top) on
+// detuned saws through an opening filter. Short hits bark and stop; long
+// ones hold for their written length.
+const HORN_HIT_FREQUENCIES = [87.31, 174.61, 220, 293.66, 392, 523.25, 587.33]
+
+function playHornHit(ctx, time, { long, seconds }) {
+  const holdUntil = time + (long ? Math.max(0.2, seconds - 0.05) : 0.09)
+  const endsAt = holdUntil + (long ? 0.18 : 0.14)
+  const output = ctx.createGain()
+  const filter = ctx.createBiquadFilter()
+
+  filter.type = 'lowpass'
+  filter.Q.value = 1.2
+  filter.frequency.setValueAtTime(500, time)
+  filter.frequency.exponentialRampToValueAtTime(4200, time + 0.025)
+  filter.frequency.exponentialRampToValueAtTime(long ? 2200 : 1400, time + 0.18)
+  output.gain.setValueAtTime(0.0001, time)
+  output.gain.exponentialRampToValueAtTime(0.32, time + 0.012)
+  output.gain.exponentialRampToValueAtTime(long ? 0.2 : 0.16, time + 0.1)
+  output.gain.setValueAtTime(long ? 0.2 : 0.16, holdUntil)
+  output.gain.exponentialRampToValueAtTime(0.0001, endsAt)
+  filter.connect(output)
+  output.connect(ctx.destination)
+
+  HORN_HIT_FREQUENCIES.forEach((frequency) => {
+    ;[-6, 6].forEach((cents) => {
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+      oscillator.type = 'sawtooth'
+      oscillator.frequency.value = frequency
+      oscillator.detune.value = cents
+      gain.gain.value = frequency < 100 ? 0.09 : 0.05
+      oscillator.connect(gain)
+      gain.connect(filter)
+      oscillator.start(time)
+      oscillator.stop(endsAt + 0.02)
+    })
+  })
+}
+
+const SET_UP_DEFAULT_TEMPO_RANGE = [100, 180]
+const SET_UP_ROTATION_OPTIONS = [
+  { seconds: PRACTICE_EVERY_CYCLE, label: 'Every phrase' },
+  ...PRACTICE_ROTATION_OPTIONS,
+]
+
+function getRandomSetUp(options, downvoted) {
+  return drawFresh('setups', () => generateSetUp(options), {
+    idOf: (setUp) => setUp.key,
+    downvoteKeyOf: (setUp) => setUp.key,
+    downvoted,
+    attempts: 200,
+  })
+}
+
+// A set-up drawn as a chart (see src/lib/chartNotation.js): four bars on a
+// line on wide screens, two on phones.
+function ChartNotation({ label, fallback, bars, figures, fill, feel }) {
+  const hostRef = useRef(null)
+  const [vexflow, setVexflow] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [isWide, setIsWide] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    loadVexFlow()
+      .then((module) => {
+        if (!cancelled) setVexflow(module)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return undefined
+    const observer = new ResizeObserver(([entry]) => setIsWide(entry.contentRect.width >= 640))
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [failed])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!vexflow || !host) return
+    const style = getComputedStyle(host)
+    const token = (name) => style.getPropertyValue(name).trim()
+    renderChartNotation(host, vexflow, {
+      bars,
+      figures,
+      fill,
+      feel,
+      barsPerLine: isWide ? bars : 2,
+      barWidth: isWide ? 230 : 160,
+      colors: { ink: token('--text'), muted: token('--text-muted'), accent: token('--accent-quiet') },
+      font: style.fontFamily,
+    })
+  }, [vexflow, bars, figures, fill, feel, isWide])
+
+  if (failed) return <div className="sticking-line fill-notation-fallback">{fallback}</div>
+  return <div ref={hostRef} className="fill-notation chart-notation" role="img" aria-label={label} />
+}
+
+function SetUpsPage() {
+  const [feel, setFeel] = useState('swing')
+  const [fillBeats, setFillBeats] = useState(null)
+  const [tempoRange, setTempoRange] = useState(SET_UP_DEFAULT_TEMPO_RANGE)
+  const [bandOn, setBandOn] = useState(true)
+  const downvotedRef = useDownvotes('setups', (entry) => entry.key)
+  const [setUp, setSetUp] = useState(() => ({
+    ...getRandomSetUp({ fillBeats: null, feel: 'swing' }, new Set(readStoredList(downvotesKey('setups')))),
+    tempo: randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
+  }))
+  const [manualCount, setManualCount] = useState(0)
+  const [upvoted, setUpvoted] = useState(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const sessionControlRef = useRef(null)
+  const figures = useMemo(() => [setUp.hit], [setUp])
+  const feelLabel = SET_UP_FEELS.find((item) => item.id === setUp.feel).label
+
+  useEffect(() => {
+    rememberInHistory('setups', setUp.key)
+  }, [setUp.key])
+
+  function generate(next = {}) {
+    const options = { fillBeats: next.fillBeats !== undefined ? next.fillBeats : fillBeats, feel: next.feel ?? feel }
+    setSetUp({ ...getRandomSetUp(options, downvotedRef.current), tempo: randomInt(...tempoRange) })
+    setUpvoted(null)
+  }
+
+  function generateByHand(next) {
+    generate(next)
+    setManualCount((count) => count + 1)
+  }
+
+  function updateTempoRange(nextRange) {
+    setTempoRange(nextRange)
+    setSetUp((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
+  }
+
+  // The band plays the figure on the beat it's written, an & swung to the
+  // last third of the beat.
+  function playBand(ctx, time, beatInCycle, beatSeconds) {
+    if (!bandOn) return
+    const { hit } = setUp
+    if (Math.floor(hit.slot / 2) !== beatInCycle) return
+    const offset = hit.slot % 2 === 0 ? 0 : setUp.feel === 'swing' ? 2 / 3 : 1 / 2
+    playHornHit(ctx, time + offset * beatSeconds, { long: hit.length === 'long', seconds: (hit.slots / 2) * beatSeconds })
+  }
+
+  function describe() {
+    return { key: setUp.key, feel: setUp.feel, tempo: setUp.tempo }
+  }
+
+  function upvote() {
+    sendFeedback('setups', { vote: 'up', ...describe() })
+    setUpvoted(setUp)
+  }
+
+  function downvote() {
+    sessionControlRef.current?.pause()
+    setIsFeedbackOpen(true)
+  }
+
+  function submitDownvote({ tags, note }) {
+    sendFeedback('setups', { vote: 'down', ...describe(), tags, note })
+    downvotedRef.current.add(setUp.key)
+    rememberDownvote('setups', setUp.key)
+
+    setIsFeedbackOpen(false)
+    setManualCount((count) => count + 1)
+    if (sessionControlRef.current) {
+      sessionControlRef.current.resume({ newFill: true })
+    } else {
+      generate()
+    }
+  }
+
+  function cancelDownvote() {
+    setIsFeedbackOpen(false)
+    sessionControlRef.current?.resume()
+  }
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice Tools · Drums</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Set Ups</h1>
+        <p style={introStyle}>
+          Four bars of time with one ensemble figure, written the way a big band chart cues it. Keep time
+          through the slashes, play a fill for the length of the bracket, and land the hit with the band.
+        </p>
+
+        <div className="sticking-toolbar">
+          <div className="control-card">
+            <span className="control-label">Feel</span>
+            <div className="sticking-chips">
+              {SET_UP_FEELS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`ear-level-chip${item.id === feel ? ' is-active' : ''}`}
+                  aria-pressed={item.id === feel}
+                  onClick={() => {
+                    setFeel(item.id)
+                    generateByHand({ feel: item.id })
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Fill Length</span>
+            <div className="sticking-chips">
+              {SET_UP_FILL_LENGTHS.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={`ear-level-chip${item.beats === fillBeats ? ' is-active' : ''}`}
+                  aria-pressed={item.beats === fillBeats}
+                  onClick={() => {
+                    setFillBeats(item.beats)
+                    generateByHand({ fillBeats: item.beats })
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Band</span>
+            <div className="sticking-chips">
+              {[true, false].map((on) => (
+                <button
+                  key={String(on)}
+                  type="button"
+                  className={`ear-level-chip${on === bandOn ? ' is-active' : ''}`}
+                  aria-pressed={on === bandOn}
+                  onClick={() => setBandOn(on)}
+                >
+                  {on ? 'On' : 'Off'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-card">
+            <label className="control-label" htmlFor="set-ups-tempo-range">Tempo Range</label>
+            <div className="range-value">{tempoRange[0]}–{tempoRange[1]} BPM</div>
+            <TempoRangeSlider id="set-ups-tempo-range" value={tempoRange} onChange={updateTempoRange} />
+          </div>
+        </div>
+
+        <PracticeSession
+          itemName="phrase"
+          tempo={setUp.tempo}
+          cycleBars={SET_UP_BARS}
+          onNewItem={() => generate()}
+          onBeat={playBand}
+          manualFillCount={manualCount}
+          controlRef={sessionControlRef}
+          rotationOptions={SET_UP_ROTATION_OPTIONS}
+          defaultRotation={PRACTICE_EVERY_CYCLE}
+        />
+
+        <div className="sticking-board surface-card">
+          <ChartNotation
+            key={setUp.key}
+            label={`${feelLabel}. ${setUp.description}`}
+            fallback={setUp.description}
+            bars={SET_UP_BARS}
+            figures={figures}
+            fill={setUp.fill}
+            feel={feelLabel}
+          />
+
+          <div className="sticking-board-actions">
+            <button
+              className={`sticking-vote${upvoted === setUp ? ' is-active' : ''}`}
+              type="button"
+              disabled={upvoted === setUp}
+              onClick={upvote}
+              aria-label={upvoted === setUp ? 'Liked' : 'Thumbs up'}
+              title={upvoted === setUp ? 'Liked' : 'Thumbs up'}
+            >
+              <ThumbIcon />
+            </button>
+            <button className="sticking-vote" type="button" onClick={downvote} aria-label="Thumbs down" title="Thumbs down">
+              <ThumbIcon down />
+            </button>
+            <button className="primary-button" type="button" onClick={() => generateByHand()}>
+              New Phrase
+            </button>
+          </div>
+        </div>
+
+        <div className="surface-card" style={cardStyle}>
+          <div className="stat-label">How To Play It</div>
+          <p style={mutedTextStyle}>{setUp.description}</p>
+          <p style={mutedTextStyle}>
+            {setUp.hit.length === 'short'
+              ? 'The roof-top accent (^) marks a short, punched note: catch it and get off it.'
+              : 'The accent (>) on a held note means the band sustains it: catch it and let it ring through its length.'}
+          </p>
+        </div>
+
+        <GeneratorFeedbackDialog
+          open={isFeedbackOpen}
+          summary={setUp.description}
+          tags={SET_UP_FEEDBACK_TAGS}
+          submitLabel="Log & New Phrase"
           onSubmit={submitDownvote}
           onCancel={cancelDownvote}
         />
@@ -5677,6 +6056,7 @@ function App() {
         <Route path="/fill-generator" element={<FillGeneratorPage />} />
         <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
         <Route path="/independence" element={<IndependencePage />} />
+        <Route path="/set-ups" element={<SetUpsPage />} />
         <Route path="/ear-training" element={<EarTrainerPage />} />
         <Route path="/ii-vs" element={<TwoFivePage />} />
         <Route path="/beats" element={<BeatsPage />} />

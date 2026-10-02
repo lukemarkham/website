@@ -1,5 +1,5 @@
 // Votes and notes on what the practice generators produce, sent from their
-// pages: the Fill Generator, the Sticking Generator and Independence. Each
+// pages: the Fill Generator, the Sticking Generator, Independence and Set Ups. Each
 // tool's entries are kept apart, picked by the `tool` query parameter.
 //
 // Production keeps them in Netlify Blobs (netlify/functions/practice-feedback.mjs);
@@ -9,7 +9,7 @@
 // This endpoint is unauthenticated. That is fine while the site is private,
 // but it needs a key before the site is shared.
 
-export const FEEDBACK_TOOLS = ['fill', 'sticking', 'independence']
+export const FEEDBACK_TOOLS = ['fill', 'sticking', 'independence', 'setups']
 
 const MAX_NOTE_LENGTH = 2000
 const MAX_TAGS = 10
@@ -66,6 +66,14 @@ const SANITIZERS = {
     if (typeof title !== 'string' || title.length === 0 || title.length > 120) return null
     if (!['swing', 'straight'].includes(feel)) return null
     return { key, title, feel }
+  },
+
+  // feel:hitSlot:length:fillBeats (see src/lib/setUps.js).
+  setups(body) {
+    const { key, feel } = body
+    if (typeof key !== 'string' || !/^(swing|straight):\d{1,2}:(short|long):[124]$/.test(key)) return null
+    if (!['swing', 'straight'].includes(feel)) return null
+    return { key, feel }
   },
 }
 
