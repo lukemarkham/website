@@ -198,5 +198,29 @@
     "note": "Measure 3 here is a great example of how we can better notate the fill lines. It should begin and end right on the barlines as it is a full measure fill.",
     "tags": [],
     "review": "Rule added: a full-bar fill bracket runs barline to barline; any bracket starting or ending at a bar line is drawn to the barline."
+  },
+  {
+    "id": "2026-10-02T20-27-33-377Z-feuzs4",
+    "createdAt": "2026-10-02T20:27:33.379Z",
+    "tool": "setups",
+    "key": "swing|32|1@31-1a,32-2m;2@67-1m+63-1m;1@80-2m;2@120-4a;2@157-5a;1@194-2t;1@255-1m|55-1m,91-1m,96-2m,101-1m,106-1s,107-1m,128-2s,131-1m,179-1m,200-2m,205-1m,210-2s,214-2s,241-1m,242-2s,246-2m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 129,
+    "note": "It seems the hit in on the and of 3 in measure 20 should have been tied to the downbeat of measure 21? Im not sure, but in passing that is what I thought I heard. There is no tie that I can ee though",
+    "tags": [],
+    "review": "The tie was there (& of 3 of bar 20, held into bar 21) but drawn under the staff, where it blended in. Ties are now heavier, more arched, and drawn over the notes."
+  },
+  {
+    "id": "2026-10-02T20-29-49-081Z-57c7cz",
+    "createdAt": "2026-10-02T20:29:49.081Z",
+    "tool": "setups",
+    "key": "swing|32|1@14-4a;2@42-3a,45-1m;1@127-3a;2@137-1a,138-2m;2@200-1a,201-1m+197-1m;4@249-1m+242-2m,245-1m|97-1m,98-2s,102-2m,112-2m,117-1m,144-1a,145-1m,148-2s,159-1m,210-2s,214-2s,227-1a,228-2m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 166,
+    "note": "Same issue here with what seems like a missing tie but I actually think its just that the tie blends in too much with the barlines. Perhaps they need to be thicker or more pronounced in some other way. Also, rhythmic slash notation is generally written with stem down. We should adopt this.",
+    "tags": [],
+    "review": "Ties are now heavier and more arched so they stand out from barlines and staff lines. Rhythmic slashes in the staff are now stems down."
   }
 ]

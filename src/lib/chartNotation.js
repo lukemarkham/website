@@ -19,8 +19,10 @@
 //   bar's real rhythm, and it starts and ends on a downbeat: a full-bar fill
 //   runs barline to barline. An & is shown in the rhythm, not the bracket.
 // - Figures in a bar with fill, and band hits inside a fill, are written in
-//   the staff as rhythmic slashes (stemmed slash noteheads, an 8th rest
+//   the staff as rhythmic slashes (slash noteheads, stems down, an 8th rest
 //   before an &). Beats with nothing written stay plain slashes.
+// - Ties are drawn heavier and more arched than VexFlow's default, so one
+//   over a barline doesn't blend into the barline or the staff lines.
 // - Cued figures sit exactly over the slashes they line up with.
 // - The piece ends on its final figure: rests follow it, not slashes.
 // - Rehearsal letters mark each eight-bar section.
@@ -209,7 +211,7 @@ export function renderChartNotation(host, VF, options) {
     let position = 0
     barRuns.forEach((run) => {
       gap(position, run.position)
-      runPieces(run, (duration) => new StaveNote({ keys: [SLASH_KEY], duration, type: 's', stemDirection: 1 }).setStyle(ink))
+      runPieces(run, (duration) => new StaveNote({ keys: [SLASH_KEY], duration, type: 's', stemDirection: -1 }).setStyle(ink))
         .forEach(({ tickable, position: at }) => add(tickable, at, true))
       for (let slot = first + run.position; slot < first + run.position + run.length; slot += 1) stemmedSlots.add(slot)
       position = run.position + run.length
@@ -296,15 +298,16 @@ export function renderChartNotation(host, VF, options) {
 
   drawLater.forEach((item) => item.setContext(ctx).draw())
 
-  // Ties, within a note and across barlines. One that crosses a line break
-  // is drawn as two halves, off the end of one line and into the next. Cued
-  // ties curve over the notes; ties in the staff curve under, clear of the
-  // fill bracket.
+  // Ties, within a note and across barlines, curving over the notes (the
+  // stems point down in the staff and up in the cue line, so over is away
+  // from the stems in the staff). One that crosses a line break is drawn as
+  // two halves, off the end of one line and into the next.
   notes.forEach((note) => {
     const pieces = runs.filter((run) => run.note === note).flatMap((run) => piecesOf.get(run).map((piece) => ({ piece, bar: run.bar })))
-    const direction = note.staff ? 1 : -1
     const drawTie = (firstNote, lastNote) => {
-      new StaveTie({ firstNote, lastNote, firstIndexes: [0], lastIndexes: [0] }).setDirection(direction).setStyle(ink).setContext(ctx).draw()
+      const tie = new StaveTie({ firstNote, lastNote, firstIndexes: [0], lastIndexes: [0] }).setDirection(-1).setStyle(ink)
+      Object.assign(tie.renderOptions, { cp1: 12, cp2: 19, cp1Short: 6, cp2Short: 11, yShift: 8 })
+      tie.setContext(ctx).draw()
     }
     for (let index = 1; index < pieces.length; index += 1) {
       const from = pieces[index - 1]
@@ -351,7 +354,7 @@ export function renderChartNotation(host, VF, options) {
   }
 
   // Each fill bracket, just over the staff with "FILL" at its start; over
-  // stemmed rhythm inside the fill it rises clear of the stems and accents.
+  // rhythm inside the fill it rises clear of the accents and ties.
   // One that runs past the end of a line carries on over the next.
   ctx.setStrokeStyle(colors.accent)
   ctx.setFillStyle(colors.accent)
@@ -368,7 +371,7 @@ export function renderChartNotation(host, VF, options) {
       const closesHere = fill.end <= lineEndSlot
       const x1 = from === fill.start ? beatX(from, false) : staves[bar].getNoteStartX() - 6
       const x2 = closesHere ? beatX(fill.end, true) : staves[lastBarOfLine].getX() + staves[lastBarOfLine].getWidth()
-      const y = staves[bar].getYForLine(0) - (hasStems ? 46 : 11)
+      const y = staves[bar].getYForLine(0) - (hasStems ? 30 : 11)
 
       ctx.beginPath()
       if (from === fill.start) {

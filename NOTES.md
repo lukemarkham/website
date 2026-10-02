@@ -3,6 +3,21 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-03 (end of day) — Set Ups ties and stem direction
+
+### What changed
+
+- Luke's two notes (archived): rhythmic slashes in the staff are now stems
+  down, and ties are heavier and more arched (`renderOptions` cp1 12, cp2
+  19), drawn over the notes, so one over a barline no longer blends in. The
+  fill bracket over hits inside a fill sits lower now the stems point down.
+
+### Open items / ideas
+
+- Luke still to listen to the Straight 8ths and Bossa Nova bands and the mix.
+- Towards full charts: ensemble 8th-note lines, dynamics, more forms (blues,
+  32-bar ABAC).
+
 ## 2026-10-03 (later) — Set Ups: longer pieces, scrolling, styles, Luke's fill rules
 
 ### What changed
