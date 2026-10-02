@@ -949,6 +949,18 @@ const FILL_CELLS = [
   return cells
 })
 
+// Fills written out whole rather than generated: Luke's own, and ones taken
+// from other drummers. `source` is shown on the board when one comes up.
+// Each is played as written (no mirror), at its rate, and lands on whichever
+// resolution its own rules allow.
+const SOURCED_FILLS = [
+  { pattern: 'RLKKRLRLKRLKRLRL', rateId: 'sixteenth', source: 'Original' },
+].map((fill) => ({ ...fill, strokes: fill.pattern.split('') }))
+
+// When a sourced fill fits the settings, this is the chance a draw offers it
+// before a generated one. History and downvotes still apply.
+const SOURCED_FILL_CHANCE = 0.25
+
 const FILL_RATES = [
   { id: 'sixteenth', label: '16ths', notesPerBeat: 4, counts: ['', 'e', '&', 'a'] },
   { id: 'triplet', label: 'Triplets', notesPerBeat: 3, counts: ['', '&', 'a'] },
@@ -1060,7 +1072,14 @@ function getFillDownvoteKey(strokes, resolutionStroke) {
 // Random cells rarely break the rules, so drawing again until they fit is
 // quick; single strokes and a lone kick can always close out the bar.
 function getRandomFill(length, resolutionStroke, rateId, downvoted = new Set()) {
+  const sourced = SOURCED_FILLS.filter((fill) => (
+    fill.rateId === rateId && fill.strokes.length === length && isPlayableFill(fill.strokes, resolutionStroke)
+  ))
   return drawFresh('fill', () => {
+    if (sourced.length && Math.random() < SOURCED_FILL_CHANCE) {
+      const fill = sourced[randomInt(0, sourced.length - 1)]
+      return [{ pattern: fill.pattern, name: `${fill.source} fill`, strokes: fill.strokes, source: fill.source }]
+    }
     const cells = []
     let remaining = length
     while (remaining > 0) {
@@ -2790,6 +2809,7 @@ function FillGeneratorPage() {
   const revealTimerRef = useRef(null)
   const sessionControlRef = useRef(null)
   const { cells } = fill
+  const source = cells.find((cell) => cell.source)?.source ?? null
   const strokes = useMemo(() => cells.flatMap((cell) => cell.strokes), [cells])
 
   useEffect(() => {
@@ -2893,6 +2913,7 @@ function FillGeneratorPage() {
       beats,
       tempo: fill.tempo,
       cells: cells.map((cell) => cell.pattern),
+      ...(source && { source }),
     }
   }
 
@@ -3006,6 +3027,11 @@ function FillGeneratorPage() {
         />
 
         <div className="sticking-board surface-card">
+          {source && (
+            <div className={`fill-source-badge${reveal ? ' is-hidden' : ''}`} title={`Fill source: ${source}`}>
+              {source}
+            </div>
+          )}
           <FillNotation
             steps={notationSteps}
             notesPerBeat={rate.notesPerBeat}

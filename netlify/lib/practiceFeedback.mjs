@@ -35,14 +35,16 @@ function sanitizeCommon(body) {
 // written into the store.
 const SANITIZERS = {
   fill(body) {
-    const { strokes, resolution, rateId, beats, cells } = body
+    const { strokes, resolution, rateId, beats, cells, source } = body
     if (typeof strokes !== 'string' || !/^[RLK]{3,32}$/.test(strokes)) return null
     if (!['K', 'R'].includes(resolution)) return null
     if (!['sixteenth', 'triplet'].includes(rateId)) return null
     if (!isWholeNumberInRange(beats, 1, 4)) return null
-    if (!Array.isArray(cells) || cells.length > 32 || !cells.every((cell) => /^[RLK]{1,8}$/.test(cell))) return null
+    if (!Array.isArray(cells) || cells.length > 32 || !cells.every((cell) => /^[RLK]{1,32}$/.test(cell))) return null
     if (cells.join('') !== strokes) return null
-    return { strokes, resolution, rateId, beats, cells }
+    // Sourced fills (written out, not generated) say where they're from.
+    if (source !== undefined && (typeof source !== 'string' || !source.trim() || source.length > 80)) return null
+    return { strokes, resolution, rateId, beats, cells, ...(source !== undefined && { source: source.trim() }) }
   },
 
   sticking(body) {

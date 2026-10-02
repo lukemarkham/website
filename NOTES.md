@@ -3,6 +3,26 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-02 — Sourced fills in the Fill Generator
+
+### What changed
+
+- **Sourced fills**: `SOURCED_FILLS` in `App.jsx` holds fills written out
+  whole, each with a `source`. The first is Luke's `RLKKRLRLKRLKRLRL`
+  (16ths, 4 beats), source "Original". When the settings fit (rate, length,
+  and the landing passes the playability rules), a draw offers a sourced fill
+  1 time in 4 (`SOURCED_FILL_CHANCE`), still subject to history and
+  downvotes. It's played as written, never mirrored.
+- A badge in the board's top-right corner names the source while a sourced
+  fill is up. Built From shows "<source> fill". Votes on it carry `source`,
+  and the feedback validator now accepts cells up to 32 strokes.
+
+### Open items / ideas
+
+- Fills from other drummers go in `SOURCED_FILLS` with the drummer's name as
+  `source`. A fill that only works on one landing needs no flag: the rules
+  check pick its landings.
+
 ## 2026-09-30 — Chuck Anello's page, floating metronome
 
 ### What changed
