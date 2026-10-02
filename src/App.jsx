@@ -2266,6 +2266,7 @@ function PracticeSession({
   rotationOptions = PRACTICE_ROTATION_OPTIONS,
   defaultRotation = 60,
   click = true,
+  onRunningChange,
 }) {
   const [sessionMinutes, setSessionMinutes] = useState(10)
   const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
@@ -2283,6 +2284,7 @@ function PracticeSession({
   const onNewFillRef = useRef(onNewItem)
   const onBeatRef = useRef(onBeat)
   const clickRef = useRef(click)
+  const onRunningChangeRef = useRef(onRunningChange)
   const cycleBarsRef = useRef(cycleBars)
   const itemTitle = itemName[0].toUpperCase() + itemName.slice(1)
 
@@ -2301,6 +2303,10 @@ function PracticeSession({
   useEffect(() => {
     clickRef.current = click
   }, [click])
+
+  useEffect(() => {
+    onRunningChangeRef.current = onRunningChange
+  }, [onRunningChange])
 
   useEffect(() => {
     cycleBarsRef.current = cycleBars
@@ -2451,6 +2457,7 @@ function PracticeSession({
     }
     setIsPlaying(true)
     runFrom(ctx)
+    onRunningChangeRef.current?.(true)
 
     // Keep the screen awake for the session; the fill is no use on a dark screen.
     try {
@@ -2513,6 +2520,7 @@ function PracticeSession({
     setBanner(null)
     setClock({ session: null, nextFill: null })
     setIsPlaying(false)
+    onRunningChangeRef.current?.(false)
 
     if (options.playCompletion && audioContextRef.current) {
       playSessionCompleteSound(audioContextRef.current)
@@ -3726,7 +3734,7 @@ const SET_UP_BAND_OPTIONS = [
   { id: 'off', label: 'Off' },
 ]
 
-const SET_UP_DEFAULT_TEMPO_RANGE = [100, 180]
+const SET_UP_DEFAULT_TEMPO_RANGE = SET_UP_FEELS[0].tempoRange
 const SET_UP_ROTATION_OPTIONS = [
   { seconds: PRACTICE_EVERY_CYCLE, label: 'Every phrase' },
   ...PRACTICE_ROTATION_OPTIONS,
@@ -3746,10 +3754,15 @@ function getRandomSetUpPhrase(options, downvoted) {
   })
 }
 
-// A set-up phrase drawn as a chart (see src/lib/chartNotation.js): four bars
-// to a line on wide screens, two on phones.
-function ChartNotation({ label, fallback, bars, notes, fills, feel, tempo }) {
+// A set-up piece drawn as a chart (see src/lib/chartNotation.js): four bars
+// to a line on wide screens, two on phones. It sits in a window that fits
+// the screen, and `followRef` gets a scrollToBeat(beat) that slides it
+// along with the music: the line being played rises from the second row to
+// the top as it goes, so the next lines are always in view to read ahead.
+function ChartNotation({ label, fallback, bars, notes, fills, end, sections, feel, tempo, followRef }) {
   const hostRef = useRef(null)
+  const viewportRef = useRef(null)
+  const layoutRef = useRef(null)
   const [vexflow, setVexflow] = useState(null)
   const [failed, setFailed] = useState(false)
   const [isWide, setIsWide] = useState(true)
@@ -3781,10 +3794,12 @@ function ChartNotation({ label, fallback, bars, notes, fills, feel, tempo }) {
     if (!vexflow || !host) return
     const style = getComputedStyle(host)
     const token = (name) => style.getPropertyValue(name).trim()
-    renderChartNotation(host, vexflow, {
+    layoutRef.current = renderChartNotation(host, vexflow, {
       bars,
       notes,
       fills,
+      end,
+      sections,
       feel,
       tempo,
       barsPerLine: isWide ? 4 : 2,
@@ -3792,10 +3807,37 @@ function ChartNotation({ label, fallback, bars, notes, fills, feel, tempo }) {
       colors: { ink: token('--text'), muted: token('--text-muted'), accent: token('--accent-quiet') },
       font: style.fontFamily,
     })
-  }, [vexflow, bars, notes, fills, feel, tempo, isWide])
+  }, [vexflow, bars, notes, fills, end, sections, feel, tempo, isWide])
+
+  useEffect(() => {
+    if (!followRef) return undefined
+    followRef.current = {
+      scrollToBeat(beat) {
+        const layout = layoutRef.current
+        const viewport = viewportRef.current
+        const svg = hostRef.current?.querySelector('svg')
+        if (!layout || !viewport || !svg) return
+        const scale = svg.getBoundingClientRect().width / layout.width
+        const linePosition = Math.max(0, beat) / (layout.barsPerLine * 4)
+        // Room above each staff for the cue line and the tempo marking.
+        const headroom = layout.firstLineTop - 62
+        const top = linePosition < 1
+          ? linePosition * headroom
+          : headroom + (linePosition - 1) * layout.lineHeight
+        viewport.scrollTop = Math.min(top * scale, viewport.scrollHeight - viewport.clientHeight)
+      },
+    }
+    return () => {
+      followRef.current = null
+    }
+  }, [followRef])
 
   if (failed) return <div className="sticking-line fill-notation-fallback">{fallback}</div>
-  return <div ref={hostRef} className="fill-notation chart-notation" role="img" aria-label={label} />
+  return (
+    <div ref={viewportRef} className="chart-viewport">
+      <div ref={hostRef} className="fill-notation chart-notation" role="img" aria-label={label} />
+    </div>
+  )
 }
 
 function ChoiceChips({ items, isActive, onPick }) {
@@ -3825,16 +3867,20 @@ const SET_UP_CUE_OPTIONS = [
 
 function SetUpsPage() {
   const [feel, setFeel] = useState('swing')
-  const [bars, setBars] = useState(8)
+  const [bars, setBars] = useState(32)
   const [fillBeats, setFillBeats] = useState(null)
   const [cues, setCues] = useState(true)
   const [tempoRange, setTempoRange] = useState(SET_UP_DEFAULT_TEMPO_RANGE)
   const [band, setBand] = useState('full')
   const [click, setClick] = useState(true)
   const bandBusRef = useRef(null)
+  const boardRef = useRef(null)
+  const followRef = useRef(null)
+  const playClockRef = useRef(null)
+  const followFrameRef = useRef(0)
   const downvotedRef = useDownvotes('setups', (entry) => entry.key)
   const [phrase, setPhrase] = useState(() => withBand(
-    getRandomSetUpPhrase({ bars: 8, fillBeats: null, feel: 'swing', cues: true }, new Set(readStoredList(downvotesKey('setups')))),
+    getRandomSetUpPhrase({ bars: 32, fillBeats: null, feel: 'swing', cues: true }, new Set(readStoredList(downvotesKey('setups')))),
     randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
   ))
   const [manualCount, setManualCount] = useState(0)
@@ -3865,7 +3911,9 @@ function SetUpsPage() {
       feel: next.feel ?? feel,
       cues: next.cues ?? cues,
     }
-    setPhrase(withBand(getRandomSetUpPhrase(options, downvotedRef.current), randomInt(...tempoRange)))
+    setPhrase(withBand(getRandomSetUpPhrase(options, downvotedRef.current), randomInt(...(next.tempoRange ?? tempoRange))))
+    // The new piece starts at the top, and the chart waits for its first beat.
+    playClockRef.current = null
     setUpvoted(null)
   }
 
@@ -3896,6 +3944,8 @@ function SetUpsPage() {
 
   // Each event where it's written, an & swung to the last third of the beat.
   function playBand(ctx, time, beatInCycle, beatSeconds) {
+    // Where the piece started on the audio clock, for the chart to follow.
+    playClockRef.current = { ctx, start: time - beatInCycle * beatSeconds, beatSeconds }
     if (band === 'off') return
     const events = eventsByBeat.get(beatInCycle)
     if (!events) return
@@ -3920,6 +3970,25 @@ function SetUpsPage() {
       }
     })
   }
+
+  // While a session runs, the chart scrolls with the music and the board is
+  // brought into view, so nobody has to touch the page to keep reading.
+  function followMusic(isRunning) {
+    window.cancelAnimationFrame(followFrameRef.current)
+    if (!isRunning) {
+      playClockRef.current = null
+      return
+    }
+    boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const frame = () => {
+      const clock = playClockRef.current
+      followRef.current?.scrollToBeat(clock ? (clock.ctx.currentTime - clock.start) / clock.beatSeconds : 0)
+      followFrameRef.current = window.requestAnimationFrame(frame)
+    }
+    frame()
+  }
+
+  useEffect(() => () => window.cancelAnimationFrame(followFrameRef.current), [])
 
   function describe() {
     return { key: phrase.key, feel: phrase.feel, tempo: phrase.tempo }
@@ -3964,8 +4033,9 @@ function SetUpsPage() {
         <p style={introStyle}>
           A phrase of time with ensemble figures, written the way a big band chart cues them. Keep time
           through the slashes, catch the rhythm cues, play a fill for the length of each bracket, and land
-          the figure with the band. A rhythm section walks and comps over standard changes, and the horns
-          play every figure, so you can hear whether you read it right.
+          the figure with the band. A rhythm section plays standard-style changes in swing, straight 8ths or
+          bossa nova, and the horns play every figure, so you can hear whether you read it right. During a
+          session the chart scrolls along with the music.
         </p>
 
         <div className="sticking-toolbar">
@@ -3973,7 +4043,8 @@ function SetUpsPage() {
             <span className="control-label">Feel</span>
             <ChoiceChips items={SET_UP_FEELS} isActive={(item) => item.id === feel} onPick={(item) => {
               setFeel(item.id)
-              generateByHand({ feel: item.id })
+              setTempoRange(item.tempoRange)
+              generateByHand({ feel: item.id, tempoRange: item.tempoRange })
             }} />
           </div>
 
@@ -4029,11 +4100,15 @@ function SetUpsPage() {
           controlRef={sessionControlRef}
           rotationOptions={SET_UP_ROTATION_OPTIONS}
           defaultRotation={PRACTICE_EVERY_CYCLE}
+          onRunningChange={followMusic}
         />
 
-        <div className="sticking-board surface-card">
+        <div ref={boardRef} className="sticking-board surface-card set-ups-board">
           <ChartNotation
             key={phrase.key}
+            followRef={followRef}
+            end={phrase.end}
+            sections={phrase.sections}
             label={`${feelLabel}, quarter note = ${phrase.tempo}. ${phrase.descriptions.join(' ')}`}
             fallback={phrase.descriptions.join(' ')}
             bars={phrase.bars}

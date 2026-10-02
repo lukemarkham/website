@@ -1558,6 +1558,16 @@ h3 {
   transition: none;
 }
 
+.chart-viewport {
+  max-height: max(300px, calc(100svh - 150px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.set-ups-board {
+  scroll-margin-top: 12px;
+}
+
 .set-ups-list {
   margin: 8px 0 12px;
   padding-left: 1.3em;

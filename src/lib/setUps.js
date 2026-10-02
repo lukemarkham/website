@@ -1,21 +1,34 @@
-// Set Ups: a phrase of time (8 or 16 bars) with a few ensemble figures to
-// set up, each led into by a fill that runs straight into its first note.
-// Bars without a set-up can carry shorter rhythm cues, to comp along with on
-// the snare or just to keep reading.
+// Set Ups: a piece of time (8, 16 or 32 bars) with ensemble figures to set
+// up, each led into by a fill. Bars without a set-up can carry shorter rhythm
+// cues, to comp along with on the snare or just to keep reading.
 //
-// Everything sits on an 8th-note grid across the phrase: slot 0 is beat 1 of
+// Everything sits on an 8th-note grid across the piece: slot 0 is beat 1 of
 // bar 1, slot 1 its &, and so on, 8 slots to a bar. A note is
-// { slot, slots, articulation, role }, where articulation is 'marcato' (^,
-// short), 'accent' (>, held for its length), 'tenuto' (-, a full quarter) or
-// 'staccato' (.), and role is 'setup', 'fillHit' (a band hit inside a fill,
-// written in the staff as rhythmic slashes) or 'cue'.
+// { slot, slots, articulation, role, staff }:
+// - articulation is 'marcato' (^, short), 'accent' (>, held for its
+//   length), 'tenuto' (-, a full quarter) or 'staccato' (.)
+// - role is 'setup', 'fillHit' (a band hit inside a fill) or 'cue'
+// - staff is true when the note is written in the staff as rhythmic slashes
+//   rather than cued above it. That's every hit inside a fill, every set-up
+//   figure in a bar that has fill in it (the fill line takes no rhythmic
+//   space, so the bar's rhythm is written out), and the final figure.
+// Notes may be tied over a barline.
 //
-// A phrase always ends on a set-up in its last two bars, so a practice run
-// finishes on an ensemble hit rather than a bar of comping. Notes may be tied over a barline.
+// Fills start and end on a downbeat. A fill into a figure on an & ends at
+// that beat; the drummer fills on until the figure, which the rhythmic
+// slashes show with an 8th rest.
+//
+// The piece always ends on a set-up in its last bar, the last thing written:
+// rests follow it, not slashes.
 
 export const SLOTS_PER_BAR = 8
 
-export const SET_UP_LENGTHS = [8, 16]
+export const SET_UP_LENGTHS = [8, 16, 32]
+
+// Rehearsal letters at each eight-bar section, as on a chart.
+export function sectionsFor(bars) {
+  return Array.from({ length: bars / 8 }, (_, index) => ({ bar: index * 8, label: 'ABCD'[index] }))
+}
 
 export const SET_UP_FILL_LENGTHS = [
   { beats: null, label: 'Mix' },
@@ -28,8 +41,9 @@ export const SET_UP_FILL_LENGTHS = [
 const MIXED_FILL_BEATS = [1, 2, 2, 2, 4]
 
 export const SET_UP_FEELS = [
-  { id: 'swing', label: 'Swing' },
-  { id: 'straight', label: 'Straight' },
+  { id: 'swing', label: 'Swing', tempoRange: [100, 200] },
+  { id: 'straight', label: 'Straight 8ths', tempoRange: [90, 140] },
+  { id: 'bossa', label: 'Bossa Nova', tempoRange: [110, 150] },
 ]
 
 // Figures to set up. `parity` is where the first note falls: 0 on a beat, 1
@@ -105,13 +119,16 @@ function figureEnd(notes) {
   return Math.max(...notes.map((note) => note.slot + note.slots))
 }
 
+const barOf = (slot) => Math.floor(slot / SLOTS_PER_BAR)
+
 function setUpDescription(setUp) {
   const { fill, notes, fillHits } = setUp
   const beats = (fill.end - fill.start) / 2
   const length = beats === 4 ? 'a bar' : `${beats} ${beats === 1 ? 'beat' : 'beats'}`
   const first = notes[0]
-  const crosses = Math.floor(first.slot / SLOTS_PER_BAR) !== Math.floor((first.slot + first.slots - 1) / SLOTS_PER_BAR)
-  const what = notes.length > 1 ? `a ${notes.length}-note figure starting on` : first.articulation === 'accent' ? 'a held hit on' : 'a short hit on'
+  const crosses = barOf(first.slot) !== barOf(first.slot + first.slots - 1)
+  const single = { accent: 'a held hit on', tenuto: 'a held quarter on' }[first.articulation] ?? 'a short hit on'
+  const what = notes.length > 1 ? `a ${notes.length}-note figure starting on` : single
   const catching = fillHits.length
     ? `, catching the band on ${fillHits.map((hit) => describeSlot(hit.slot)).join(' and ')},`
     : ''
@@ -124,8 +141,9 @@ function encodeNotes(notes) {
   return notes.map((note) => `${note.slot}-${note.slots}${ARTICULATION_CODES[note.articulation]}`).join(',')
 }
 
-// Short band hits inside a fill: none in its first 8th or its last, one to a
-// beat at most, a marcato quarter on a beat or 8th on an &.
+// Short band hits inside a fill: none in its first 8th, ending at least an
+// 8th before it does, one to a beat at most, a marcato quarter on a beat or
+// 8th on an &.
 function placeFillHits(fill) {
   const beats = (fill.end - fill.start) / 2
   if (!(Math.random() < (FILL_HIT_CHANCE[beats] ?? 0))) return []
@@ -136,45 +154,63 @@ function placeFillHits(fill) {
     const slots = slot % 2 === 0 ? 2 : 1
     if (slot + slots > fill.end - 1) continue
     if (hits.some((hit) => Math.floor(hit.slot / 2) === Math.floor(slot / 2) || Math.abs(hit.slot - slot) < 2)) continue
-    hits.push({ slot, slots, articulation: 'marcato', role: 'fillHit' })
+    hits.push({ slot, slots, articulation: 'marcato', role: 'fillHit', staff: true })
   }
   return hits.sort((a, b) => a.slot - b.slot)
 }
 
-// Draws set-ups one per stretch of the phrase, left to right. Each fill
+// How many set-ups a piece of this length gets.
+function setUpCount(bars) {
+  if (bars === 8) return 2
+  if (bars === 16) return pick([3, 4])
+  return pick([6, 7])
+}
+
+// Draws set-ups one per stretch of the piece, left to right. Each fill
 // starts in bar 2 at the earliest and clear of the figure before it, and the
-// last figure starts in the last two bars.
+// last figure is in the last bar (or pushed into it from the & of 4).
 function placeSetUps(bars, fillBeats) {
   const total = bars * SLOTS_PER_BAR
-  const count = bars === 8 ? 2 : pick([3, 4])
+  const count = setUpCount(bars)
   const setUps = []
   let previousEnd = SLOTS_PER_BAR - GAP
 
   for (let index = 0; index < count; index += 1) {
+    const isLast = index === count - 1
     const stretchStart = Math.round((index * bars) / count) * SLOTS_PER_BAR
-    const stretchEnd = Math.round(((index + 1) * bars) / count) * SLOTS_PER_BAR
+    const stretchEnd = isLast ? total : Math.round(((index + 1) * bars) / count) * SLOTS_PER_BAR
     const beats = fillBeats ?? pick(MIXED_FILL_BEATS)
-    const fillSlots = beats * 2
 
     const options = []
     for (const figure of SETUP_FIGURES) {
       const length = Math.max(...figure.notes.map(([offset, slots]) => offset + slots))
-      const isLast = index === count - 1
-      const earliest = Math.max(stretchStart + fillSlots, previousEnd + GAP + fillSlots, isLast ? total - 2 * SLOTS_PER_BAR : 0)
-      for (let slot = earliest; slot < stretchEnd; slot += 1) {
+      for (let slot = stretchStart; slot < stretchEnd; slot += 1) {
         if (slot % 2 !== figure.parity || slot + length > total) continue
+        // The fill ends on the beat the figure falls in.
+        const fillStart = Math.floor(slot / 2) * 2 - beats * 2
+        if (fillStart < SLOTS_PER_BAR || fillStart < previousEnd + GAP) continue
+        // The final figure sounds in the last bar: a push from the & of 4
+        // only if it's tied over.
+        if (isLast && (slot < total - SLOTS_PER_BAR - 1 || slot + length <= total - SLOTS_PER_BAR)) continue
         // Pushes (the & of 4, tied into the next bar) and downbeats are what
         // charts set up most, so they come up more often.
         const inBar = slot % SLOTS_PER_BAR
         const weight = figure.weight * (inBar === 7 || inBar === 0 ? 2 : 1)
-        options.push({ figure, slot, weight })
+        options.push({ figure, slot, fillStart, weight })
       }
     }
     if (options.length === 0) return null
 
-    const { figure, slot } = pickWeighted(options, (option) => option.weight)
+    const { figure, slot, fillStart } = pickWeighted(options, (option) => option.weight)
+    const fill = { start: fillStart, end: Math.floor(slot / 2) * 2 }
     const notes = figure.notes.map(([offset, slots, articulation]) => ({ slot: slot + offset, slots, articulation, role: 'setup' }))
-    const fill = { start: slot - fillSlots, end: slot }
+    // Written in the staff when it shares a bar with fill, or ends the piece.
+    const fillBars = new Set()
+    for (let at = fill.start; at < fill.end; at += 1) fillBars.add(barOf(at))
+    const staff = isLast || notes.some((note) => fillBars.has(barOf(note.slot)) || fillBars.has(barOf(note.slot + note.slots - 1)))
+    notes.forEach((note) => {
+      note.staff = staff
+    })
     setUps.push({ fill, notes, fillHits: placeFillHits(fill) })
     previousEnd = figureEnd(notes)
   }
@@ -182,11 +218,11 @@ function placeSetUps(bars, fillBeats) {
 }
 
 // Rhythm cues in bars that hold no fill or set-up figure, kept clear of the
-// fills and figures either side. Bar 1 stays plain time.
+// fills and figures either side. Bar 1 stays plain time, and nothing comes
+// after the final set-up's fill.
 function placeCues(bars, setUps) {
   const busy = []
   setUps.forEach(({ fill, notes }) => busy.push([fill.start, figureEnd(notes)]))
-  // Nothing after the final set-up: the phrase ends on it.
   busy.push([setUps[setUps.length - 1].fill.start, bars * SLOTS_PER_BAR])
   const cues = []
 
@@ -195,7 +231,7 @@ function placeCues(bars, setUps) {
     const end = start + SLOTS_PER_BAR
     if (busy.some(([from, to]) => from < end + GAP && to + GAP > start)) continue
     if (Math.random() >= CUE_CHANCE) continue
-    const notes = pick(CUE_FIGURES).map(([offset, slots, articulation]) => ({ slot: start + offset, slots, articulation, role: 'cue' }))
+    const notes = pick(CUE_FIGURES).map(([offset, slots, articulation]) => ({ slot: start + offset, slots, articulation, role: 'cue', staff: false }))
     cues.push(...notes)
     busy.push([start, figureEnd(notes)])
   }
@@ -203,13 +239,27 @@ function placeCues(bars, setUps) {
 }
 
 /**
- * A random phrase.
- * @param {{ bars: 8 | 16, fillBeats: number | null, feel: 'swing' | 'straight', cues: boolean }} options
+ * A random piece.
+ * @param {{ bars: 8 | 16 | 32, fillBeats: number | null, feel: 'swing' | 'straight' | 'bossa', cues: boolean }} options
  */
 export function generateSetUpPhrase({ bars, fillBeats, feel, cues }) {
   let setUps = null
   while (!setUps) setUps = placeSetUps(bars, fillBeats)
   const cueNotes = cues ? placeCues(bars, setUps) : []
+  // A figure that shares a bar with any fill, not just its own, is written
+  // in the staff too: the fill line never sits over a cue line's rests.
+  const fillBars = new Set(setUps.flatMap(({ fill }) => {
+    const covered = []
+    for (let at = fill.start; at < fill.end; at += 1) covered.push(barOf(at))
+    return covered
+  }))
+  setUps.forEach((setUp) => {
+    if (setUp.notes.some((note) => fillBars.has(barOf(note.slot)) || fillBars.has(barOf(note.slot + note.slots - 1)))) {
+      setUp.notes.forEach((note) => {
+        note.staff = true
+      })
+    }
+  })
   const notes = [...setUps.flatMap((setUp) => [...setUp.fillHits, ...setUp.notes]), ...cueNotes].sort((a, b) => a.slot - b.slot)
 
   return {
@@ -223,6 +273,9 @@ export function generateSetUpPhrase({ bars, fillBeats, feel, cues }) {
     bars,
     notes,
     fills: setUps.map((setUp) => setUp.fill),
+    // Where the piece ends: nothing is written after the final figure.
+    end: figureEnd(setUps[setUps.length - 1].notes),
+    sections: sectionsFor(bars),
     descriptions: setUps.map(setUpDescription),
   }
 }

@@ -3,6 +3,31 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-03 (later) — Set Ups: longer pieces, scrolling, styles, Luke's fill rules
+
+### What changed
+
+- **Luke's notes** (archived with reviews): the fill line takes no rhythmic
+  space; fill brackets start and end on downbeats (barline to barline for a
+  full bar); figures in any bar with fill are written in the staff as
+  rhythmic slashes (`note.staff`), with an 8th rest showing an &, and plain
+  slashes on beats with nothing written; the piece ends on its final figure
+  in the last bar, with rests after it, on the tonic.
+- **Lengths**: 8, 16 or 32 bars (default 32: 6–7 set-ups). Rehearsal
+  letters every eight bars with double bars between sections; 32 bars play
+  AABA over one A and a bridge.
+- **Scrolling**: the chart sits in a window that fits the screen. When a
+  session starts the board scrolls into view, then the chart slides with the
+  music (`scrollToBeat`), the current line rising from the second row to the
+  top so the next lines are always visible. Checked in headless Chrome over
+  a whole 32-bar piece at 1280×800.
+- **Styles**: Swing (100–200), Straight 8ths (90–140) and Bossa Nova
+  (110–150), each with its own progressions and bridge. Straight 8ths has an
+  8th-note bass groove and busier comping; bossa has root–fifth bass in the
+  bossa rhythm and the two-bar comping pattern. Both play &s straight.
+- Fixed: the chart was drawn 16px short, clipping the last line.
+- Checked: 6,000 pieces across all lengths and styles break no rule.
+
 ## 2026-10-03 — Set Ups: hits inside fills, ending on a hit, a rhythm section
 
 ### What changed

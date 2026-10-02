@@ -122,5 +122,81 @@
     "note": "Again the figure landing on beat one of measure 2 is not vertically aligned with the slashes",
     "tags": [],
     "review": "Same alignment fix as above."
+  },
+  {
+    "id": "2026-10-02T19-53-58-675Z-1k25nm",
+    "createdAt": "2026-10-02T19:53:58.675Z",
+    "tool": "setups",
+    "key": "swing|8|2@24-2t+21-1m;2@49-1a,50-2m|11-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 131,
+    "note": "I want it to be more like the final hit feels liek a real resolution for the \"song.\" So not only should it end on the tonic (or any acceptable kind of harmonic ending) but the final hit should be the last thing notated, not with any slashes following it",
+    "tags": [],
+    "review": "Rule added: the final figure sounds in the last bar and is the last thing written; rests follow, not slashes. Its chord is the tonic (every A section ends on I), and walking and comping stop at the final fill."
+  },
+  {
+    "id": "2026-10-02T19-55-29-643Z-011bmz",
+    "createdAt": "2026-10-02T19:55:29.643Z",
+    "tool": "setups",
+    "key": "swing|8|2@15-3a;2@56-2t+53-1m|33-1m,34-2s,38-2m",
+    "feel": "swing",
+    "vote": "up",
+    "tempo": 164,
+    "note": "",
+    "tags": [],
+    "review": "Upvote, noted."
+  },
+  {
+    "id": "2026-10-02T19-55-54-254Z-dlkf3j",
+    "createdAt": "2026-10-02T19:55:54.254Z",
+    "tool": "setups",
+    "key": "swing|8|2@27-3a;4@59-1m|8-3a,11-1m,32-2m,37-1m,40-2s,43-1m",
+    "feel": "swing",
+    "vote": "up",
+    "tempo": 107,
+    "note": "",
+    "tags": [],
+    "review": "Upvote, noted."
+  },
+  {
+    "id": "2026-10-02T19-58-09-251Z-hnubng",
+    "createdAt": "2026-10-02T19:58:09.251Z",
+    "tool": "setups",
+    "key": "swing|8|4@16-2m;1@59-1a,60-2m|26-1s,27-1m,35-1a,36-2m,41-1m,45-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 139,
+    "note": "The final measure here is very confusing with the 8th rest, fill line, then another 8th rest. Remember that the fill line never takes up actual rhythmic space. It is simply an indicator in addition to the actual rhythms within the measure. It should never take up a space rhythmically",
+    "tags": [
+      "Figure hard to read"
+    ],
+    "review": "Rule added: the fill line takes no rhythmic space. Bars with fill no longer have a cue line with invisible gaps; their figures are written in the staff as rhythmic slashes, and beats with nothing written stay slashes."
+  },
+  {
+    "id": "2026-10-02T20-00-25-334Z-mmzd8b",
+    "createdAt": "2026-10-02T20:00:25.334Z",
+    "tool": "setups",
+    "key": "swing|8|1@13-1m;2@53-1a,54-2m+51-1m|24-1a,25-1m,28-2s,35-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 130,
+    "note": "Same issue here with the 8th rests and the fill line text. We should probably make all of the rhythms that are setting up hits part of the measure. And I would like to the fill line to always begin and end on a downbeat as this is common engraving practice. The drummer will no to interpret the fill all trhe way until the next hit if there is one. We never need to begin a fill line indicator on an offbeat. If the offbeat needs to be emphasized, we put it in the rhyuthmic slash notation itself",
+    "tags": [
+      "Figure hard to read"
+    ],
+    "review": "Rules added: figures in a bar with fill (and figures sharing a bar with any fill) are written in the staff; fill brackets start and end on downbeats, and a fill into an & ends on that beat, with the & shown by an 8th rest in the rhythm."
+  },
+  {
+    "id": "2026-10-02T20-02-51-294Z-bdr829",
+    "createdAt": "2026-10-02T20:02:51.294Z",
+    "tool": "setups",
+    "key": "swing|8|4@24-3a,27-1m;1@59-1m|39-1m",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 128,
+    "note": "Measure 3 here is a great example of how we can better notate the fill lines. It should begin and end right on the barlines as it is a full measure fill.",
+    "tags": [],
+    "review": "Rule added: a full-bar fill bracket runs barline to barline; any bracket starting or ending at a bar line is drawn to the barline."
   }
 ]
