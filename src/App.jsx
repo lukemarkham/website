@@ -2044,11 +2044,19 @@ const PRACTICE_ROTATION_OPTIONS = [
 
 const PRACTICE_TEMPO_LIMITS = { min: 40, max: 240 }
 const FILL_DEFAULT_TEMPO_RANGE = [90, 150]
-const PRACTICE_COUNT_IN_BEATS = 4
 const PRACTICE_CHIME_SECONDS = 0.7
 const PRACTICE_REVEAL_MS = 1500
-// Rendered by scripts/generate-count-in.sh.
-const PRACTICE_COUNT_IN_URLS = [1, 2, 3, 4].map((beat) => `/audio/count-in/${beat}.wav`)
+
+// The standard count-off for every practice tool, played on the tool's own
+// click before time starts: a bar of half notes ("one, two"), then a bar of
+// quarters. Beat indexes 0–7; returns the count to show, or null for the
+// silent beats between the half notes.
+const COUNT_OFF_BEATS = 8
+
+function countOffCount(beatIndex) {
+  if (beatIndex >= 4) return String(beatIndex - 3)
+  return beatIndex % 2 === 0 ? String(beatIndex / 2 + 1) : null
+}
 
 // Each generator's votes go to its own store: see netlify/lib/practiceFeedback.mjs.
 function feedbackUrl(tool) {
@@ -2208,32 +2216,12 @@ function playFillChangeChime(ctx, time) {
   })
 }
 
-// Used only if the spoken count-in can't be loaded: a woody two-tone knock,
-// still nothing like the click.
-function playCountInKnock(ctx, time) {
-  ;[[780, 0.3], [1170, 0.14]].forEach(([frequency, volume]) => {
-    const oscillator = ctx.createOscillator()
-    const gain = ctx.createGain()
-
-    oscillator.type = 'triangle'
-    oscillator.frequency.setValueAtTime(frequency, time)
-    oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.8, time + 0.08)
-    gain.gain.setValueAtTime(0.0001, time)
-    gain.gain.exponentialRampToValueAtTime(volume, time + 0.002)
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.09)
-
-    oscillator.connect(gain)
-    gain.connect(ctx.destination)
-    oscillator.start(time)
-    oscillator.stop(time + 0.1)
-  })
-}
-
 // A pared-back metronome for the generator pages: a 4/4 click with beat one
 // accented and a session countdown, at the tempo the current fill (or
 // sticking, or exercise) picked. When the interval for a new one runs out,
 // the click stops at the end of the current cycle for a chime, the new one is
-// revealed, and a spoken one-bar count-in brings the click back. The page can
+// revealed, and the standard count-off (see countOffCount) brings the click
+// back. The page can
 // also pause it (while a downvote is explained) and resume it, with or
 // without a new one.
 function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFillCount, controlRef }) {
@@ -2253,8 +2241,6 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
   const onNewFillRef = useRef(onNewItem)
   const cycleBarsRef = useRef(cycleBars)
   const itemTitle = itemName[0].toUpperCase() + itemName.slice(1)
-  const voiceFilesRef = useRef(null)
-  const voiceBuffersRef = useRef(null)
 
   useEffect(() => {
     tempoRef.current = tempo
@@ -2267,16 +2253,6 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
   useEffect(() => {
     cycleBarsRef.current = cycleBars
   }, [cycleBars])
-
-  // Fetch the count-in early; decoding waits for an audio context.
-  useEffect(() => {
-    voiceFilesRef.current = Promise.all(
-      PRACTICE_COUNT_IN_URLS.map((url) => fetch(url).then((response) => {
-        if (!response.ok) throw new Error(`${url}: ${response.status}`)
-        return response.arrayBuffer()
-      })),
-    ).catch(() => null)
-  }, [])
 
   // Picking a fill by hand restarts the wait for the next automatic one, so
   // it gets the full interval too.
@@ -2313,42 +2289,6 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
     return audioContextRef.current
   }
 
-  async function loadVoice(ctx) {
-    if (voiceBuffersRef.current) return
-    const files = await voiceFilesRef.current
-    if (!files) return
-
-    try {
-      // decodeAudioData detaches the buffer it is given, so decode copies.
-      voiceBuffersRef.current = await Promise.all(files.map((file) => ctx.decodeAudioData(file.slice(0))))
-    } catch {
-      voiceBuffersRef.current = null
-    }
-  }
-
-  function playCountIn(ctx, time, beatInBar) {
-    const buffer = voiceBuffersRef.current?.[beatInBar]
-    if (!buffer) {
-      playCountInKnock(ctx, time)
-      return
-    }
-
-    // Each word is cut off at the next beat, so fast tempos don't pile them up.
-    const beatSeconds = 60 / tempoRef.current
-    const source = ctx.createBufferSource()
-    const gain = ctx.createGain()
-    const endsAt = time + Math.min(buffer.duration, beatSeconds * 0.95)
-
-    source.buffer = buffer
-    gain.gain.setValueAtTime(0.9, time)
-    gain.gain.setValueAtTime(0.9, endsAt - 0.02)
-    gain.gain.linearRampToValueAtTime(0.0001, endsAt)
-    source.connect(gain)
-    gain.connect(ctx.destination)
-    source.start(time)
-    source.stop(endsAt + 0.01)
-  }
-
   function atAudioTime(ctx, time, callback) {
     const delay = Math.max(0, (time - ctx.currentTime) * 1000)
     visualTimeoutsRef.current.push(window.setTimeout(callback, delay))
@@ -2367,31 +2307,30 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
       if (run.sessionEndsAt !== null && time >= run.sessionEndsAt) return
 
       const beatInBar = run.beatIndex % 4
-      const isCountIn = run.beatIndex < PRACTICE_COUNT_IN_BEATS
+      const isCountIn = run.beatIndex < COUNT_OFF_BEATS
+      const count = isCountIn ? countOffCount(run.beatIndex) : null
 
-      // The interval starts counting once the count-in is over.
-      if (run.beatIndex === PRACTICE_COUNT_IN_BEATS && run.rotationSeconds > 0) {
+      // The interval starts counting once the count-off is over.
+      if (run.beatIndex === COUNT_OFF_BEATS && run.rotationSeconds > 0) {
         run.nextFillAt = time + run.rotationSeconds
       }
 
       // Changes wait for the end of the cycle, so a figure that takes a few
       // bars to come around gets played through.
-      const isCycleStart = (run.beatIndex - PRACTICE_COUNT_IN_BEATS) % (4 * cycleBarsRef.current) === 0
+      const isCycleStart = (run.beatIndex - COUNT_OFF_BEATS) % (4 * cycleBarsRef.current) === 0
       if (!isCountIn && isCycleStart && run.nextFillAt !== null && time >= run.nextFillAt) {
         changeFill(ctx, time)
         continue
       }
 
-      if (isCountIn) {
-        playCountIn(ctx, time, beatInBar)
-      } else {
+      if (!isCountIn || count !== null) {
         playMetronomeClick(ctx, time, beatInBar === 0 ? 1320 : 920, beatInBar === 0 ? 0.36 : 0.26)
+        atAudioTime(ctx, time, () => {
+          setActiveBeat(beatInBar)
+          setBanner(count)
+        })
+        atAudioTime(ctx, time + 0.09, () => setActiveBeat(null))
       }
-      atAudioTime(ctx, time, () => {
-        setActiveBeat(beatInBar)
-        setBanner(isCountIn ? String(beatInBar + 1) : null)
-      })
-      atAudioTime(ctx, time + 0.09, () => setActiveBeat(null))
 
       run.nextBeatTime += 60 / tempoRef.current
       run.beatIndex += 1
@@ -2399,7 +2338,7 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
   }
 
   // Rather than stopping the scheduler, push the next beat back past the chime
-  // and the reveal and start a fresh count-in from there.
+  // and the reveal and start a fresh count-off from there.
   function changeFill(ctx, time) {
     const run = runRef.current
     const resumeAt = time + PRACTICE_CHIME_SECONDS + PRACTICE_REVEAL_MS / 1000 + 0.3
@@ -2437,7 +2376,6 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
 
   async function start() {
     const ctx = await getAudioContext()
-    await loadVoice(ctx)
     const startsAt = ctx.currentTime + 0.08
     const sessionSeconds = clampWholeNumber(sessionMinutes, 0, 240) * 60
 
@@ -2528,7 +2466,7 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
     }
   })
 
-  const isCountInBanner = banner !== null && /^[1-4]$/.test(banner)
+  const isCountOffBanner = banner !== null && /^[1-4]$/.test(banner)
 
   return (
     <div className="sticking-session surface-card">
@@ -2573,7 +2511,7 @@ function PracticeSession({ itemName, tempo, cycleBars = 1, onNewItem, manualFill
 
       <div className="sticking-session-status">
         <div className={`sticking-session-banner${banner ? ' is-visible' : ''}`} aria-live="polite">
-          {isCountInBanner ? <span className="stat-label">Count-in</span> : null}
+          {isCountOffBanner ? <span className="stat-label">Count-off</span> : null}
           <span key={banner}>{banner}</span>
         </div>
         <div className="sticking-session-beats" aria-hidden="true">

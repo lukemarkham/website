@@ -3,6 +3,19 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-02 (later) — Click count-off replaces the spoken count-in
+
+### What changed
+
+- The generators' practice sessions (Fill, Sticking, Independence) now count
+  off on the click: a bar of half notes, then a bar of quarters, at the new
+  item's tempo. The spoken count-in felt late because each word peaks 75–117
+  ms after its beat, by a different amount per word. The WAVs and
+  `scripts/generate-count-in.sh` are gone, which also settles the voice
+  licence question. CLAUDE.md makes this count-off the standard.
+- Checked in headless Chrome across two fill changes: at 144 and 141 BPM the
+  half notes and quarters land within a millisecond of the grid.
+
 ## 2026-10-02 — Sourced fills in the Fill Generator
 
 ### What changed
@@ -212,7 +225,7 @@ every practice tool.
   landing kick. The rules allow it; consider banning it for a cleaner landing.
 - Short filler cells (`RL`, `K`) can make fills feel fragmented. Consider
   requiring at least one full rudiment cell per fill.
-- Listen to the spoken count-in. Swap the voice or record your own if it's
+- (Done 2026-10-02: replaced by a click count-off.) Listen to the spoken count-in. Swap the voice or record your own if it's
   off. Apple's voice licence may not cover a public site, so own recordings
   are the safer bet before launch.
 - The feedback endpoint has no authentication. Add a key before the site is

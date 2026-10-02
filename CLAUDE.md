@@ -55,6 +55,11 @@ their own Start/Stop transport, like the metronome and the drum generators,
 run the countdown off that transport instead, finishing with
 `playSessionCompleteSound`.
 
+Anything that counts the player in uses the standard count-off on the tool's
+own click: a bar of half notes, then a bar of quarters, then time starts
+(`COUNT_OFF_BEATS` and `countOffCount` in `App.jsx`). No spoken count-ins:
+the words' attacks never sit on the beat.
+
 ## Practice generator feedback
 
 Luke votes mid-practice on what the Fill Generator, Sticking Generator and
