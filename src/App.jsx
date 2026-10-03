@@ -3735,6 +3735,8 @@ const SET_UP_BAND_OPTIONS = [
 ]
 
 const SET_UP_DEFAULT_TEMPO_RANGE = SET_UP_FEELS[0].tempoRange
+// "All" changes feel with every phrase, each at a tempo from its own range.
+const SET_UP_FEEL_OPTIONS = [...SET_UP_FEELS, { id: 'all', label: 'All' }]
 const SET_UP_ROTATION_OPTIONS = [
   { seconds: PRACTICE_EVERY_CYCLE, label: 'Every phrase' },
   ...PRACTICE_ROTATION_OPTIONS,
@@ -3888,6 +3890,10 @@ function SetUpsPage() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const sessionControlRef = useRef(null)
   const feelLabel = SET_UP_FEELS.find((item) => item.id === phrase.feel).label
+  const phraseRef = useRef(phrase)
+  useEffect(() => {
+    phraseRef.current = phrase
+  }, [phrase])
 
   // What the band plays on each beat of the phrase.
   const eventsByBeat = useMemo(() => {
@@ -3905,13 +3911,18 @@ function SetUpsPage() {
   }, [phrase.key])
 
   function generate(next = {}) {
+    const feelChoice = next.feel ?? feel
+    // With "All", a different feel from the last phrase, at its own tempos.
+    const otherFeels = SET_UP_FEELS.filter((item) => item.id !== phraseRef.current.feel)
+    const allFeel = feelChoice === 'all' ? otherFeels[randomInt(0, otherFeels.length - 1)] : null
     const options = {
       bars: next.bars ?? bars,
       fillBeats: next.fillBeats !== undefined ? next.fillBeats : fillBeats,
-      feel: next.feel ?? feel,
+      feel: allFeel?.id ?? feelChoice,
       cues: next.cues ?? cues,
     }
-    setPhrase(withBand(getRandomSetUpPhrase(options, downvotedRef.current), randomInt(...(next.tempoRange ?? tempoRange))))
+    const range = allFeel?.tempoRange ?? next.tempoRange ?? tempoRange
+    setPhrase(withBand(getRandomSetUpPhrase(options, downvotedRef.current), randomInt(...range)))
     // The new piece starts at the top, and the chart waits for its first beat.
     playClockRef.current = null
     setUpvoted(null)
@@ -4041,9 +4052,9 @@ function SetUpsPage() {
         <div className="sticking-toolbar">
           <div className="control-card">
             <span className="control-label">Feel</span>
-            <ChoiceChips items={SET_UP_FEELS} isActive={(item) => item.id === feel} onPick={(item) => {
+            <ChoiceChips items={SET_UP_FEEL_OPTIONS} isActive={(item) => item.id === feel} onPick={(item) => {
               setFeel(item.id)
-              setTempoRange(item.tempoRange)
+              if (item.tempoRange) setTempoRange(item.tempoRange)
               generateByHand({ feel: item.id, tempoRange: item.tempoRange })
             }} />
           </div>
@@ -4084,8 +4095,14 @@ function SetUpsPage() {
 
           <div className="control-card">
             <label className="control-label" htmlFor="set-ups-tempo-range">Tempo Range</label>
-            <div className="range-value">{tempoRange[0]}–{tempoRange[1]} BPM</div>
-            <TempoRangeSlider id="set-ups-tempo-range" value={tempoRange} onChange={updateTempoRange} />
+            {feel === 'all' ? (
+              <div className="range-value">Set by each feel</div>
+            ) : (
+              <>
+                <div className="range-value">{tempoRange[0]}–{tempoRange[1]} BPM</div>
+                <TempoRangeSlider id="set-ups-tempo-range" value={tempoRange} onChange={updateTempoRange} />
+              </>
+            )}
           </div>
         </div>
 

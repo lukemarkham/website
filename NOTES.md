@@ -3,6 +3,14 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-03 — Set Ups: "All" feel
+
+### What changed
+
+- The Feel control has an **All** chip. Each new phrase then picks a feel
+  (never the same as the last one) and a tempo from that feel's own range;
+  the Tempo Range slider is replaced by "Set by each feel" while All is on.
+
 ## 2026-10-03 (end of day) — Set Ups ties and stem direction
 
 ### What changed
