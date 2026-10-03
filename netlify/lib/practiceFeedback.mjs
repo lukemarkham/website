@@ -72,8 +72,8 @@ const SANITIZERS = {
   // generateSetUpPhrase in src/lib/setUps.js).
   setups(body) {
     const { key, feel } = body
-    if (typeof key !== 'string' || !/^(swing|straight|bossa)\|(8|16|32)\|[0-9@;,|+mast-]{4,1600}$/.test(key)) return null
-    if (!['swing', 'straight', 'bossa'].includes(feel)) return null
+    if (typeof key !== 'string' || !/^(swing|straight|latin|bossa)\|(8|16|32)\|[0-9@;,|+mast-]{4,1600}$/.test(key)) return null
+    if (!['swing', 'straight', 'latin', 'bossa'].includes(feel)) return null
     return { key, feel }
   },
 }

@@ -4044,8 +4044,8 @@ function SetUpsPage() {
         <p style={introStyle}>
           A phrase of time with ensemble figures, written the way a big band chart cues them. Keep time
           through the slashes, catch the rhythm cues, play a fill for the length of each bracket, and land
-          the figure with the band. A rhythm section plays standard-style changes in swing, straight 8ths or
-          bossa nova, and the horns play every figure, so you can hear whether you read it right. During a
+          the figure with the band. A rhythm section plays standard-style changes in swing, straight 8ths,
+          Latin or bossa nova, and the horns play every figure, so you can hear whether you read it right. During a
           session the chart scrolls along with the music.
         </p>
 

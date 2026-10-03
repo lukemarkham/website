@@ -14,6 +14,11 @@ either machine. Newest first.
 - Bossa bass now plays the traditional bar: root on 1, fifth on the & of 2,
   fifth on 3, root on the & of 4. A pattern note that lands under a band
   figure drops out, so the bass plays the figure instead of doubling it.
+- New **Latin** feel (straight 8ths, 150–210 BPM): a tumbao bass on the
+  & of 2 and beat 4, the 4 anticipating the next bar's root and held over
+  the barline, under a two-bar montuno-style piano comp, with Afro-Cuban
+  jazz changes (minor montuno vamp, mambo minor ii–Vs, a major tune). All's
+  weights are now swing 6 : straight 4 : Latin 3 : bossa 2.
 
 ## 2026-10-03 (end of day) — Set Ups ties and stem direction
 

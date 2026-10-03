@@ -1,8 +1,9 @@
 // The band behind a Set Ups piece: changes in the style of a standard, a
 // bass line, piano comping and horns on the figures, all reacting to what's
-// written. Three styles: swing (walking bass, sparse comping), straight 8ths
-// (an 8th-note bass groove, busier comping) and bossa nova (root and fifth in
-// the bossa rhythm, a two-bar comping pattern). Pieces are one eight-bar A
+// written. Four styles: swing (walking bass, sparse comping), straight 8ths
+// (an 8th-note bass groove, busier comping), bossa nova (root and fifth in
+// the bossa rhythm, a two-bar comping pattern) and Latin (a tumbao bass under
+// a two-bar montuno-style comp). Pieces are one eight-bar A
 // section, two, or AABA over 32 bars, the A the same each time.
 //
 // - The horns play every figure: set-ups and hits inside fills at full level,
@@ -78,15 +79,30 @@ const STYLES = {
       [[[5, 'maj7']], [[5, 'maj7']], [[10, '9']], [[10, '9']], [[4, 'm7']], [[9, '7b9']], [[2, 'm7']], [[7, '13']]],
     ],
   },
+  latin: {
+    a: [
+      // A minor montuno vamp, i to IV7.
+      [[[0, 'm9']], [[5, '9']], [[0, 'm9']], [[5, '9']], [[8, 'maj7']], [[7, '7b9']], [[0, 'm9']], [[0, 'm9']]],
+      // Minor ii–Vs, mambo-style.
+      [[[0, 'm9']], [[2, 'ø7'], [7, '7b9']], [[0, 'm9']], [[2, 'ø7'], [7, '7b9']], [[5, 'm9']], [[10, '9']], [[2, 'ø7'], [7, '7b9']], [[0, 'm9']]],
+      // Major, with a ii–V into the IV.
+      [[[0, '6']], [[0, '6']], [[2, 'm7'], [7, '9']], [[0, '6']], [[5, 'maj7']], [[11, 'ø7'], [4, '7b9']], [[2, 'm7'], [7, '13']], [[0, '69']]],
+    ],
+    b: [
+      [[[5, 'm7']], [[10, '9']], [[3, 'maj7']], [[8, 'maj7']], [[2, 'ø7']], [[7, '7b9']], [[2, 'ø7']], [[7, '7b9']]],
+    ],
+  },
 }
 
 // Comping rhythms for a bar, as [slot, slots]. Swing favours the & of 2 and
 // the & of 4, the way a big band pianist stays out of the way; straight 8ths
-// is busier; bossa alternates two bars of the classic pattern.
+// is busier; bossa alternates two bars of the classic pattern, and Latin two
+// bars of a syncopated montuno-style figure.
 const COMP_PATTERNS = {
   swing: [[[3, 1]], [[0, 1], [3, 1]], [[2, 1], [6, 1]], [[3, 1], [7, 1]], [[5, 1]], [[1, 1], [4, 1]], [[3, 1], [6, 1]], [[0, 1], [5, 1]]],
   straight: [[[0, 2], [3, 1], [6, 2]], [[1, 1], [3, 1], [5, 1]], [[0, 1], [2, 1], [5, 3]], [[3, 1], [6, 2]]],
   bossa: [[[0, 2], [3, 2], [6, 2]], [[2, 2], [5, 2]]],
+  latin: [[[0, 1], [3, 1], [5, 1], [7, 1]], [[1, 1], [3, 1], [4, 1], [6, 1]]],
 }
 
 // Bass rhythms for a chord lasting a bar (8 slots) or half of one (4), as
@@ -169,7 +185,7 @@ export function arrangeBand(phrase) {
   const figureOnAnd = (beat) => full.find((note) => note.slot === beat * 2 + 1)
 
   let previousBass = nearestInRange(chordAt(0).rootPc, 40, 28, 50)
-  if (style !== 'swing') {
+  if (style === 'straight' || style === 'bossa') {
     // A pattern per chord, cut short where a full-band figure comes in.
     let slot = 0
     while (slot < stop) {
@@ -196,6 +212,29 @@ export function arrangeBand(phrase) {
       })
       slot += Math.min(length, 8)
     }
+  }
+  // The tumbao: the & of 2 and beat 4, held over the barline, with no note
+  // on 1. Beat 4 anticipates the next bar's root; the & of 2 anticipates a
+  // chord change on 3, or plays the fifth. The piece's first bar opens on
+  // its root, since nothing came before to anticipate it.
+  for (let bar = 0; style === 'latin' && bar < bars; bar += 1) {
+    const start = bar * SLOTS_PER_BAR
+    const tumbao = [[start + 3, 3, chordAt(start + 4) !== chordAt(start) ? 'next' : '5'], [start + 6, 4, 'next']]
+    if (bar === 0) tumbao.unshift([0, 3, 'R'])
+    tumbao.forEach(([at, slots, degree]) => {
+      if (at >= stop || bandOwnsBeat(Math.floor(at / 2))) return
+      if (full.some((note) => note.slot <= at && note.slot + note.slots > at)) return
+      const chord = chordAt(at)
+      const pc = degree === 'R' ? chord.rootPc
+        : degree === '5' ? (chord.rootPc + CHORD_INTERVALS[chord.quality][2]) % 12
+          : chordAt(at + (degree === 'next' && at % SLOTS_PER_BAR === 6 ? 2 : 1)).rootPc
+      const midi = nearestInRange(pc, previousBass, 28, 50)
+      previousBass = midi
+      // Held into the next bar, but no further than the next figure or the end.
+      const coming = full.find((note) => note.slot > at && note.slot < at + slots)
+      const end = Math.min(coming ? coming.slot : at + slots, Math.max(stop, at + 1))
+      events.push({ slot: at, slots: end - at, instrument: 'bass', midi: [midi], short: false, level: 1 })
+    })
   }
   for (let beat = 0; style === 'swing' && beat * 2 < total; beat += 1) {
     const slot = beat * 2
@@ -231,10 +270,10 @@ export function arrangeBand(phrase) {
     for (let slot = start; slot < start + SLOTS_PER_BAR; slot += 1) filled ||= inFill(slot)
     if (busy || filled) continue
     const patterns = COMP_PATTERNS[style]
-    const pattern = style === 'bossa' ? patterns[bar % 2] : pick(patterns)
+    const pattern = style === 'bossa' || style === 'latin' ? patterns[bar % 2] : pick(patterns)
     pattern.forEach(([offset, slots]) => {
       const slot = start + offset
-      events.push({ slot, slots, instrument: 'piano', chord: chordFor(slot), short: style === 'swing', level: 0.6 })
+      events.push({ slot, slots, instrument: 'piano', chord: chordFor(slot), short: style === 'swing' || style === 'latin', level: 0.6 })
     })
   }
 

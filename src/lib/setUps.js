@@ -42,9 +42,10 @@ const MIXED_FILL_BEATS = [1, 2, 2, 2, 4]
 
 // `weight` is how often each feel comes up when the player picks All.
 export const SET_UP_FEELS = [
-  { id: 'swing', label: 'Swing', tempoRange: [100, 200], weight: 3 },
-  { id: 'straight', label: 'Straight 8ths', tempoRange: [90, 140], weight: 2 },
-  { id: 'bossa', label: 'Bossa Nova', tempoRange: [110, 150], weight: 1 },
+  { id: 'swing', label: 'Swing', tempoRange: [100, 200], weight: 6 },
+  { id: 'straight', label: 'Straight 8ths', tempoRange: [90, 140], weight: 4 },
+  { id: 'latin', label: 'Latin', tempoRange: [150, 210], weight: 3 },
+  { id: 'bossa', label: 'Bossa Nova', tempoRange: [110, 150], weight: 2 },
 ]
 
 // Figures to set up. `parity` is where the first note falls: 0 on a beat, 1
@@ -241,7 +242,7 @@ function placeCues(bars, setUps) {
 
 /**
  * A random piece.
- * @param {{ bars: 8 | 16 | 32, fillBeats: number | null, feel: 'swing' | 'straight' | 'bossa', cues: boolean }} options
+ * @param {{ bars: 8 | 16 | 32, fillBeats: number | null, feel: 'swing' | 'straight' | 'latin' | 'bossa', cues: boolean }} options
  */
 export function generateSetUpPhrase({ bars, fillBeats, feel, cues }) {
   let setUps = null
