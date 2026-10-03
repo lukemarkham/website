@@ -8,7 +8,8 @@ either machine. Newest first.
 ### What changed
 
 - The Feel control has an **All** chip. Each new phrase then picks a feel
-  (never the same as the last one) and a tempo from that feel's own range;
+  at random, weighted swing 3 : straight 2 : bossa 1 (it can repeat), and
+  a tempo from that feel's own range;
   the Tempo Range slider is replaced by "Set by each feel" while All is on.
 
 ## 2026-10-03 (end of day) — Set Ups ties and stem direction

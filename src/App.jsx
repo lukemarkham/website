@@ -3735,7 +3735,7 @@ const SET_UP_BAND_OPTIONS = [
 ]
 
 const SET_UP_DEFAULT_TEMPO_RANGE = SET_UP_FEELS[0].tempoRange
-// "All" changes feel with every phrase, each at a tempo from its own range.
+// "All" draws a feel for every phrase, each at a tempo from its own range.
 const SET_UP_FEEL_OPTIONS = [...SET_UP_FEELS, { id: 'all', label: 'All' }]
 const SET_UP_ROTATION_OPTIONS = [
   { seconds: PRACTICE_EVERY_CYCLE, label: 'Every phrase' },
@@ -3745,6 +3745,11 @@ const SET_UP_ROTATION_OPTIONS = [
 // A phrase with its tempo and the band's part for it.
 function withBand(phrase, tempo) {
   return { ...phrase, tempo, band: arrangeBand(phrase) }
+}
+
+function pickWeightedFeel() {
+  let roll = Math.random() * SET_UP_FEELS.reduce((total, item) => total + item.weight, 0)
+  return SET_UP_FEELS.find((item) => (roll -= item.weight) < 0) ?? SET_UP_FEELS[0]
 }
 
 function getRandomSetUpPhrase(options, downvoted) {
@@ -3890,10 +3895,6 @@ function SetUpsPage() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const sessionControlRef = useRef(null)
   const feelLabel = SET_UP_FEELS.find((item) => item.id === phrase.feel).label
-  const phraseRef = useRef(phrase)
-  useEffect(() => {
-    phraseRef.current = phrase
-  }, [phrase])
 
   // What the band plays on each beat of the phrase.
   const eventsByBeat = useMemo(() => {
@@ -3912,9 +3913,8 @@ function SetUpsPage() {
 
   function generate(next = {}) {
     const feelChoice = next.feel ?? feel
-    // With "All", a different feel from the last phrase, at its own tempos.
-    const otherFeels = SET_UP_FEELS.filter((item) => item.id !== phraseRef.current.feel)
-    const allFeel = feelChoice === 'all' ? otherFeels[randomInt(0, otherFeels.length - 1)] : null
+    // With "All", a feel drawn by weight (mostly swing), at its own tempos.
+    const allFeel = feelChoice === 'all' ? pickWeightedFeel() : null
     const options = {
       bars: next.bars ?? bars,
       fillBeats: next.fillBeats !== undefined ? next.fillBeats : fillBeats,

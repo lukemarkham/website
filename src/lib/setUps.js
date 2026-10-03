@@ -40,10 +40,11 @@ export const SET_UP_FILL_LENGTHS = [
 // Weights for Mix: two-beat fills are the everyday set-up.
 const MIXED_FILL_BEATS = [1, 2, 2, 2, 4]
 
+// `weight` is how often each feel comes up when the player picks All.
 export const SET_UP_FEELS = [
-  { id: 'swing', label: 'Swing', tempoRange: [100, 200] },
-  { id: 'straight', label: 'Straight 8ths', tempoRange: [90, 140] },
-  { id: 'bossa', label: 'Bossa Nova', tempoRange: [110, 150] },
+  { id: 'swing', label: 'Swing', tempoRange: [100, 200], weight: 3 },
+  { id: 'straight', label: 'Straight 8ths', tempoRange: [90, 140], weight: 2 },
+  { id: 'bossa', label: 'Bossa Nova', tempoRange: [110, 150], weight: 1 },
 ]
 
 // Figures to set up. `parity` is where the first note falls: 0 on a beat, 1
