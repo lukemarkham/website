@@ -11,6 +11,9 @@ either machine. Newest first.
   at random, weighted swing 3 : straight 2 : bossa 1 (it can repeat), and
   a tempo from that feel's own range;
   the Tempo Range slider is replaced by "Set by each feel" while All is on.
+- Bossa bass now plays the traditional bar: root on 1, fifth on the & of 2,
+  fifth on 3, root on the & of 4. A pattern note that lands under a band
+  figure drops out, so the bass plays the figure instead of doubling it.
 
 ## 2026-10-03 (end of day) — Set Ups ties and stem direction
 

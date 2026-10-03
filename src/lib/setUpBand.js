@@ -98,7 +98,9 @@ const BASS_PATTERNS = {
     4: [[[0, 2, 'R'], [2, 1, '5'], [3, 1, 'A']]],
   },
   bossa: {
-    8: [[[0, 3, 'R'], [3, 5, '5']]],
+    // The traditional bar: root on 1, fifth on the & of 2, fifth on 3, root
+    // on the & of 4.
+    8: [[[0, 3, 'R'], [3, 1, '5'], [4, 3, '5'], [7, 1, 'R']]],
     4: [[[0, 3, 'R'], [3, 1, '5']]],
   },
 }
@@ -180,6 +182,8 @@ export function arrangeBand(phrase) {
       pick(patterns).forEach(([offset, slots, degree]) => {
         const at = slot + offset
         if (offset >= length || at >= stop || bandOwnsBeat(Math.floor(at / 2))) return
+        // A figure on an & takes that note: the bass plays the figure.
+        if (full.some((note) => note.slot <= at && note.slot + note.slots > at)) return
         const coming = full.find((note) => note.slot > at && note.slot < at + slots)
         const intervals = CHORD_INTERVALS[chord.quality]
         const pc = degree === 'R' || degree === '8' ? chord.rootPc
