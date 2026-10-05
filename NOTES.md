@@ -3,6 +3,57 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-05 — Set Ups becomes Sight Reading: solos, repeats, directions
+
+### What changed
+
+- **Renamed** Sight Reading, at `/sight-reading` (`/set-ups` redirects).
+  The feedback tool id stays `setups`, so the archive and votes carry on.
+- **Drum solo in every piece** (`pickForm`, `src/lib/setUps.js`). 8 bars:
+  4 bars of tune, then a 4-bar solo around figures ending on the final hit.
+  16 bars: an 8-bar tune, then an 8-bar solo around figures. 32 bars (AABA):
+  swing trades 4s (one 8-bar section or two) or 8s (two sections), or solos
+  around figures; straight 8ths, Latin and bossa solo around figures. A
+  solo in the middle is followed by a section marked "Time".
+  - Trading: the band's turn comes first. In the drummer's turn the band
+    lays out completely: no bass, no comping.
+  - Around figures: band figures in the staff, about three bars in five and
+    never more than two empty bars in a row. The band plays only the hits.
+  - The drummer's turns get a "SOLO" bracket, drawn like the FILL one.
+- **Repeats** with winged repeat signs (wings drawn by hand in
+  `chartNotation.js`). Each piece has an 80% chance of one: a whole
+  8-bar section played twice, or 4 bars of a tune section played 2, 3 or 4
+  times, with "3x"/"4x" over the end repeat. A solo or trade repeats whole.
+  The last bar never repeats, and no fill, figure or tie crosses a repeat
+  sign. There's a new **Repeats On/Off** control.
+  - Scrolling: until the last time through, the chart holds with the
+    repeated section's first line at the top, so the whole section stays in
+    view for the jump back. Checked in headless Chrome over a 4x repeat:
+    it held for all four passes, then moved on, never jumping backwards.
+  - The band plays the piece as performed (`performPhrase`), each played
+    bar taking its written bar's chords.
+- **Directions over the staff** (`planMarks`): swing starts in "2 feel"
+  about two pieces in three, often "2 feel, walk 2nd x" over a repeat
+  from bar 1, then "Walk" or "In 4" at the next section. In 2 the bass
+  plays half notes on 1 and 3. Straight 8ths: "Hi-hats", then "To ride" /
+  "To hi-hats". Latin: "Hi-hats" or "Cáscara", then "To ride" or "To bell".
+  Bossa: "Cross stick", then "To ride". Solos are headed "Trade 4s",
+  "Trade 8s" or "Solo around figures".
+- The feedback key has a fifth part, the form (see `CLAUDE.md`); the
+  feedback function's key check was widened to accept it.
+- Checked: 8,000 pieces across every length, feel and setting break no rule
+  (no time sounding in a solo, 2 feel only on 1 and 3, every played figure
+  has horns, nothing over a repeat sign, keys accepted by the function).
+
+### Open items / ideas
+
+- Luke to read through a few of each and play them: the mark wording, how
+  dense the solo figures are, and whether trading should sometimes start
+  with the drums.
+- 1st and 2nd endings would be the natural next step after plain repeats.
+- During the band's turn when trading, only the rhythm section plays. A
+  horn soloist line would make it sound more like real trading.
+
 ## 2026-10-03 — Set Ups: "All" feel
 
 ### What changed

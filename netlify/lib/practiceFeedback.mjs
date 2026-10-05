@@ -68,11 +68,12 @@ const SANITIZERS = {
     return { key, title, feel }
   },
 
-  // The key spells out the phrase: feel|bars|set-ups|cues (see
-  // generateSetUpPhrase in src/lib/setUps.js).
+  // The key spells out the piece: feel|bars|set-ups|cues|form (see
+  // generateSetUpPhrase in src/lib/setUps.js). Sight Reading keeps the
+  // tool id it had as Set Ups.
   setups(body) {
     const { key, feel } = body
-    if (typeof key !== 'string' || !/^(swing|straight|latin|bossa)\|(8|16|32)\|[0-9@;,|+mast-]{4,1600}$/.test(key)) return null
+    if (typeof key !== 'string' || !/^(swing|straight|latin|bossa)\|(8|16|32)\|[0-9a-z@;,|+:/-]{4,2400}$/.test(key)) return null
     if (!['swing', 'straight', 'latin', 'bossa'].includes(feel)) return null
     return { key, feel }
   },

@@ -1,20 +1,27 @@
-// The band behind a Set Ups piece: changes in the style of a standard, a
-// bass line, piano comping and horns on the figures, all reacting to what's
+// The band behind a Sight Reading piece: changes in the style of a standard,
+// a bass line, piano comping and horns on the figures, all reacting to what's
 // written. Four styles: swing (walking bass, sparse comping), straight 8ths
 // (an 8th-note bass groove, busier comping), bossa nova (root and fifth in
 // the bossa rhythm, a two-bar comping pattern) and Latin (a tumbao bass under
 // a two-bar montuno-style comp). Pieces are one eight-bar A
 // section, two, or AABA over 32 bars, the A the same each time.
 //
-// - The horns play every figure: set-ups and hits inside fills at full level,
-//   rhythm cues quieter. They voice the chord sounding at that moment; a
-//   figure on an & belongs to the chord of the beat it anticipates.
-// - The bass plays its line and catches the set-ups and fill hits with the
+// - The horns play every figure: set-ups, hits inside fills and figures in
+//   a solo at full level, rhythm cues quieter. They voice the chord sounding
+//   at that moment; a figure on an & belongs to the chord of the beat it
+//   anticipates.
+// - The bass plays its line and catches the full-band figures with the
 //   horns (a root, short or held as written), then picks the line back up.
+//   A swing bass marked "2 feel" plays half notes on 1 and 3.
 // - The piano comps in bars with nothing written, plays every figure with the
 //   horns, and lays out under fills so the drums are exposed.
-// - Once the final fill starts, the bass and comping stop at its end: the
-//   piece ends on the band's hit.
+// - In a drum solo there's no time at all: trading, the band lays out for
+//   the drummer's turn; soloing around figures, it plays only the figures.
+// - Once the final fill starts, the bass and comping stop at its end (or at
+//   the start of a final solo): the piece ends on the band's hit.
+//
+// It plays the piece as performed (performPhrase in setUps.js), repeats
+// unrolled, with each played bar taking its written bar's chord.
 //
 // Events are on the same 8th-note grid as the phrase, { slot, slots,
 // instrument: 'bass' | 'piano' | 'horns', midi: number[], short, level }, so
@@ -135,34 +142,44 @@ function nearestInRange(pc, previous, low, high) {
 }
 
 /**
- * @param {{ bars: number, notes: object[], fills: object[], feel: string }} phrase
+ * @param {{ bars: number, notes: object[], fills: object[], solos: object[],
+ *   timeStop: number, writtenBars: number[], inTwo: boolean[], feel: string }} phrase
+ *   the piece as played (performPhrase)
  */
 export function arrangeBand(phrase) {
-  const { bars, notes, fills } = phrase
+  const { bars, notes, fills, solos = [], writtenBars, inTwo = [] } = phrase
   const style = STYLES[phrase.feel] ? phrase.feel : 'swing'
   const total = bars * SLOTS_PER_BAR
   const keyPc = pick(KEY_PCS)
   const a = pick(STYLES[style].a)
-  const form = bars === 32 ? [a, a, pick(STYLES[style].b), a] : Array.from({ length: bars / 8 }, () => a)
+  const writtenCount = Math.max(...writtenBars) + 1
+  const form = writtenCount > 16 ? [a, a, pick(STYLES[style].b), a] : [a, a]
   const progression = form.flat()
 
-  // Each chord with the slots it covers.
-  const chordAtSlot = []
-  progression.forEach((bar, index) => {
+  // Each written bar's chords by slot, then each played slot's chord.
+  const writtenChords = progression.map((bar) => {
+    const slots = []
     bar.forEach(([degree, quality], half) => {
       const chord = { rootPc: (keyPc + degree) % 12, quality }
-      const from = index * SLOTS_PER_BAR + (bar.length === 2 ? half * 4 : 0)
-      const to = bar.length === 2 && half === 0 ? from + 4 : (index + 1) * SLOTS_PER_BAR
-      for (let slot = from; slot < to; slot += 1) chordAtSlot[slot] = chord
+      const from = bar.length === 2 ? half * 4 : 0
+      const to = bar.length === 2 && half === 0 ? 4 : SLOTS_PER_BAR
+      for (let slot = from; slot < to; slot += 1) slots[slot] = chord
     })
+    return slots
   })
+  const chordAtSlot = writtenBars.flatMap((bar) => writtenChords[bar])
   const chordAt = (slot) => chordAtSlot[Math.min(total - 1, Math.max(0, slot))]
   // A figure on an & anticipates the next beat, chord and all.
   const chordFor = (slot) => chordAt(slot % 2 === 1 ? slot + 1 : slot)
 
   const events = []
-  // The bass and comping stop where the final fill ends.
-  const stop = fills[fills.length - 1].end
+  // The bass and comping stop where the final fill ends, and drop out for
+  // the drum solos.
+  const stop = phrase.timeStop
+  const inSolo = (slot) => solos.some((range) => slot >= range.start && slot < range.end)
+  const noTime = (slot) => slot >= stop || inSolo(slot)
+  // How long a note of the line can ring from `at`: up to the next solo.
+  const ringUntil = (at, slots) => Math.min(at + slots, ...solos.filter((range) => range.start > at).map((range) => range.start))
   const full = notes.filter((note) => note.role !== 'cue')
   const inFill = (slot) => fills.some((fill) => slot >= fill.start && slot < fill.end)
 
@@ -182,7 +199,6 @@ export function arrangeBand(phrase) {
     const downbeat = beat * 2
     return note.slot === downbeat || (note.slot < downbeat && note.slot + note.slots > downbeat)
   })
-  const figureOnAnd = (beat) => full.find((note) => note.slot === beat * 2 + 1)
 
   let previousBass = nearestInRange(chordAt(0).rootPc, 40, 28, 50)
   if (style === 'straight' || style === 'bossa') {
@@ -197,7 +213,7 @@ export function arrangeBand(phrase) {
       const patterns = BASS_PATTERNS[style][length >= 8 ? 8 : 4]
       pick(patterns).forEach(([offset, slots, degree]) => {
         const at = slot + offset
-        if (offset >= length || at >= stop || bandOwnsBeat(Math.floor(at / 2))) return
+        if (offset >= length || noTime(at) || bandOwnsBeat(Math.floor(at / 2))) return
         // A figure on an & takes that note: the bass plays the figure.
         if (full.some((note) => note.slot <= at && note.slot + note.slots > at)) return
         const coming = full.find((note) => note.slot > at && note.slot < at + slots)
@@ -208,7 +224,7 @@ export function arrangeBand(phrase) {
         let midi = nearestInRange(pc, previousBass, 28, 50)
         if (degree === '8' && midi + 12 <= 52) midi += 12
         previousBass = midi
-        events.push({ slot: at, slots: coming ? coming.slot - at : slots, instrument: 'bass', midi: [midi], short: false, level: 1 })
+        events.push({ slot: at, slots: ringUntil(at, coming ? coming.slot - at : slots) - at, instrument: 'bass', midi: [midi], short: false, level: 1 })
       })
       slot += Math.min(length, 8)
     }
@@ -222,7 +238,7 @@ export function arrangeBand(phrase) {
     const tumbao = [[start + 3, 3, chordAt(start + 4) !== chordAt(start) ? 'next' : '5'], [start + 6, 4, 'next']]
     if (bar === 0) tumbao.unshift([0, 3, 'R'])
     tumbao.forEach(([at, slots, degree]) => {
-      if (at >= stop || bandOwnsBeat(Math.floor(at / 2))) return
+      if (noTime(at) || bandOwnsBeat(Math.floor(at / 2))) return
       if (full.some((note) => note.slot <= at && note.slot + note.slots > at)) return
       const chord = chordAt(at)
       const pc = degree === 'R' ? chord.rootPc
@@ -232,27 +248,33 @@ export function arrangeBand(phrase) {
       previousBass = midi
       // Held into the next bar, but no further than the next figure or the end.
       const coming = full.find((note) => note.slot > at && note.slot < at + slots)
-      const end = Math.min(coming ? coming.slot : at + slots, Math.max(stop, at + 1))
+      const end = Math.min(coming ? coming.slot : at + slots, Math.max(stop, at + 1), ringUntil(at, slots))
       events.push({ slot: at, slots: end - at, instrument: 'bass', midi: [midi], short: false, level: 1 })
     })
   }
   for (let beat = 0; style === 'swing' && beat * 2 < total; beat += 1) {
     const slot = beat * 2
-    if (slot >= stop) break
-    if (bandOwnsBeat(beat)) continue
+    const isTwo = inTwo[Math.floor(slot / SLOTS_PER_BAR)]
+    if (isTwo && slot % 4 !== 0) continue
+    if (noTime(slot) || bandOwnsBeat(beat)) continue
 
     const chord = chordAt(slot)
     const intervals = CHORD_INTERVALS[chord.quality]
-    const isChordStart = slot === 0 || chordAt(slot - 2) !== chord
-    const next = chordAt(slot + 2)
+    const isChordStart = slot === 0 || chordAt(slot - (isTwo ? 4 : 2)) !== chord
+    const next = chordAt(slot + (isTwo ? 4 : 2))
     let pc
     if (isChordStart) pc = chord.rootPc
     else if (next !== chord) pc = (next.rootPc + pick([1, -1, 7])) % 12
+    // In 2, beat 3 of a chord held all bar is its fifth.
+    else if (isTwo) pc = chord.rootPc + intervals[2]
     else pc = (chord.rootPc + pick([intervals[1], intervals[2], intervals[3] ?? intervals[2], 2])) % 12
     const midi = nearestInRange((pc + 12) % 12, previousBass, 28, 50)
     previousBass = midi
-    // A figure on this beat's & cuts the walking note short.
-    events.push({ slot, slots: figureOnAnd(beat) ? 1 : 2, instrument: 'bass', midi: [midi], short: false, level: 1 })
+    // A walking note lasts its beat; a half note in 2 lasts two, until a
+    // figure comes in. A figure on this beat's & cuts either short.
+    const coming = full.find((note) => note.slot > slot && note.slot < slot + (isTwo ? 4 : 2))
+    const slots = ringUntil(slot, coming ? coming.slot - slot : isTwo ? 4 : 2) - slot
+    events.push({ slot, slots, instrument: 'bass', midi: [midi], short: false, level: 1 })
   }
   full.forEach((note) => {
     const chord = chordFor(note.slot)
@@ -261,10 +283,10 @@ export function arrangeBand(phrase) {
     events.push({ slot: note.slot, slots: note.slots, instrument: 'bass', midi: [midi], short, level: 1 })
   })
 
-  // ---- Piano comping, in bars with nothing written and no fill.
+  // ---- Piano comping, in bars with nothing written, no fill and no solo.
   for (let bar = 0; bar < bars; bar += 1) {
     const start = bar * SLOTS_PER_BAR
-    if (start >= stop) break
+    if (noTime(start)) continue
     const busy = notes.some((note) => note.slot < start + SLOTS_PER_BAR && note.slot + note.slots > start)
     let filled = false
     for (let slot = start; slot < start + SLOTS_PER_BAR; slot += 1) filled ||= inFill(slot)

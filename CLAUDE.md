@@ -63,7 +63,7 @@ the words' attacks never sit on the beat.
 ## Practice generator feedback
 
 Luke votes mid-practice on what the Fill Generator, Sticking Generator,
-Independence tool and Set Ups produce, and downvotes carry notes meant for you. After the
+Independence tool and Sight Reading (formerly Set Ups; tool id still `setups`) produce, and downvotes carry notes meant for you. After the
 start-of-session pull, fetch each tool's entries:
 
     for tool in fill sticking independence setups; do
@@ -76,9 +76,13 @@ reviewed. If there are new ones, summarise them for Luke, propose (or make)
 the generator changes they point to, then append them to the archive with a
 `review` field saying what was done, and commit. Independence entries carry a
 `key` that spells out the whole exercise (format in `exerciseKey`,
-`src/lib/independence.js`), and Set Ups keys spell out the phrase as
-`feel|bars|fillBeats@notes;…|cueNotes`, each note `slot-slots` plus `m`
-(marcato), `a` (accent), `t` (tenuto) or `s` (staccato) (`generateSetUpPhrase`,
-`src/lib/setUps.js`). Votes cast against the local dev server land in
+`src/lib/independence.js`), and Sight Reading keys spell out the piece as
+`feel|bars|fillBeats@notes;…|cueNotes|form`, each note `slot-slots` plus `m`
+(marcato), `a` (accent), `t` (tenuto) or `s` (staccato). The form is
+`/`-separated: `t<bar>-<bars>` a tune section, `x<turn>@<bar>-<bars>`
+trading, `s<bar>-<bars>@<notes>` a solo around figures, `r<bar>-<bars>x<times>`
+the repeat and `m<bar>:<id>` a direction over the staff, bars counted from 0
+(`generateSetUpPhrase`, `src/lib/setUps.js`). Keys from before 2026-10-05
+have no form part. Votes cast against the local dev server land in
 the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
 machine that ran it.

@@ -26,6 +26,12 @@
 // - Cued figures sit exactly over the slashes they line up with.
 // - The piece ends on its final figure: rests follow it, not slashes.
 // - Rehearsal letters mark each eight-bar section.
+// - Directions ("2 feel", "To ride") sit high over the bar they start in,
+//   above anything cued, clear of the rehearsal letter.
+// - Repeats use winged repeat signs, with "3x" or "4x" over the end repeat
+//   when the section plays more than twice.
+// - A "SOLO" bracket marks the drummer's solo, drawn like a fill's; figures
+//   in it are written in the staff.
 
 const SLOTS_PER_BAR = 8
 const SLASH_KEY = 'b/4'
@@ -37,6 +43,8 @@ const CLEF_WIDTH = 36
 const TIME_SIG_WIDTH = 26
 const FIRST_LINE_TOP = 96
 const LINE_HEIGHT = 136
+// Directions and repeat counts sit this far above the top line.
+const MARK_RISE = 58
 const ARTICULATIONS = { marcato: 'a^', accent: 'a>', staccato: 'a.', tenuto: 'a-' }
 // SMuFL's metronome-mark quarter note (metNoteQuarterUp), in Bravura.
 const QUARTER_NOTE_GLYPH = ''
@@ -83,6 +91,9 @@ function restPieces(position, length) {
  *   notes: [{ slot, slots, articulation, role, staff }]; `staff` notes are
  *     written in the staff as rhythmic slashes, the rest cued above
  *   fills: [{ start, end }] in slots, each on a downbeat
+ *   solos: [{ start, end }] in slots, the drummer's solos
+ *   marks: [{ bar, text }] directions over the staff
+ *   repeat: { bar, bars, times } a repeated section, or null
  *   end: the slot the music stops at; rests follow, not slashes
  *   sections: [{ bar, label }] rehearsal letters
  *   feel: the style marking over bar 1 ('Swing'), or null
@@ -96,7 +107,7 @@ function restPieces(position, length) {
  */
 export function renderChartNotation(host, VF, options) {
   const { Renderer, Stave, StaveNote, Voice, Formatter, Beam, Dot, Articulation, Modifier, StaveTie } = VF
-  const { bars, notes = [], fills = [], sections = [], feel = null, tempo = null, colors, font } = options
+  const { bars, notes = [], fills = [], solos = [], marks = [], repeat = null, sections = [], feel = null, tempo = null, colors, font } = options
   const end = options.end ?? bars * SLOTS_PER_BAR
   const barsPerLine = Math.max(1, Math.min(options.barsPerLine ?? bars, bars))
   const noteWidth = options.barWidth ?? 230
@@ -107,7 +118,7 @@ export function renderChartNotation(host, VF, options) {
   const height = FIRST_LINE_TOP + (lineCount - 1) * LINE_HEIGHT + 104
   const ink = { fillStyle: colors.ink, strokeStyle: colors.ink }
   const fillInk = { fillStyle: colors.accent, strokeStyle: colors.accent }
-  const inFill = (slot) => fills.some((fill) => slot >= fill.start && slot < fill.end)
+  const inFill = (slot) => [...fills, ...solos].some((fill) => slot >= fill.start && slot < fill.end)
   const lineOf = (bar) => Math.floor(bar / barsPerLine)
   const lineTop = (line) => FIRST_LINE_TOP + line * LINE_HEIGHT
 
@@ -254,7 +265,10 @@ export function renderChartNotation(host, VF, options) {
     const stave = new Stave(x, y, staveWidth)
     if (isLineStart) stave.addClef('percussion')
     if (bar === 0) stave.addTimeSignature('4/4')
+    const repeatEnd = repeat && bar === repeat.bar + repeat.bars - 1
+    if (repeat && bar === repeat.bar) stave.setBegBarType(VF.BarlineType.REPEAT_BEGIN)
     if (bar === bars - 1) stave.setEndBarType(VF.BarlineType.END)
+    else if (repeatEnd) stave.setEndBarType(VF.BarlineType.REPEAT_END)
     // A double bar closes each section before the next letter.
     else if (sections.some((section) => section.bar === bar + 1)) stave.setEndBarType(VF.BarlineType.DOUBLE)
     stave.setStyle(ink)
@@ -293,6 +307,38 @@ export function renderChartNotation(host, VF, options) {
       ctx.setFont(font, 11, 'normal')
       ctx.setFillStyle(colors.muted)
       ctx.fillText(String(bar + 1), x, topLine - 7)
+    }
+
+    // Wings on the repeat signs: the thick line curls out over the staff
+    // toward the repeated music, top and bottom.
+    stave.getModifiers().forEach((modifier) => {
+      if (!(modifier instanceof VF.Barline)) return
+      const type = modifier.getType()
+      if (type !== VF.BarlineType.REPEAT_BEGIN && type !== VF.BarlineType.REPEAT_END) return
+      const direction = type === VF.BarlineType.REPEAT_BEGIN ? 1 : -1
+      const lineX = modifier.getX() - 0.5
+      const bottomLine = stave.getYForLine(4)
+      ctx.setStrokeStyle(colors.ink)
+      ctx.setLineWidth(2.2)
+      ;[[topLine, -1], [bottomLine, 1]].forEach(([y, away]) => {
+        ctx.beginPath()
+        ctx.moveTo(lineX, y)
+        ctx.quadraticCurveTo(lineX, y + away * 7, lineX + direction * 11, y + away * 9)
+        ctx.stroke()
+      })
+    })
+    if (repeatEnd && repeat.times > 2) {
+      ctx.setFont(font, 14, 'bold')
+      ctx.setFillStyle(colors.ink)
+      const text = `${repeat.times}x`
+      ctx.fillText(text, x + staveWidth - ctx.measureText(text).width - 2, topLine - MARK_RISE)
+    }
+
+    const mark = marks.find((item) => item.bar === bar)
+    if (mark) {
+      ctx.setFont(font, 13, 'bold', 'italic')
+      ctx.setFillStyle(colors.ink)
+      ctx.fillText(mark.text, x + (section ? 30 : 4), topLine - MARK_RISE)
     }
   }
 
@@ -353,13 +399,14 @@ export function renderChartNotation(host, VF, options) {
     return at.getAbsoluteX() - 4
   }
 
-  // Each fill bracket, just over the staff with "FILL" at its start; over
-  // rhythm inside the fill it rises clear of the accents and ties.
+  // Each fill or solo bracket, just over the staff with "FILL" or "SOLO" at
+  // its start; over rhythm inside it, it rises clear of the accents and ties.
   // One that runs past the end of a line carries on over the next.
   ctx.setStrokeStyle(colors.accent)
   ctx.setFillStyle(colors.accent)
   ctx.setLineWidth(1.5)
-  fills.forEach((fill) => {
+  const brackets = [...fills.map((fill) => ({ ...fill, label: 'FILL' })), ...solos.map((range) => ({ ...range, label: 'SOLO' }))]
+  brackets.forEach((fill) => {
     let hasStems = false
     for (let slot = fill.start; slot < fill.end; slot += 1) hasStems ||= stemmedSlots.has(slot)
     let from = fill.start
@@ -369,7 +416,11 @@ export function renderChartNotation(host, VF, options) {
       const lastBarOfLine = Math.min(bars - 1, (line + 1) * barsPerLine - 1)
       const lineEndSlot = (lastBarOfLine + 1) * SLOTS_PER_BAR
       const closesHere = fill.end <= lineEndSlot
-      const x1 = from === fill.start ? beatX(from, false) : staves[bar].getNoteStartX() - 6
+      let x1 = from === fill.start ? beatX(from, false) : staves[bar].getNoteStartX() - 6
+      // Clear of a rehearsal letter over the same barline.
+      if (from === fill.start && from % SLOTS_PER_BAR === 0 && sections.some((section) => section.bar === bar)) {
+        x1 = Math.max(x1, staves[bar].getX() + 28)
+      }
       const x2 = closesHere ? beatX(fill.end, true) : staves[lastBarOfLine].getX() + staves[lastBarOfLine].getWidth()
       const y = staves[bar].getYForLine(0) - (hasStems ? 30 : 11)
 
@@ -386,7 +437,7 @@ export function renderChartNotation(host, VF, options) {
 
       if (from === fill.start) {
         ctx.setFont(font, 11, 'bold')
-        ctx.fillText('FILL', x1 + 3, y - 5)
+        ctx.fillText(fill.label, x1 + 3, y - 5)
       }
       from = lineEndSlot
     }

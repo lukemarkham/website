@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter, Routes, Route, Link, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, Navigate, useParams } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
@@ -22,7 +22,7 @@ import { connectMidi, isMidiSupported } from './lib/midiInput'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
 import { renderChartNotation } from './lib/chartNotation'
-import { SET_UP_FEELS, SET_UP_FILL_LENGTHS, SET_UP_LENGTHS, generateSetUpPhrase } from './lib/setUps'
+import { SET_UP_FEELS, SET_UP_FILL_LENGTHS, SET_UP_LENGTHS, generateSetUpPhrase, performPhrase } from './lib/setUps'
 import { arrangeBand } from './lib/setUpBand'
 import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
 import {
@@ -325,7 +325,7 @@ const practiceToolMenu = [
       { label: 'Fill Generator', to: '/fill-generator' },
       { label: 'Sticking Generator', to: '/sticking-generator' },
       { label: 'Independence', to: '/independence' },
-      { label: 'Set Ups', to: '/set-ups' },
+      { label: 'Sight Reading', to: '/sight-reading' },
     ],
   },
   { label: 'Keys', tools: [{ label: 'ii-Vs', to: '/ii-vs' }] },
@@ -759,11 +759,11 @@ function HomePage() {
             <Link className="text-link" to="/independence">Go to Independence</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Set Ups</h3>
+            <h3 className="card-title">Sight Reading</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Read a big band figure and set it up with a fill, then hear the band hit it with you.
+              Read a big band drum chart with the band: set up the figures, follow the repeats, take the solo.
             </p>
-            <Link className="text-link" to="/set-ups">Go to Set Ups</Link>
+            <Link className="text-link" to="/sight-reading">Go to Sight Reading</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Progression Ear Trainer</h3>
@@ -3742,9 +3742,10 @@ const SET_UP_ROTATION_OPTIONS = [
   ...PRACTICE_ROTATION_OPTIONS,
 ]
 
-// A phrase with its tempo and the band's part for it.
+// A phrase with its tempo and the band's part for it, played through its
+// repeats.
 function withBand(phrase, tempo) {
-  return { ...phrase, tempo, band: arrangeBand(phrase) }
+  return { ...phrase, tempo, band: arrangeBand(performPhrase(phrase)) }
 }
 
 function pickWeightedFeel() {
@@ -3761,12 +3762,16 @@ function getRandomSetUpPhrase(options, downvoted) {
   })
 }
 
-// A set-up piece drawn as a chart (see src/lib/chartNotation.js): four bars
-// to a line on wide screens, two on phones. It sits in a window that fits
-// the screen, and `followRef` gets a scrollToBeat(beat) that slides it
-// along with the music: the line being played rises from the second row to
-// the top as it goes, so the next lines are always in view to read ahead.
-function ChartNotation({ label, fallback, bars, notes, fills, end, sections, feel, tempo, followRef }) {
+// A Sight Reading piece drawn as a chart (see src/lib/chartNotation.js):
+// four bars to a line on wide screens, two on phones. It sits in a window
+// that fits the screen, and `followRef` gets a scrollToBeat(beat) that
+// slides it along with the music, `beat` counted as played (`performance`
+// maps it to the written bar): the line being played rises from the second
+// row to the top as it goes, so the next lines are always in view to read
+// ahead. Before the last time through a repeat, the chart holds with the
+// repeated section's first line at the top, so the whole section stays in
+// view for the jump back.
+function ChartNotation({ label, fallback, bars, notes, fills, solos, marks, repeat, performance, end, sections, feel, tempo, followRef }) {
   const hostRef = useRef(null)
   const viewportRef = useRef(null)
   const layoutRef = useRef(null)
@@ -3805,6 +3810,9 @@ function ChartNotation({ label, fallback, bars, notes, fills, end, sections, fee
       bars,
       notes,
       fills,
+      solos,
+      marks,
+      repeat,
       end,
       sections,
       feel,
@@ -3814,30 +3822,42 @@ function ChartNotation({ label, fallback, bars, notes, fills, end, sections, fee
       colors: { ink: token('--text'), muted: token('--text-muted'), accent: token('--accent-quiet') },
       font: style.fontFamily,
     })
-  }, [vexflow, bars, notes, fills, end, sections, feel, tempo, isWide])
+  }, [vexflow, bars, notes, fills, solos, marks, repeat, end, sections, feel, tempo, isWide])
 
   useEffect(() => {
     if (!followRef) return undefined
     followRef.current = {
-      scrollToBeat(beat) {
+      scrollToBeat(playedBeat) {
         const layout = layoutRef.current
         const viewport = viewportRef.current
         const svg = hostRef.current?.querySelector('svg')
         if (!layout || !viewport || !svg) return
         const scale = svg.getBoundingClientRect().width / layout.width
-        const linePosition = Math.max(0, beat) / (layout.barsPerLine * 4)
-        // Room above each staff for the cue line and the tempo marking.
+        const beatsPerLine = layout.barsPerLine * 4
+        // Room above each staff for the directions, the cue line and the
+        // tempo marking.
         const headroom = layout.firstLineTop - 62
-        const top = linePosition < 1
-          ? linePosition * headroom
-          : headroom + (linePosition - 1) * layout.lineHeight
+        const topAt = (beat) => {
+          const linePosition = Math.max(0, beat) / beatsPerLine
+          return linePosition < 1 ? linePosition * headroom : headroom + (linePosition - 1) * layout.lineHeight
+        }
+        const index = Math.max(0, Math.min(performance.length - 1, Math.floor(playedBeat / 4)))
+        const entry = performance[index]
+        let top = topAt(entry.bar * 4 + Math.max(0, playedBeat - index * 4))
+        if (entry.passes > 1) {
+          // The repeated section's first line at the top.
+          const hold = topAt((Math.floor(repeat.bar / layout.barsPerLine) + 1) * beatsPerLine)
+          if (entry.pass === 0) top = Math.min(top, hold)
+          else if (entry.pass < entry.passes - 1) top = hold
+          else top = Math.max(top, hold)
+        }
         viewport.scrollTop = Math.min(top * scale, viewport.scrollHeight - viewport.clientHeight)
       },
     }
     return () => {
       followRef.current = null
     }
-  }, [followRef])
+  }, [followRef, performance, repeat])
 
   if (failed) return <div className="sticking-line fill-notation-fallback">{fallback}</div>
   return (
@@ -3872,11 +3892,12 @@ const SET_UP_CUE_OPTIONS = [
   { on: false, label: 'Off' },
 ]
 
-function SetUpsPage() {
+function SightReadingPage() {
   const [feel, setFeel] = useState('swing')
   const [bars, setBars] = useState(32)
   const [fillBeats, setFillBeats] = useState(null)
   const [cues, setCues] = useState(true)
+  const [repeats, setRepeats] = useState(true)
   const [tempoRange, setTempoRange] = useState(SET_UP_DEFAULT_TEMPO_RANGE)
   const [band, setBand] = useState('full')
   const [click, setClick] = useState(true)
@@ -3887,7 +3908,7 @@ function SetUpsPage() {
   const followFrameRef = useRef(0)
   const downvotedRef = useDownvotes('setups', (entry) => entry.key)
   const [phrase, setPhrase] = useState(() => withBand(
-    getRandomSetUpPhrase({ bars: 32, fillBeats: null, feel: 'swing', cues: true }, new Set(readStoredList(downvotesKey('setups')))),
+    getRandomSetUpPhrase({ bars: 32, fillBeats: null, feel: 'swing', cues: true, repeats: true }, new Set(readStoredList(downvotesKey('setups')))),
     randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
   ))
   const [manualCount, setManualCount] = useState(0)
@@ -3920,6 +3941,7 @@ function SetUpsPage() {
       fillBeats: next.fillBeats !== undefined ? next.fillBeats : fillBeats,
       feel: allFeel?.id ?? feelChoice,
       cues: next.cues ?? cues,
+      repeats: next.repeats ?? repeats,
     }
     const range = allFeel?.tempoRange ?? next.tempoRange ?? tempoRange
     setPhrase(withBand(getRandomSetUpPhrase(options, downvotedRef.current), randomInt(...range)))
@@ -4040,13 +4062,14 @@ function SetUpsPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Set Ups</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sight Reading</h1>
         <p style={introStyle}>
-          A phrase of time with ensemble figures, written the way a big band chart cues them. Keep time
-          through the slashes, catch the rhythm cues, play a fill for the length of each bracket, and land
-          the figure with the band. A rhythm section plays standard-style changes in swing, straight 8ths,
-          Latin or bossa nova, and the horns play every figure, so you can hear whether you read it right. During a
-          session the chart scrolls along with the music.
+          A drum chart written the way big band charts are. Keep time through the slashes, catch the rhythm
+          cues, play a fill for the length of each bracket and land the figure with the band. Follow the
+          directions over the staff, take the repeats, and take your solo: trading 4s or 8s, or soloing
+          around the band's figures. A rhythm section plays standard-style changes in swing, straight 8ths,
+          Latin or bossa nova, and the horns play every figure, so you can hear whether you read it right.
+          During a session the chart scrolls along with the music.
         </p>
 
         <div className="sticking-toolbar">
@@ -4084,6 +4107,14 @@ function SetUpsPage() {
           </div>
 
           <div className="control-card">
+            <span className="control-label">Repeats</span>
+            <ChoiceChips items={SET_UP_CUE_OPTIONS} isActive={(item) => item.on === repeats} onPick={(item) => {
+              setRepeats(item.on)
+              generateByHand({ repeats: item.on })
+            }} />
+          </div>
+
+          <div className="control-card">
             <span className="control-label">Band</span>
             <ChoiceChips items={SET_UP_BAND_OPTIONS} isActive={(item) => item.id === band} onPick={(item) => setBand(item.id)} />
           </div>
@@ -4109,7 +4140,7 @@ function SetUpsPage() {
         <PracticeSession
           itemName="phrase"
           tempo={phrase.tempo}
-          cycleBars={phrase.bars}
+          cycleBars={phrase.performance.length}
           onNewItem={() => generate()}
           onBeat={playBand}
           click={click}
@@ -4131,6 +4162,10 @@ function SetUpsPage() {
             bars={phrase.bars}
             notes={phrase.notes}
             fills={phrase.fills}
+            solos={phrase.solos}
+            marks={phrase.marks}
+            repeat={phrase.repeat}
+            performance={phrase.performance}
             feel={feelLabel}
             tempo={phrase.tempo}
           />
@@ -4158,8 +4193,8 @@ function SetUpsPage() {
         <div className="surface-card" style={cardStyle}>
           <div className="stat-label">How To Play It</div>
           <ol className="set-ups-list">
-            {phrase.descriptions.map((description) => (
-              <li key={description} style={mutedTextStyle}>{description}</li>
+            {phrase.descriptions.map((description, index) => (
+              <li key={index} style={mutedTextStyle}>{description}</li>
             ))}
           </ol>
           <p style={mutedTextStyle}>
@@ -4167,6 +4202,15 @@ function SetUpsPage() {
             keep filling. A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a line
             (tenuto) is held for a full quarter; a dot is short and light. The figures outside the brackets are rhythm cues: catch them on the snare, or just
             read them while you keep time.
+          </p>
+          <p style={mutedTextStyle}>
+            The words over the staff are the directions a real chart gives. "2 feel" means the bass plays half
+            notes, so keep it light until it says "Walk" or "In 4".
+            "To ride", "To hi-hats", "Cross stick", "Cáscara" and "To bell" tell you what to play time on, and "Time"
+            brings the groove back after a solo. A "SOLO" bracket is yours: when trading, the band lays out
+            completely for your turn; around figures, the band plays only the written hits. At an end repeat (the
+            thick barline with dots and wings) go back to the start repeat; "3x" or "4x" over it says how many
+            times through in all.
           </p>
         </div>
 
@@ -6244,7 +6288,8 @@ function App() {
         <Route path="/fill-generator" element={<FillGeneratorPage />} />
         <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
         <Route path="/independence" element={<IndependencePage />} />
-        <Route path="/set-ups" element={<SetUpsPage />} />
+        <Route path="/sight-reading" element={<SightReadingPage />} />
+        <Route path="/set-ups" element={<Navigate to="/sight-reading" replace />} />
         <Route path="/ear-training" element={<EarTrainerPage />} />
         <Route path="/ii-vs" element={<TwoFivePage />} />
         <Route path="/beats" element={<BeatsPage />} />
