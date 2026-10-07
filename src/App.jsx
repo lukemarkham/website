@@ -32,7 +32,7 @@ import {
   isHand,
   limbName,
 } from './lib/independence'
-import { MIN_NOTES, matchesChord, randomTwoFive } from './lib/twoFives'
+import { MIN_NOTES, PROGRESSION_TYPES, matchesChord, randomQuestion } from './lib/chordProgressions'
 import { createPianoSampler } from './lib/pianoSampler'
 import {
   BASS_INSTRUMENTS,
@@ -328,7 +328,7 @@ const practiceToolMenu = [
       { label: 'Sight Reading', to: '/sight-reading' },
     ],
   },
-  { label: 'Keys', tools: [{ label: 'ii-Vs', to: '/ii-vs' }] },
+  { label: 'Keys', tools: [{ label: 'Chord Progressions', to: '/chord-progressions' }] },
   { label: 'Ear Trainer', to: '/ear-training' },
   { label: 'Metronome', to: '/metronome' },
   { label: 'Tempo Guessr', to: '/tempo-guessr' },
@@ -773,11 +773,11 @@ function HomePage() {
             <Link className="text-link" to="/ear-training">Go to Ear Trainer</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">ii-Vs</h3>
+            <h3 className="card-title">Chord Progressions</h3>
             <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A random major or minor key comes up; play its ii-V-I on a MIDI keyboard to move on.
+              A key and a progression come up: ii-Vs, backdoors, tritone subs and more. Play it on a MIDI keyboard to move on.
             </p>
-            <Link className="text-link" to="/ii-vs">Go to ii-Vs</Link>
+            <Link className="text-link" to="/chord-progressions">Go to Chord Progressions</Link>
           </div>
         </div>
       </section>
@@ -5505,15 +5505,35 @@ const TWO_FIVE_MODE_OPTIONS = [
   { id: 'minor', label: 'Minor', modes: ['minor'] },
 ]
 const TWO_FIVE_NEXT_DELAY_MS = 1400
+// Kept from when the tool was ii-Vs, so the setting carries over.
 const TWO_FIVE_SOUND_KEY = 'lm-ii-v-sound'
+const PROGRESSION_TYPES_KEY = 'lm-chord-progression-types'
+const ALL_PROGRESSION_TYPES = PROGRESSION_TYPES.map((item) => item.id)
 
-// A key comes up; play its ii, V and I on a MIDI keyboard. Each chord is
-// checked as it is held (see src/lib/twoFives.js), and once the resolution
-// lands the next key follows on its own.
-function TwoFivePage() {
+function storedProgressionTypes() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(PROGRESSION_TYPES_KEY))
+    const types = Array.isArray(stored) ? ALL_PROGRESSION_TYPES.filter((id) => stored.includes(id)) : []
+    return types.length > 0 ? types : ALL_PROGRESSION_TYPES
+  } catch {
+    return ALL_PROGRESSION_TYPES
+  }
+}
+
+// Each type on or off one at a time, never none.
+function toggledProgressionTypes(types, id) {
+  const next = ALL_PROGRESSION_TYPES.filter((item) => (item === id ? !types.includes(item) : types.includes(item)))
+  return next.length > 0 ? next : types
+}
+
+// A key and a progression come up; play each chord of it on a MIDI keyboard.
+// Each chord is checked as it is held (see src/lib/chordProgressions.js), and
+// once the last one lands the next question follows on its own.
+function ChordProgressionsPage() {
   const [modeId, setModeId] = useState('both')
   const modes = TWO_FIVE_MODE_OPTIONS.find((item) => item.id === modeId).modes
-  const [question, setQuestion] = useState(() => randomTwoFive(['major', 'minor'], null))
+  const [types, setTypes] = useState(storedProgressionTypes)
+  const [question, setQuestion] = useState(() => randomQuestion(types, ['major', 'minor'], null))
   // The index of the chord being waited for; past the last one is solved.
   const [step, setStep] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -5538,7 +5558,10 @@ function TwoFivePage() {
   const askedAtRef = useRef(null)
   // The MIDI callbacks are made once, on connect, so they read the question
   // as it stands now off this ref rather than the render they were made in.
-  const liveRef = useRef({ question, step: 0, revealed: false, matchedThisGesture: false, soundOn, solve: () => {} })
+  // `fresh` is the notes pressed since the last chord matched. The next chord
+  // has to use one of them, so letting go of a Cmaj7 never plays the Am7 that
+  // its top three notes also spell.
+  const liveRef = useRef({ question, step: 0, revealed: false, matchedThisGesture: false, held: [], fresh: new Set(), soundOn, solve: () => {} })
 
   useEffect(() => {
     askedAtRef.current = performance.now()
@@ -5552,15 +5575,29 @@ function TwoFivePage() {
     }
   }, [])
 
-  function ask(nextModes = modes) {
+  function ask(nextModes = modes, nextTypes = types) {
     window.clearTimeout(nextTimeoutRef.current)
-    setQuestion((current) => randomTwoFive(nextModes, current))
+    setQuestion((current) => randomQuestion(nextTypes, nextModes, current))
     setStep(0)
     setRevealed(false)
     setMiss(null)
     liveRef.current.step = 0
     liveRef.current.matchedThisGesture = false
+    liveRef.current.fresh = new Set()
   }
+
+  function chooseTypes(nextTypes) {
+    if (nextTypes.join() === types.join()) return
+    setTypes(nextTypes)
+    ask(modes, nextTypes)
+    try {
+      window.localStorage.setItem(PROGRESSION_TYPES_KEY, JSON.stringify(nextTypes))
+    } catch {
+      // Not remembered, still applied.
+    }
+  }
+
+
 
   function solve() {
     const seconds = (performance.now() - askedAtRef.current) / 1000
@@ -5622,15 +5659,19 @@ function TwoFivePage() {
   // held works. A chord let go of without matching gets a hint.
   function hearChord({ chord, held: heldNow }) {
     const live = liveRef.current
+    heldNow.filter((note) => !live.held.includes(note)).forEach((note) => live.fresh.add(note))
+    live.held = heldNow
     setHeld(heldNow)
-    if (live.step >= live.question.chords.length) {
+    if (!live.question || live.step >= live.question.chords.length) {
       if (heldNow.length === 0) live.matchedThisGesture = false
       return
     }
 
     const target = live.question.chords[live.step]
-    if (heldNow.length > 0 && matchesChord(heldNow, target)) {
+    const usesFresh = heldNow.some((note) => live.fresh.has(note))
+    if (usesFresh && matchesChord(heldNow, target)) {
       live.matchedThisGesture = true
+      live.fresh = new Set()
       live.step += 1
       setStep(live.step)
       setMiss(null)
@@ -5688,8 +5729,8 @@ function TwoFivePage() {
     liveRef.current = { ...liveRef.current, question, step, revealed, soundOn, solve }
   })
 
-  const accidental = question.key.accidental
-  const isSolved = step === question.chords.length
+  const accidental = question?.key.accidental ?? 'flat'
+  const isSolved = question !== null && step === question.chords.length
   const averageSeconds = stats.solved > 0 ? stats.totalSeconds / stats.solved : null
 
   return (
@@ -5698,10 +5739,11 @@ function TwoFivePage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Keys</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>ii-Vs</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Chord Progressions</h1>
         <p style={introStyle}>
-          A key comes up. Play its ii, V and I on your MIDI keyboard, in any voicing with the third and
-          seventh in it, and the next key follows as soon as the resolution lands.
+          A key and a progression come up. Play each chord on your MIDI keyboard, in any voicing with
+          the third and seventh in it (a sixth will do on the tonic), and the next one follows as soon
+          as the last chord lands.
         </p>
 
         <div className="twofive-layout">
@@ -5720,6 +5762,30 @@ function TwoFivePage() {
                         setModeId(item.id)
                         ask(item.modes)
                       }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="twofive-control twofive-types">
+                <span className="control-label">Progressions</span>
+                <div className="sticking-chips">
+                  <button
+                    type="button"
+                    className={`ear-level-chip${types.length === ALL_PROGRESSION_TYPES.length ? ' is-active' : ''}`}
+                    aria-pressed={types.length === ALL_PROGRESSION_TYPES.length}
+                    onClick={() => chooseTypes(ALL_PROGRESSION_TYPES)}
+                  >
+                    All
+                  </button>
+                  {PROGRESSION_TYPES.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`ear-level-chip${types.includes(item.id) ? ' is-active' : ''}`}
+                      aria-pressed={types.includes(item.id)}
+                      onClick={() => chooseTypes(toggledProgressionTypes(types, item.id))}
                     >
                       {item.label}
                     </button>
@@ -5745,34 +5811,43 @@ function TwoFivePage() {
             </div>
 
             <div className={`surface-card twofive-question${isSolved ? ' is-solved' : ''}`} style={cardStyle}>
-              <span className="control-label">Your key</span>
-              <div key={`${question.key.pc}-${question.mode}`} className="twofive-key">{question.key.label}</div>
+              {question ? (
+                <>
+                  <span className="control-label">Your key</span>
+                  <div key={`${question.key.pc}-${question.progression.id}`} className="twofive-key">{question.key.label}</div>
+                  <div className="twofive-progression">{question.progression.name}</div>
 
-              <div className="twofive-chords">
-                {question.chords.map((chord, index) => {
-                  const isDone = step > index
-                  const isCurrent = step === index && midi.status === 'ready'
-                  return (
-                    <div
-                      key={chord.role}
-                      className={`twofive-chord${isDone ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}`}
-                    >
-                      <span className="twofive-role">{chord.role}</span>
-                      <span className="twofive-symbol">{isDone || revealed ? chord.symbol : '?'}</span>
-                    </div>
-                  )
-                })}
-              </div>
+                  <div className="twofive-chords">
+                    {question.chords.map((chord, index) => {
+                      const isDone = step > index
+                      const isCurrent = step === index && midi.status === 'ready'
+                      return (
+                        <div
+                          key={index}
+                          className={`twofive-chord${isDone ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}`}
+                        >
+                          <span className="twofive-role">{chord.role}</span>
+                          <span className="twofive-symbol">{isDone || revealed ? chord.symbol : '?'}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
 
-              <div className="twofive-status" aria-live="polite">
-                {isSolved
-                  ? 'Got it. Next key coming up.'
-                  : miss
-                    ? `Not the ${miss.role}${miss.heard ? `: that sounded like ${miss.heard}` : ''}.`
-                    : midi.status === 'ready'
-                      ? `Play the ${question.chords[step].role}.`
-                      : ''}
-              </div>
+                  <div className="twofive-status" aria-live="polite">
+                    {isSolved
+                      ? 'Got it. Next one coming up.'
+                      : miss
+                        ? `Not the ${miss.role}${miss.heard ? `: that sounded like ${miss.heard}` : ''}.`
+                        : midi.status === 'ready'
+                          ? `Play the ${question.chords[step].role}.`
+                          : ''}
+                  </div>
+                </>
+              ) : (
+                <div className="twofive-status">
+                  None of the progressions picked come in {modeId === 'minor' ? 'minor' : 'major'} keys. Turn on another type or change the keys.
+                </div>
+              )}
 
               <div className="ear-midi-row twofive-midi">
                 {midi.status === 'unsupported' ? (
@@ -5800,10 +5875,10 @@ function TwoFivePage() {
               </div>
 
               <div className="twofive-actions">
-                <button className="secondary-button" type="button" disabled={revealed || isSolved} onClick={() => setRevealed(true)}>
+                <button className="secondary-button" type="button" disabled={!question || revealed || isSolved} onClick={() => setRevealed(true)}>
                   Show Answer
                 </button>
-                <button className="primary-button" type="button" onClick={skip}>
+                <button className="primary-button" type="button" disabled={!question} onClick={skip}>
                   Skip
                 </button>
               </div>
@@ -6291,7 +6366,8 @@ function App() {
         <Route path="/sight-reading" element={<SightReadingPage />} />
         <Route path="/set-ups" element={<Navigate to="/sight-reading" replace />} />
         <Route path="/ear-training" element={<EarTrainerPage />} />
-        <Route path="/ii-vs" element={<TwoFivePage />} />
+        <Route path="/chord-progressions" element={<ChordProgressionsPage />} />
+        <Route path="/ii-vs" element={<Navigate to="/chord-progressions" replace />} />
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />

@@ -3,6 +3,48 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-07 — ii-Vs becomes Chord Progressions
+
+### What changed
+
+- **Renamed** Chord Progressions, at `/chord-progressions` (`/ii-vs`
+  redirects). `src/lib/twoFives.js` became `src/lib/chordProgressions.js`.
+- A key and a progression come up, and each chord is played in turn on a
+  MIDI keyboard. Seven types, each toggled on its own in a Progressions row
+  (all on by default, never none, remembered in localStorage). Each type is
+  as likely as the next, however many progressions it holds:
+  - **ii–Vs**: ii–V–I, minor iiø–V–i.
+  - **Backdoor**: iv7–♭VII7–I, and ii–V into the backdoor.
+  - **Tritone subs**: ii–♭II7–I, minor iiø–♭II7–i, ♭vi7–♭II7–I, and the
+    I–♭III7–ii–♭II7 turnaround.
+  - **Turnarounds**: I–vi–ii–V, I–V/ii–ii–V, iii–V/ii–ii–V, minor
+    i–♭VImaj7–iiø–V.
+  - **Secondary ii–Vs**: to IV, ii, vi and V (ii/IV–V/IV–IVmaj7 and so on).
+  - **Neo soul**: IVmaj7–V/vi–vi7, minor plagal IVmaj7–iv–I, ii–V7sus–I,
+    iv–V7sus–i, ♭VImaj7–♭VII7–I.
+  - **Passing diminished**: I–♯i°7–ii–V, iii–♭iii°7–ii–V.
+- The Keys filter (Both / Major / Minor) stays. Minor with only
+  major-key types picked shows a note instead of a question.
+- Chord boxes are labelled in chart parlance (ii7, V7, ♭II7, V/ii, iiø/vi,
+  ♯i°7, V7sus) so the quality is never a guess, with the progression's name
+  under the key. Spelling goes through `chordSymbol`, so ♭II in A is B♭.
+- New chord checks: a sus V needs the 4th and ♭7 and no 3rd; a non-tonic
+  maj7 needs 3rd and 7th; °7 needs ♭3 and °7; the minor-plagal iv takes m6
+  or m7.
+- A chord now only counts once a key has gone down since the last chord
+  matched. Without that, letting go of a Cmaj7 could play the Am7 its top
+  notes spell, and a Dm7 could double as the G7sus after it.
+- Checked in headless Chrome with a fake MIDI input: progressions of every
+  length solved, the empty-filter note shows, and five-chord progressions
+  wrap 3 + 2 on a phone with no sideways scroll.
+
+### Open items / ideas
+
+- Luke to play through each type and say what is missing (Coltrane
+  changes, chromatic ii–Vs, sus planing and Rhythm changes are in the Ear
+  Trainer's list and could come across).
+- Still open from ii-Vs: specific extensions on the V, voice-leading checks.
+
 ## 2026-10-05 — Set Ups becomes Sight Reading: solos, repeats, directions
 
 ### What changed

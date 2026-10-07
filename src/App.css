@@ -2197,6 +2197,20 @@ code {
   gap: 10px;
 }
 
+.twofive-types {
+  flex-basis: 100%;
+}
+
+.twofive-types .sticking-chips {
+  justify-content: center;
+}
+
+/* Roman numerals keep their case: ii–V, not II–V. */
+.twofive-types .ear-level-chip {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .twofive-question {
   display: grid;
   justify-items: center;
@@ -2218,18 +2232,27 @@ code {
   animation: independence-enter 320ms ease-out;
 }
 
+.twofive-progression {
+  margin-top: -6px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* Five-chord progressions wrap rather than overflow on a phone. */
 .twofive-chords {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .twofive-chord {
   display: grid;
   justify-items: center;
   gap: 6px;
-  min-width: 120px;
-  padding: 14px 18px;
+  min-width: 104px;
+  padding: 14px 16px;
   border: 1px solid var(--surface-border);
   border-radius: 10px;
   transition: border-color 160ms ease, background 160ms ease;
@@ -2280,6 +2303,21 @@ code {
 @media (max-width: 900px) {
   .twofive-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .twofive-chords {
+    gap: 6px;
+  }
+
+  .twofive-chord {
+    min-width: 66px;
+    padding: 10px 6px;
+  }
+
+  .twofive-symbol {
+    font-size: 1.2rem;
   }
 }
 
