@@ -915,13 +915,24 @@ export const BASS_INSTRUMENTS = {
       filter.frequency.setValueAtTime(900, note.time)
       filter.frequency.exponentialRampToValueAtTime(260, note.time + 0.5)
       const amp = ctx.createGain()
-      const end = applyEnvelope(amp.gain, note.time, note.velocity * 0.4, {
-        attack: 0.008,
-        decay: 0.5,
-        sustain: 0.3,
-        // A caller can shorten the tail so the note dies before the next one.
-        release: note.release ?? 0.3,
-      }, Math.min(note.duration, 1.4))
+      const peak = note.velocity * 0.4
+      let end
+      if (note.release === undefined) {
+        end = applyEnvelope(amp.gain, note.time, peak, { attack: 0.008, decay: 0.5, sustain: 0.3, release: 0.3 }, Math.min(note.duration, 1.4))
+      } else {
+        // A caller giving its own release wants the note held: settled onto
+        // its body within the note, carried to the note's end, then let go
+        // over just that release. A short note keeps its body rather than
+        // plinking away, and the tail barely reaches the next note.
+        const held = Math.min(note.duration, 1.4)
+        const gain = amp.gain
+        gain.setValueAtTime(0.0001, note.time)
+        gain.exponentialRampToValueAtTime(peak, note.time + 0.008)
+        gain.exponentialRampToValueAtTime(peak * 0.42, note.time + Math.min(0.3, held * 0.6))
+        gain.exponentialRampToValueAtTime(peak * 0.3, note.time + held)
+        end = note.time + held + note.release
+        gain.exponentialRampToValueAtTime(0.0001, end)
+      }
       osc.connect(filter)
       filter.connect(amp)
       amp.connect(out)

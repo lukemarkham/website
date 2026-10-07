@@ -50,6 +50,13 @@ either machine. Newest first.
   top of the written length. In Sight Reading it now fits inside it, so no
   bass note rings into the next. `BASS_INSTRUMENTS.upright` takes an
   optional `release`; the Ear Trainer's bass is unchanged.
+  - Luke found that too staccato ("cheesy"). Middle ground: the note is held
+    for its full written length on its own envelope (settles to about 40% of
+    peak, then 30% at the note's end) and lets go over 80–300 ms, so it
+    overlaps the next note slightly. Rendered offline at 190 bpm: the body
+    at the end of the beat is −22.6 dB (old muddy −18.5, staccato −36.7),
+    −35 dB 30 ms into the next note, silent about 70 ms after it (the old
+    one rang nearly a whole extra beat).
 
 ### Open items / ideas
 
