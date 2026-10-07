@@ -919,7 +919,8 @@ export const BASS_INSTRUMENTS = {
         attack: 0.008,
         decay: 0.5,
         sustain: 0.3,
-        release: 0.3,
+        // A caller can shorten the tail so the note dies before the next one.
+        release: note.release ?? 0.3,
       }, Math.min(note.duration, 1.4))
       osc.connect(filter)
       filter.connect(amp)

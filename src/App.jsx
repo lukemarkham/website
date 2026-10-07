@@ -3991,8 +3991,11 @@ function SightReadingPage() {
       if (event.instrument === 'horns') {
         playHornHit(ctx, out, at, { midi: event.midi, long: !event.short, seconds: written, level: event.level })
       } else if (event.instrument === 'bass') {
-        const duration = event.short ? beatSeconds * 0.3 : Math.max(beatSeconds * 0.4, written * 0.95)
-        BASS_INSTRUMENTS.upright.play(ctx, out, { midi: event.midi[0], time: at, duration, velocity: 0.95 * event.level })
+        // The release fits inside the written length, so a walking line never
+        // rings into its next note, however fast.
+        const release = Math.min(0.3, written * 0.3)
+        const duration = event.short ? beatSeconds * 0.3 : Math.max(0.05, written * 0.97 - release)
+        BASS_INSTRUMENTS.upright.play(ctx, out, { midi: event.midi[0], time: at, duration, release, velocity: 0.95 * event.level })
       } else {
         const duration = event.short ? beatSeconds * 0.35 : written * 0.95
         event.midi.forEach((midi) => {

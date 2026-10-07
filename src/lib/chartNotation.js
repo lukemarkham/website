@@ -12,6 +12,8 @@
 // - Rests and notes show where the beat falls. An off-beat start takes an
 //   8th to reach the beat, except that a note on the & of 1 or the & of 3
 //   lasting to the middle or end of the bar is a dotted quarter.
+// - Nothing hides beat 3, the middle of the bar: a note from beat 2 that
+//   runs past it is a quarter tied to whatever is left.
 // - Rests combine: a whole rest for an empty bar, a dotted half for three
 //   beats from beat 1 or 2, a half from beat 1 or 3 (never across the middle
 //   of the bar, so beats 2 and 3 stay two quarters), otherwise quarters.
@@ -58,7 +60,8 @@ function notePieces(position, length) {
     if ((position === 1 || position === 5) && length >= 3) size = 3
     else if (position % 2 === 1 || length === 1) size = 1
     else if (length >= 4 && position % 4 === 0) size = 4
-    else if (length === 3) size = 3
+    // A dotted quarter from beat 2 would hide beat 3: quarter tied to an 8th.
+    else if (length === 3 && position !== 2) size = 3
     else size = 2
     result.push({ position, size })
     position += size
@@ -287,6 +290,11 @@ export function renderChartNotation(host, VF, options) {
     new Formatter().joinVoices(voices).format(voices, stave.getNoteEndX() - stave.getNoteStartX() - 14)
     voices.forEach((voice) => voice.draw(ctx, stave))
 
+    // Everything drawn by hand over the bar sets its own line width, colour
+    // and font; saved and restored so none of it leaks into the next bar's
+    // staff, which would otherwise draw heavier than bar 1's.
+    ctx.save()
+
     // Rehearsal letters in a box, and bar numbers at the start of each line
     // after the first, both over the clef where no figure can be.
     const topLine = stave.getYForLine(0)
@@ -340,6 +348,7 @@ export function renderChartNotation(host, VF, options) {
       ctx.setFillStyle(colors.ink)
       ctx.fillText(mark.text, x + (section ? 30 : 4), topLine - MARK_RISE)
     }
+    ctx.restore()
   }
 
   drawLater.forEach((item) => item.setContext(ctx).draw())

@@ -222,5 +222,41 @@
     "note": "Same issue here with what seems like a missing tie but I actually think its just that the tie blends in too much with the barlines. Perhaps they need to be thicker or more pronounced in some other way. Also, rhythmic slash notation is generally written with stem down. We should adopt this.",
     "tags": [],
     "review": "Ties are now heavier and more arched so they stand out from barlines and staff lines. Rhythmic slashes in the staff are now stems down."
+  },
+  {
+    "id": "2026-10-06T20-00-57-792Z-c7jpqd",
+    "createdAt": "2026-10-06T20:00:57.792Z",
+    "tool": "setups",
+    "key": "straight|32|2@23-1a,24-2m+19-1m;2@32-3a,35-1m;1@92-3a,95-1m;2@113-1a,114-2m+109-1m;1@202-3a,205-1m;1@249-1m|8-1a,9-1m,12-2s,40-3a,43-1m,50-2s,54-2s,75-3a,78-2m,123-1m,211-1m,219-3a,222-2m|t0-8/t8-8/s16-8@143-1m,145-1m,150-2s,152-2s,154-2m,159-1a,160-2m,183-1m,185-1m,190-2t/t24-8/r12-4x2/m0:hats/m8:ride/m16:solo/m24:time",
+    "feel": "straight",
+    "vote": "down",
+    "tempo": 128,
+    "note": "In measure 27, we don't like to see dotted quarter notes on beat 2. It is common to never \"mask\" where the downbeat of 3 is. So instead, a phrase like that should be notated as a quarter note on beat 2 tied to an 8th note on the downbeat of 3. That way we can still see where the mid-point of the measure is.",
+    "tags": [],
+    "review": "Fixed in chartNotation.js notePieces: a note starting on beat 2 that runs past beat 3 is now a quarter tied to the remainder (quarter + 8th instead of a dotted quarter), so beat 3 always shows."
+  },
+  {
+    "id": "2026-10-06T20-04-26-889Z-kr0u3b",
+    "createdAt": "2026-10-06T20:04:26.889Z",
+    "tool": "setups",
+    "key": "swing|32|2@15-3a;2@44-1a,45-1m;4@80-2m+76-2m;2@123-1a,124-2m;2@216-2s,218-2s,220-2m;1@252-1a,253-1m|48-2s,51-1m,59-3a,62-2m,201-1m,205-1m,227-1m,241-1m,245-1m|t0-8/t8-8/x4@16-8/t24-8/r8-8x2/m16:trade4/m24:time",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 172,
+    "note": "It is not unique to this example but in general, the first measure seems to be shaded differently than the rest of the piece. This looks a bit sloppy. I'm assuming it has something to do with the tempo marking perhaps?",
+    "tags": [],
+    "review": "Not the tempo marking: the hand-drawn rehearsal box, bar numbers and repeat wings set line width/fill on the VexFlow context and never reset them, so every stave after bar 1 drew at 1.5px (and some clefs took the muted bar-number colour). The per-bar drawing is now wrapped in ctx.save()/restore(); all staves and clefs draw identically."
+  },
+  {
+    "id": "2026-10-06T20-05-45-810Z-7nag6t",
+    "createdAt": "2026-10-06T20:05:45.810Z",
+    "tool": "setups",
+    "key": "swing|32|2@17-3a;2@55-3a;4@86-2m;1@98-2t;2@215-1a,216-2m;2@248-2m+245-1m|27-3a,30-2m,113-1m,114-2s,118-2m|t0-8/t8-8/x4@16-8/t24-8/r4-4x4/m0:two/m8:walk/m16:trade4/m24:time",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 190,
+    "note": "When the bass starts walking at faster tempos like this the sustain is a bit too long and the notes are slightly bleeding into one another, making it sound a bit muddy overall. Lets tighten up the sustain of the bass instrument to not overlap into the next note.",
+    "tags": [],
+    "review": "The upright bass added a fixed 0.3 s release after 95% of the written length, so at 190 bpm each quarter rang nearly a beat into the next. The release now fits inside the written length (release = min(0.3 s, 30% of the note), held to 97% minus that), so no bass note overlaps the next at any tempo."
   }
 ]

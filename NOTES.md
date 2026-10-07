@@ -38,6 +38,19 @@ either machine. Newest first.
   length solved, the empty-filter note shows, and five-chord progressions
   wrap 3 + 2 on a phone with no sideways scroll.
 
+### Sight Reading feedback (3 downvotes from 2026-10-06)
+
+- **Beat 3 always shows**: a note from beat 2 that runs past beat 3 is a
+  quarter tied to the rest, never a dotted quarter (`notePieces`).
+- **Bar 1 looked different**: the hand-drawn rehearsal boxes, bar numbers
+  and repeat wings left their line width and colour on the VexFlow context,
+  so every stave after bar 1 drew at 1.5px and some clefs came out grey.
+  That drawing is now inside `ctx.save()` / `ctx.restore()`.
+- **Muddy walking bass at fast tempos**: the upright's 0.3 s release came on
+  top of the written length. In Sight Reading it now fits inside it, so no
+  bass note rings into the next. `BASS_INSTRUMENTS.upright` takes an
+  optional `release`; the Ear Trainer's bass is unchanged.
+
 ### Open items / ideas
 
 - Luke to play through each type and say what is missing (Coltrane
