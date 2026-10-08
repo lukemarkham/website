@@ -3619,3 +3619,36 @@ button.ear-chord-result:focus-visible {
     transform: scaleX(0);
   }
 }
+
+/* Every session timer's end (SessionCompleteDialog). */
+.session-complete {
+  width: min(400px, calc(100vw - 32px));
+}
+
+.session-complete-title {
+  margin: 0 0 18px;
+  font-size: clamp(26px, 5vw, 34px);
+}
+
+.session-complete-options,
+.session-complete-custom {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.session-complete-options button,
+.session-complete-custom button {
+  width: auto;
+}
+
+.session-complete .control-input {
+  width: 110px;
+  text-align: center;
+}
+
+.session-complete .sticking-feedback-actions {
+  justify-content: center;
+  margin-top: 22px;
+}

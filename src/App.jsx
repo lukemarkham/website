@@ -1418,10 +1418,74 @@ function formatSessionTime(totalSeconds) {
 // tools with no transport of their own; the metronome and the sticking
 // generator run theirs off their Start button instead. It keeps time against
 // the wall clock, so a throttled background tab still ends on time.
+// Shown by every session timer when it runs out: the session is done, or
+// carry on for 5 or 10 more minutes, or a number of your own.
+function SessionCompleteDialog({ open, onAddMinutes, onClose }) {
+  const dialogRef = useRef(null)
+  const [customMinutes, setCustomMinutes] = useState('')
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (open && !dialog.open) dialog.showModal()
+    if (!open && dialog.open) dialog.close()
+  }, [open])
+
+  function add(minutes) {
+    const whole = clampWholeNumber(Number(minutes), 0, 240)
+    if (whole < 1) return
+    setCustomMinutes('')
+    onAddMinutes(whole)
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="sticking-feedback session-complete"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+    >
+      <form
+        method="dialog"
+        onSubmit={(event) => {
+          event.preventDefault()
+          add(customMinutes)
+        }}
+      >
+        <h2 className="session-complete-title">Session complete</h2>
+        <span className="control-label">Keep going?</span>
+        <div className="session-complete-options">
+          <button className="secondary-button" type="button" onClick={() => add(5)}>+5 min</button>
+          <button className="secondary-button" type="button" onClick={() => add(10)}>+10 min</button>
+        </div>
+        <div className="session-complete-custom">
+          <input
+            className="control-input"
+            type="number"
+            min="1"
+            max="240"
+            step="1"
+            placeholder="Minutes"
+            aria-label="Minutes to add"
+            value={customMinutes}
+            onChange={(event) => setCustomMinutes(event.target.value)}
+          />
+          <button className="secondary-button" type="submit" disabled={!(Number(customMinutes) >= 1)}>Add</button>
+        </div>
+        <div className="sticking-feedback-actions">
+          <button className="primary-button" type="button" onClick={onClose}>Done</button>
+        </div>
+      </form>
+    </dialog>
+  )
+}
+
 function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
   const [minutesDraft, setMinutesDraft] = useState(String(defaultMinutes))
   const [status, setStatus] = useState('idle')
   const [remaining, setRemaining] = useState(null)
+  const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const endsAtRef = useRef(null)
   const pausedMsRef = useRef(null)
   const tickRef = useRef(null)
@@ -1467,6 +1531,7 @@ function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
     setRemaining(0)
     if (audioContextRef.current) playSessionCompleteSound(audioContextRef.current)
     onCompleteRef.current?.()
+    setIsCompleteOpen(true)
   }
 
   function run(durationMs) {
@@ -1551,6 +1616,14 @@ function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
           </div>
         </>
       )}
+      <SessionCompleteDialog
+        open={isCompleteOpen}
+        onClose={() => setIsCompleteOpen(false)}
+        onAddMinutes={(minutes) => {
+          setIsCompleteOpen(false)
+          run(minutes * 60 * 1000)
+        }}
+      />
     </div>
   )
 }
@@ -1564,6 +1637,7 @@ function MetronomePage() {
   const [probabilities, setProbabilities] = useState(() => getDefaultMetronomeProbabilities())
   const [isPatternLocked, setIsPatternLocked] = useState(false)
   const [sessionMinutes, setSessionMinutes] = useState(0)
+  const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [activeTick, setActiveTick] = useState(null)
@@ -1720,11 +1794,11 @@ function MetronomePage() {
     }
   }
 
-  async function startMetronome() {
+  async function startMetronome(minutes = sessionMinutes) {
     if (isPlaying) return
 
     const ctx = await getAudioContext()
-    const sessionDurationMs = clampWholeNumber(sessionMinutes, 0, 240) * 60 * 1000
+    const sessionDurationMs = clampWholeNumber(minutes, 0, 240) * 60 * 1000
     patternCacheRef.current = {}
     silentBarCacheRef.current = {}
     absoluteTickRef.current = 0
@@ -1776,6 +1850,7 @@ function MetronomePage() {
 
     if (options.playCompletion && audioContextRef.current) {
       playSessionCompleteSound(audioContextRef.current)
+      setIsCompleteOpen(true)
     }
   }
 
@@ -2014,6 +2089,14 @@ function MetronomePage() {
           ))}
         </div>
       </section>
+      <SessionCompleteDialog
+        open={isCompleteOpen}
+        onClose={() => setIsCompleteOpen(false)}
+        onAddMinutes={(minutes) => {
+          setIsCompleteOpen(false)
+          startMetronome(minutes)
+        }}
+      />
     </div>
   )
 }
@@ -2242,6 +2325,7 @@ function PracticeSession({
   onRunningChange,
 }) {
   const [sessionMinutes, setSessionMinutes] = useState(10)
+  const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
   const [isPlaying, setIsPlaying] = useState(false)
   const [activeBeat, setActiveBeat] = useState(null)
@@ -2425,10 +2509,10 @@ function PracticeSession({
     clockRef.current = window.setInterval(() => updateClock(ctx), 200)
   }
 
-  async function start() {
+  async function start(minutes = sessionMinutes) {
     const ctx = await getAudioContext()
     const startsAt = ctx.currentTime + 0.08
-    const sessionSeconds = clampWholeNumber(sessionMinutes, 0, 240) * 60
+    const sessionSeconds = clampWholeNumber(minutes, 0, 240) * 60
 
     runRef.current = {
       nextBeatTime: startsAt,
@@ -2509,7 +2593,16 @@ function PracticeSession({
 
     if (options.playCompletion && audioContextRef.current) {
       playSessionCompleteSound(audioContextRef.current)
+      setIsCompleteOpen(true)
     }
+  }
+
+  // More time after the session ends: a fresh one, counted off as at the
+  // start, the page's last item having been played through.
+  function addMinutes(minutes) {
+    setIsCompleteOpen(false)
+    onNewFillRef.current()
+    start(minutes)
   }
 
   // The page drives pause and resume around a downvote.
@@ -2600,6 +2693,7 @@ function PracticeSession({
           </span>
         </div>
       </div>
+      <SessionCompleteDialog open={isCompleteOpen} onClose={() => setIsCompleteOpen(false)} onAddMinutes={addMinutes} />
     </div>
   )
 }
@@ -5939,6 +6033,7 @@ function FloatingMetronome() {
   const [activeBeat, setActiveBeat] = useState(null)
   const [sessionMinutes, setSessionMinutes] = useState('0')
   const [remainingSeconds, setRemainingSeconds] = useState(null)
+  const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const audioContextRef = useRef(null)
   const schedulerRef = useRef(null)
   const sessionIntervalRef = useRef(null)
@@ -6048,8 +6143,8 @@ function FloatingMetronome() {
   }
 
   // The session timer runs off the transport, against the wall clock.
-  function startSessionTimer() {
-    const minutes = clampWholeNumber(sessionMinutes, 0, 240)
+  function startSessionTimer(chosenMinutes = sessionMinutes) {
+    const minutes = clampWholeNumber(chosenMinutes, 0, 240)
     if (minutes === 0) return
     setRemainingSeconds(minutes * 60)
     sessionIntervalRef.current = startWallClockCountdown(minutes * 60, setRemainingSeconds, () => stop({ playCompletion: true }))
@@ -6065,7 +6160,10 @@ function FloatingMetronome() {
     setActiveBeat(null)
     setRemainingSeconds(null)
     setIsPlaying(false)
-    if (playCompletion && audioContextRef.current) playSessionCompleteSound(audioContextRef.current)
+    if (playCompletion && audioContextRef.current) {
+      playSessionCompleteSound(audioContextRef.current)
+      setIsCompleteOpen(true)
+    }
   }
 
   function togglePlayback() {
@@ -6202,6 +6300,15 @@ function FloatingMetronome() {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
         </button>
       </div>
+      <SessionCompleteDialog
+        open={isCompleteOpen}
+        onClose={() => setIsCompleteOpen(false)}
+        onAddMinutes={(minutes) => {
+          setIsCompleteOpen(false)
+          startSessionTimer(minutes)
+          start()
+        }}
+      />
     </div>
   )
 }

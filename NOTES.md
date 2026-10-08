@@ -34,6 +34,10 @@ either machine. Newest first.
   changes, chromatic approaches only from below and rarer, comping lighter
   underneath. Awaiting his next listen.
 - Sight Reading opens on feel "All".
+- Every session timer (PracticeTimer, PracticeSession, Metronome page,
+  floating metronome) opens a "Session complete" dialog at the end: +5 min,
+  +10 min, or a number of your own, which restarts the session for that
+  long (the generators count off into a new item).
 - Directions change only at a section start, never halfway (feedback
   2026-10-08). A repeated solo around figures is favoured: about 10% of
   pieces with a solo now repeat it, from 5.5% (Luke's request).

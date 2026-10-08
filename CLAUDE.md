@@ -53,7 +53,8 @@ Every practice tool gets a session timer. Drop in the shared `<PracticeTimer />`
 (pass `onComplete` to stop the tool's own playback when time is up). Tools with
 their own Start/Stop transport, like the metronome and the drum generators,
 run the countdown off that transport instead, finishing with
-`playSessionCompleteSound`.
+`playSessionCompleteSound`. Every timer's end also opens the shared
+`<SessionCompleteDialog />` (add 5, 10 or a chosen number of minutes).
 
 Anything that counts the player in uses the standard count-off on the tool's
 own click: a bar of half notes, then a bar of quarters, then time starts
