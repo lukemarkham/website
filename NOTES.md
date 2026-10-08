@@ -34,6 +34,9 @@ either machine. Newest first.
   changes, chromatic approaches only from below and rarer, comping lighter
   underneath. Awaiting his next listen.
 - Sight Reading opens on feel "All".
+- Directions change only at a section start, never halfway (feedback
+  2026-10-08). A repeated solo around figures is favoured: about 10% of
+  pieces with a solo now repeat it, from 5.5% (Luke's request).
 - Removed the description paragraph under each practice tool's title
   (Tempo Guessr, Metronome, Fill, Sticking, Independence, Sight Reading,
   Chord Progressions), and from the home page tool cards.

@@ -270,5 +270,17 @@
     "note": "Bossa nova impies a cross stick, so this isn't a useful expression text to have in this context. What would be better would be 3-2 bossa or 2-3 bossa",
     "tags": [],
     "review": "Bossa now opens with \"2-3 bossa\" or \"3-2 bossa\" (picked at random) instead of \"Cross stick\", and the band's comping starts on the matching side of the clave. \"Cross stick\" stays as the return marking after a ride section."
+  },
+  {
+    "id": "2026-10-08T16-47-12-489Z-0ro879",
+    "createdAt": "2026-10-08T16:47:12.506Z",
+    "tool": "setups",
+    "key": "swing|32|2@16-2m;2@54-3a,57-1m+51-1m;2@223-1m,225-1m;2@255-1m|26-1s,27-1m,200-1a,201-1m,204-2s,208-3a,211-1m,232-3a,235-1m,243-1m|t0-8/x8@8-16/t24-8/m0:two/m4:in4/m8:trade8/m24:time",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 119,
+    "note": "Where the feel change going ti \"in 4\" here happens in unintuitive. Normally a 2 feel (or feel change of any kind for that matter, will last for 8 measures or a \"section\" of a song)",
+    "tags": [],
+    "review": "Removed the halfway feel/sound change in a lone eight-bar tune section: a direction now only changes at the start of a section and lasts the whole of it."
   }
 ]
