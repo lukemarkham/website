@@ -28,8 +28,10 @@
 // - Cued figures sit exactly over the slashes they line up with.
 // - The piece ends on its final figure: rests follow it, not slashes.
 // - Rehearsal letters mark each eight-bar section.
-// - Directions ("2 feel", "To ride") sit high over the bar they start in,
-//   above anything cued, clear of the rehearsal letter.
+// - Rehearsal letters are boxed, over the barline that starts the section.
+// - Directions ("2 feel", "To ride") sit close over the bar they start in,
+//   level with the rehearsal letter and just after it, rising only as far as
+//   it takes to clear a cued figure or fill bracket under the words.
 // - Repeats use winged repeat signs, with "3x" or "4x" over the end repeat
 //   when the section plays more than twice.
 // - A "SOLO" bracket marks the drummer's solo, drawn like a fill's; figures
@@ -45,8 +47,10 @@ const CLEF_WIDTH = 36
 const TIME_SIG_WIDTH = 26
 const FIRST_LINE_TOP = 96
 const LINE_HEIGHT = 136
-// Directions and repeat counts sit this far above the top line.
-const MARK_RISE = 58
+// Rehearsal letters, directions and repeat counts share a baseline this far
+// above the top line, or a bar number's height higher at the start of a line.
+const MARK_RISE = 12
+const BAR_NUMBER_RISE = 14
 const ARTICULATIONS = { marcato: 'a^', accent: 'a>', staccato: 'a.', tenuto: 'a-' }
 // SMuFL's metronome-mark quarter note (metNoteQuarterUp), in Bravura.
 const QUARTER_NOTE_GLYPH = ''
@@ -150,6 +154,10 @@ export function renderChartNotation(host, VF, options) {
   const piecesOf = new Map()
   const staves = []
   const drawLater = []
+  const laterMarks = []
+  // What's drawn over the staff, as { x, y, width, height }, for the
+  // directions to clear.
+  const obstacles = []
   const stemmedSlots = new Set()
 
   // Two 8th notes in one beat share a beam; an 8th beside a rest keeps its
@@ -289,6 +297,10 @@ export function renderChartNotation(host, VF, options) {
 
     new Formatter().joinVoices(voices).format(voices, stave.getNoteEndX() - stave.getNoteStartX() - 14)
     voices.forEach((voice) => voice.draw(ctx, stave))
+    voices.forEach((voice) => voice.getTickables().forEach((note) => {
+      const box = note.getBoundingBox()
+      if (box) obstacles.push({ x: box.getX(), y: box.getY(), width: box.getW(), height: box.getH() })
+    }))
 
     // Everything drawn by hand over the bar sets its own line width, colour
     // and font; saved and restored so none of it leaks into the next bar's
@@ -299,17 +311,25 @@ export function renderChartNotation(host, VF, options) {
     // after the first, both over the clef where no figure can be.
     const topLine = stave.getYForLine(0)
     const section = sections.find((item) => item.bar === bar)
+    const markY = topLine - MARK_RISE - (isLineStart && bar > 0 ? BAR_NUMBER_RISE : 0)
+    let markX = x + 4
     if (section) {
-      ctx.setFont(font, 15, 'bold')
+      ctx.setFont(font, 17, 'bold')
       ctx.setFillStyle(colors.ink)
       ctx.setStrokeStyle(colors.ink)
       ctx.setLineWidth(1.5)
-      const boxBottom = topLine - (bar > 0 ? 22 : 8)
-      ctx.beginPath()
-      ctx.rect(x, boxBottom - 22, 22, 22)
-      ctx.stroke()
       const letterWidth = ctx.measureText(section.label).width
-      ctx.fillText(section.label, x + 11 - letterWidth / 2, boxBottom - 6)
+      const boxWidth = Math.max(24, letterWidth + 12)
+      // A stroked path, not rect(): VexFlow fills its rects.
+      ctx.beginPath()
+      ctx.moveTo(x, markY + 7)
+      ctx.lineTo(x + boxWidth, markY + 7)
+      ctx.lineTo(x + boxWidth, markY - 18)
+      ctx.lineTo(x, markY - 18)
+      ctx.closePath()
+      ctx.stroke()
+      ctx.fillText(section.label, x + (boxWidth - letterWidth) / 2, markY)
+      markX = x + boxWidth + 8
     }
     if (isLineStart && bar > 0) {
       ctx.setFont(font, 11, 'normal')
@@ -336,18 +356,13 @@ export function renderChartNotation(host, VF, options) {
       })
     })
     if (repeatEnd && repeat.times > 2) {
-      ctx.setFont(font, 14, 'bold')
-      ctx.setFillStyle(colors.ink)
       const text = `${repeat.times}x`
-      ctx.fillText(text, x + staveWidth - ctx.measureText(text).width - 2, topLine - MARK_RISE)
+      ctx.setFont(font, 14, 'bold')
+      laterMarks.push({ text, x: x + staveWidth - ctx.measureText(text).width - 2, y: markY, size: 14 })
     }
 
     const mark = marks.find((item) => item.bar === bar)
-    if (mark) {
-      ctx.setFont(font, 13, 'bold', 'italic')
-      ctx.setFillStyle(colors.ink)
-      ctx.fillText(mark.text, x + (section ? 30 : 4), topLine - MARK_RISE)
-    }
+    if (mark) laterMarks.push({ text: mark.text, x: markX, y: markY, size: 15 })
     ctx.restore()
   }
 
@@ -448,9 +463,29 @@ export function renderChartNotation(host, VF, options) {
         ctx.setFont(font, 11, 'bold')
         ctx.fillText(fill.label, x1 + 3, y - 5)
       }
+      obstacles.push({ x: x1, y: y - 15, width: x2 - x1, height: 23 })
       from = lineEndSlot
     }
   })
+
+  // Directions and repeat counts go on last, each lifted over whatever is
+  // already drawn under its words: a cued figure, a fill bracket.
+  ctx.save()
+  ctx.setFillStyle(colors.ink)
+  laterMarks.forEach(({ text, x, y, size }) => {
+    ctx.setFont(font, size, 'bold')
+    const right = x + ctx.measureText(text).width
+    let baseline = y
+    let clashes = true
+    while (clashes) {
+      const top = baseline - size * 0.8
+      const clash = obstacles.find((box) => box.x < right + 3 && box.x + box.width > x - 3 && box.y < baseline + 4 && box.y + box.height > top - 3)
+      clashes = Boolean(clash)
+      if (clash) baseline = clash.y - 6
+    }
+    ctx.fillText(text, x, baseline)
+  })
+  ctx.restore()
 
   const svg = host.querySelector('svg')
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`)

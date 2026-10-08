@@ -3,6 +3,25 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-08 — Sight Reading: directions and rehearsal letters
+
+### What changed
+
+- Rehearsal letters are a bolder letter in an unfilled box sized to it (the
+  old box was a VexFlow rect, which filled solid in dark mode).
+- Directions ("2 feel", "Trade 4s") and the "3x" over an end repeat now sit
+  low, level with the rehearsal letter and just right of it, instead of high
+  over the bar. Each is drawn last and lifted only as far as it takes to
+  clear cued figures or a fill bracket under its words, using VexFlow's note
+  bounding boxes (SVG text boxes of Bravura glyphs are font-line tall, so
+  they can't be used for this).
+
+### Open items
+
+- Unarchived Sight Reading feedback (2026-10-07): bossa's opening "Cross
+  stick" is implied by the style; Luke suggests "2-3 bossa" / "3-2 bossa".
+  Awaiting a decision on which clave direction to print.
+
 ## 2026-10-07 — ii-Vs becomes Chord Progressions
 
 ### What changed
