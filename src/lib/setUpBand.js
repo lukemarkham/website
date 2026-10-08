@@ -17,9 +17,10 @@
 //   horns, and lays out under fills so the drums are exposed.
 // - In a drum solo there's no time at all: trading, the band lays out for
 //   the drummer's turn; soloing around figures, it plays only the figures.
-// - Trading, a trumpet or tenor soloist (one per piece) plays the band's
-//   turns: swing 8th lines over the changes, chord tones on the beats and
-//   scale steps or chromatic approaches on the &s, in phrases with room to
+// - Trading, the piano solos on the band's turns, comping lightly under
+//   itself: swing 8th lines over the changes, chord tones on the beats (the
+//   3rd or 7th where the chord changes) and scale steps on the &s, now and
+//   then a half step up into the next beat, in phrases with room to
 //   breathe, ending on a held chord tone before the drums come in.
 // - Once the final fill starts, the bass and comping stop at its end (or at
 //   the start of a final solo): the piece ends on the band's hit.
@@ -29,7 +30,7 @@
 //
 // Events are on the same 8th-note grid as the phrase, { slot, slots,
 // instrument: 'bass' | 'piano' | 'horns' | 'lead', midi: number[], short,
-// level }, so the page can swing the &s. `soloist` names the lead's voice.
+// level }, so the page can swing the &s. The page plays 'lead' on the piano.
 
 import { CHORD_INTERVALS, voiceChord } from './harmony'
 
@@ -133,11 +134,8 @@ const BASS_PATTERNS = {
   },
 }
 
-// The soloist's register, sounding, and where a line likes to sit.
-const SOLOISTS = {
-  trumpet: { low: 58, high: 82, home: 70 },
-  tenor: { low: 46, high: 72, home: 60 },
-}
+// The soloist's register, and where a line likes to sit: over the comping.
+const SOLO_RANGE = { low: 62, high: 86, home: 74 }
 
 // A scale to play each chord quality over, as semitones above the root.
 const MIXOLYDIAN = [0, 2, 4, 5, 7, 9, 10]
@@ -165,21 +163,26 @@ const LINE_CELLS = [[1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 1], [2, 1, 1], [1, 1, 
  * in one direction and turning at the edges of the register; each & leads
  * to the next downbeat by a scale step or a chromatic approach.
  */
-function soloLine(range, chordAt, voice, startMidi) {
+function soloLine(range, chordAt, startMidi) {
   const notes = []
-  const { low, high, home } = SOLOISTS[voice]
+  const { low, high, home } = SOLO_RANGE
   const pcsOf = (chord, intervals) => intervals.map((interval) => (chord.rootPc + interval) % 12)
   const isIn = (midi, pcs) => pcs.includes(((midi % 12) + 12) % 12)
   let midi = startMidi
   let direction = midi > home ? -1 : 1
+  let previousChord = null
   const target = (slot) => {
     const chord = chordAt(slot)
-    const tones = pcsOf(chord, CHORD_INTERVALS[chord.quality].slice(0, 4))
+    const intervals = CHORD_INTERVALS[chord.quality]
+    // A new chord is marked by its guide tones, the 3rd and 7th.
+    const isChange = chord !== previousChord
+    previousChord = chord
+    const tones = pcsOf(chord, isChange && intervals.length >= 4 ? [intervals[1], intervals[3]] : intervals.slice(0, 4))
     if (midi >= high - 3) direction = -1
     else if (midi <= low + 3) direction = 1
     else if (Math.random() < 0.25) direction = -direction
     // The nearest chord tone a step or a leap of up to a fifth that way.
-    for (let step = pick([1, 2, 3]); step <= 7; step += 1) {
+    for (let step = pick([1, 1, 2, 3]); step <= 7; step += 1) {
       const candidate = midi + direction * step
       if (candidate >= low && candidate <= high && isIn(candidate, tones)) return candidate
     }
@@ -189,14 +192,14 @@ function soloLine(range, chordAt, voice, startMidi) {
   // From the side the line comes from: below the next note when rising.
   const approach = (slot, previous, next) => {
     const from = next > previous ? 1 : next < previous ? -1 : pick([1, -1])
-    if (Math.random() < 0.35) return next - from
+    if (Math.random() < 0.15) return next - 1
     const chord = chordAt(slot)
     const scale = pcsOf(chord, CHORD_SCALES[chord.quality] ?? MIXOLYDIAN)
     for (let step = 1; step <= 2; step += 1) {
       const candidate = next - from * step
       if (isIn(candidate, scale)) return candidate
     }
-    return next - from
+    return next - from * 2
   }
 
   const lastSlot = range.end - 2
@@ -417,17 +420,17 @@ export function arrangeBand(phrase) {
     const pattern = style === 'bossa' || style === 'latin' ? patterns[side] : pick(patterns)
     pattern.forEach(([offset, slots]) => {
       const slot = start + offset
-      events.push({ slot, slots, instrument: 'piano', chord: chordFor(slot), short: style === 'swing' || style === 'latin', level: 0.6 })
+      const underSolo = trades.some((range) => slot >= range.start && slot < range.end)
+      events.push({ slot, slots, instrument: 'piano', chord: chordFor(slot), short: style === 'swing' || style === 'latin', level: underSolo ? 0.4 : 0.6 })
     })
   }
 
-  // ---- The soloist, on the band's turns of a trade.
-  const soloist = pick(Object.keys(SOLOISTS))
-  let leadMidi = SOLOISTS[soloist].home
+  // ---- The piano's solo, on the band's turns of a trade.
+  let leadMidi = SOLO_RANGE.home
   trades.forEach((range) => {
-    soloLine(range, chordFor, soloist, leadMidi).forEach((note) => {
+    soloLine(range, chordFor, leadMidi).forEach((note) => {
       if (full.some((figure) => figure.slot < note.slot + note.slots && figure.slot + figure.slots > note.slot)) return
-      events.push({ slot: note.slot, slots: note.slots, instrument: 'lead', midi: [note.midi], short: false, level: 1 })
+      events.push({ slot: note.slot, slots: note.slots, instrument: 'lead', midi: [note.midi], short: false, level: 1.5 })
       leadMidi = note.midi
     })
   })
@@ -450,5 +453,5 @@ export function arrangeBand(phrase) {
     delete event.chord
   })
 
-  return { keyPc, events, soloist }
+  return { keyPc, events }
 }

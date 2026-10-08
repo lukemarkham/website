@@ -2249,8 +2249,9 @@ function playFillChangeChime(ctx, time) {
 // sticking, or exercise) picked. When the interval for a new one runs out,
 // the click stops at the end of the current cycle for a chime, the new one is
 // revealed, and the standard count-off (see countOffCount) brings the click
-// back. The page can
-// also pause it (while a downvote is explained) and resume it, with or
+// back. When the session's time is up, the current cycle (the whole piece,
+// on Sight Reading) plays to its end before the completion sound. The page
+// can also pause it (while a downvote is explained) and resume it, with or
 // without a new one.
 // onBeat(ctx, time, beatInCycle, beatSeconds), if given, is called for each
 // beat of time (not the count-off) as it is scheduled, so a page can play
@@ -2362,11 +2363,21 @@ function PracticeSession({
 
     while (run.nextBeatTime < ctx.currentTime + METRONOME_SCHEDULE_AHEAD_SECONDS) {
       const time = run.nextBeatTime
-      if (run.sessionEndsAt !== null && time >= run.sessionEndsAt) return
+      if (run.finishAt !== null) return
 
       const beatInBar = run.beatIndex % 4
       const isCountIn = run.beatIndex < COUNT_OFF_BEATS
       const count = isCountIn ? countOffCount(run.beatIndex) : null
+      const isCycleStart = (run.beatIndex - COUNT_OFF_BEATS) % (4 * cycleBarsRef.current) === 0
+
+      // Time's up: finish at the end of the cycle being played, or straight
+      // away in a count-off, before anything new starts. Nor does a new one
+      // start if time would run out during its chime.
+      const changeGap = isCountIn ? 0 : PRACTICE_CHIME_SECONDS + PRACTICE_REVEAL_MS / 1000 + 0.3
+      if (run.sessionEndsAt !== null && time + changeGap >= run.sessionEndsAt && (isCountIn || isCycleStart)) {
+        run.finishAt = time
+        return
+      }
 
       // The interval starts counting once the count-off is over.
       if (run.beatIndex === COUNT_OFF_BEATS && run.rotationSeconds > 0) {
@@ -2378,7 +2389,6 @@ function PracticeSession({
 
       // Changes wait for the end of the cycle, so a figure that takes a few
       // bars to come around gets played through.
-      const isCycleStart = (run.beatIndex - COUNT_OFF_BEATS) % (4 * cycleBarsRef.current) === 0
       if (!isCountIn && isCycleStart && run.nextFillAt !== null && time >= run.nextFillAt) {
         changeFill(ctx, time)
         continue
@@ -2423,13 +2433,14 @@ function PracticeSession({
     const run = runRef.current
     const now = ctx.currentTime
 
-    if (run.sessionEndsAt !== null && now >= run.sessionEndsAt) {
+    if (run.finishAt !== null && now >= run.finishAt) {
       stop({ playCompletion: true })
       return
     }
 
     setClock({
-      session: run.sessionEndsAt === null ? null : Math.ceil(run.sessionEndsAt - now),
+      session: run.sessionEndsAt === null ? null : Math.max(0, Math.ceil(run.sessionEndsAt - now)),
+      finishing: run.sessionEndsAt !== null && now >= run.sessionEndsAt,
       nextFill: run.nextFillAt === null ? null : Math.max(0, Math.ceil(run.nextFillAt - now)),
     })
   }
@@ -2452,6 +2463,7 @@ function PracticeSession({
       beatIndex: 0,
       rotationSeconds,
       sessionEndsAt: sessionSeconds > 0 ? startsAt + sessionSeconds : null,
+      finishAt: null,
       nextFillAt: null,
       paused: null,
     }
@@ -2480,6 +2492,7 @@ function PracticeSession({
     run.paused = {
       sessionLeft: run.sessionEndsAt === null ? null : Math.max(0, run.sessionEndsAt - ctx.currentTime),
     }
+    run.finishAt = null
     setActiveBeat(null)
     setBanner('Paused')
   }
@@ -2599,9 +2612,11 @@ function PracticeSession({
           </span>
           <span>
             <span className="stat-label">Session</span>
-            {clock.session !== null
-              ? formatSessionTime(clock.session)
-              : sessionMinutes > 0 ? formatSessionTime(sessionMinutes * 60) : 'Open'}
+            {clock.finishing
+              ? 'Finishing'
+              : clock.session !== null
+                ? formatSessionTime(clock.session)
+                : sessionMinutes > 0 ? formatSessionTime(sessionMinutes * 60) : 'Open'}
           </span>
           <span>
             <span className="stat-label">Next {itemTitle}</span>
@@ -3728,75 +3743,6 @@ function playHornHit(ctx, out, time, { midi, long, seconds, level = 1 }) {
   })
 }
 
-// The trading soloist, one note at a time. Trumpet is a bright, buzzy
-// sawtooth that opens up on the attack; tenor a darker sawtooth and square
-// mix with a breathy edge. Notes longer than a beat get a delayed vibrato.
-const LEAD_VOICES = {
-  trumpet: { waves: [['sawtooth', 1]], open: 3800, body: 2400, breath: 0.012, level: 0.11 },
-  tenor: { waves: [['sawtooth', 0.8], ['square', 0.35]], open: 2200, body: 1300, breath: 0.03, level: 0.08 },
-}
-
-function playLeadNote(ctx, out, time, { voice, midi, seconds, accent }) {
-  const sound = LEAD_VOICES[voice]
-  const holdUntil = time + Math.max(0.06, seconds * 0.92)
-  const endsAt = holdUntil + 0.06
-  const peak = sound.level * (accent ? 1.15 : 0.9)
-  const output = ctx.createGain()
-  const filter = ctx.createBiquadFilter()
-  filter.type = 'lowpass'
-  filter.Q.value = 2
-  filter.frequency.setValueAtTime(700, time)
-  filter.frequency.exponentialRampToValueAtTime(sound.open, time + 0.03)
-  filter.frequency.exponentialRampToValueAtTime(sound.body, time + 0.15)
-  output.gain.setValueAtTime(0.0001, time)
-  output.gain.exponentialRampToValueAtTime(peak, time + 0.018)
-  output.gain.exponentialRampToValueAtTime(peak * 0.8, time + 0.12)
-  output.gain.setValueAtTime(peak * 0.8, holdUntil)
-  output.gain.exponentialRampToValueAtTime(0.0001, endsAt)
-  filter.connect(output)
-  output.connect(out)
-
-  const vibrato = ctx.createOscillator()
-  const depth = ctx.createGain()
-  vibrato.frequency.value = 5.5
-  depth.gain.setValueAtTime(0, time)
-  if (seconds > 0.4) {
-    depth.gain.setValueAtTime(0, time + 0.25)
-    depth.gain.linearRampToValueAtTime(18, time + Math.min(seconds, 0.7))
-  }
-  vibrato.connect(depth)
-  vibrato.start(time)
-  vibrato.stop(endsAt + 0.02)
-  sound.waves.forEach(([type, level]) => {
-    const oscillator = ctx.createOscillator()
-    const gain = ctx.createGain()
-    oscillator.type = type
-    oscillator.frequency.value = midiToFreq(midi)
-    depth.connect(oscillator.detune)
-    gain.gain.value = level
-    oscillator.connect(gain)
-    gain.connect(filter)
-    oscillator.start(time)
-    oscillator.stop(endsAt + 0.02)
-  })
-
-  // Breath at the front of the note.
-  const noise = ctx.createBufferSource()
-  const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.06), ctx.sampleRate)
-  const data = buffer.getChannelData(0)
-  for (let index = 0; index < data.length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / data.length)
-  noise.buffer = buffer
-  const air = ctx.createBiquadFilter()
-  air.type = 'bandpass'
-  air.frequency.value = 2500
-  const airGain = ctx.createGain()
-  airGain.gain.value = sound.breath
-  noise.connect(air)
-  air.connect(airGain)
-  airGain.connect(out)
-  noise.start(time)
-}
-
 const SET_UP_BAND_OPTIONS = [
   { id: 'full', label: 'Full band' },
   { id: 'horns', label: 'Horns only' },
@@ -3969,7 +3915,7 @@ const SET_UP_CUE_OPTIONS = [
 ]
 
 function SightReadingPage() {
-  const [feel, setFeel] = useState('swing')
+  const [feel, setFeel] = useState('all')
   const [bars, setBars] = useState(32)
   const [fillBeats, setFillBeats] = useState(null)
   const [cues, setCues] = useState(true)
@@ -3983,10 +3929,14 @@ function SightReadingPage() {
   const playClockRef = useRef(null)
   const followFrameRef = useRef(0)
   const downvotedRef = useDownvotes('setups', (entry) => entry.key)
-  const [phrase, setPhrase] = useState(() => withBand(
-    getRandomSetUpPhrase({ bars: 32, fillBeats: null, feel: 'swing', cues: true, repeats: true }, new Set(readStoredList(downvotesKey('setups')))),
-    randomInt(...SET_UP_DEFAULT_TEMPO_RANGE),
-  ))
+  // The page opens on "All": a feel drawn by weight, at its own tempos.
+  const [phrase, setPhrase] = useState(() => {
+    const firstFeel = pickWeightedFeel()
+    return withBand(
+      getRandomSetUpPhrase({ bars: 32, fillBeats: null, feel: firstFeel.id, cues: true, repeats: true }, new Set(readStoredList(downvotesKey('setups')))),
+      randomInt(...firstFeel.tempoRange),
+    )
+  })
   const [manualCount, setManualCount] = useState(0)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
@@ -4066,9 +4016,6 @@ function SightReadingPage() {
       const written = (event.slots / 2) * beatSeconds
       if (event.instrument === 'horns') {
         playHornHit(ctx, out, at, { midi: event.midi, long: !event.short, seconds: written, level: event.level })
-      } else if (event.instrument === 'lead') {
-        // Swung 8ths lean on the &.
-        playLeadNote(ctx, out, at, { voice: phrase.band.soloist, midi: event.midi[0], seconds: written, accent: event.slot % 2 === 1 })
       } else if (event.instrument === 'bass') {
         // Held for the full written length, then a short tail that just
         // overlaps the next note, the way a bassist's notes run into each
