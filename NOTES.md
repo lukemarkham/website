@@ -36,7 +36,7 @@ either machine. Newest first.
 - Sight Reading opens on feel "All".
 - Removed the description paragraph under each practice tool's title
   (Tempo Guessr, Metronome, Fill, Sticking, Independence, Sight Reading,
-  Chord Progressions). The home page cards keep theirs.
+  Chord Progressions), and from the home page tool cards.
 - Fixed: a lone eight-bar tune section's halfway change was planned after
   later sections, so directions could come out in the wrong order.
 

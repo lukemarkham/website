@@ -725,58 +725,34 @@ function HomePage() {
         <div style={gridStyle}>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Tempo Guessr</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A browser-based tool that plays a random tempo and lets you guess the BPM.
-            </p>
             <Link className="text-link" to="/tempo-guessr">Go to Tempo Guessr</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Metronome</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A probability-based metronome for random subdivisions and silent-bar practice.
-            </p>
             <Link className="text-link" to="/metronome">Go to Metronome</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Fill Generator</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Generate linear fills built from rudiments, resolving on the kick or snare.
-            </p>
             <Link className="text-link" to="/fill-generator">Go to Fill Generator</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Sticking Generator</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Hands-only stickings built from rudiments, looped through the bar with accents.
-            </p>
             <Link className="text-link" to="/sticking-generator">Go to Sticking Generator</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Independence</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Four-limb coordination exercises, from comping basics to ostinatos, groupings and metric modulation.
-            </p>
             <Link className="text-link" to="/independence">Go to Independence</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Sight Reading</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Read a big band drum chart with the band: set up the figures, follow the repeats, take the solo.
-            </p>
             <Link className="text-link" to="/sight-reading">Go to Sight Reading</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Progression Ear Trainer</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Hear a jazz or neo-soul progression, then name the one chord missing from the chart.
-            </p>
             <Link className="text-link" to="/ear-training">Go to Ear Trainer</Link>
           </div>
           <div className="surface-card" style={cardStyle}>
             <h3 className="card-title">Chord Progressions</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A key and a progression come up: ii-Vs, backdoors, tritone subs and more. Play it on a MIDI keyboard to move on.
-            </p>
             <Link className="text-link" to="/chord-progressions">Go to Chord Progressions</Link>
           </div>
         </div>
