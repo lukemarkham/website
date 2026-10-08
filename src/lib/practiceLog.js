@@ -207,8 +207,10 @@ export function useRecentActivity() {
 }
 
 // Totals from a person's days, for showing: this week (the last 7 days
-// including today), all time, per tool, the current streak of days in a row
-// and the last 14 days.
+// including today), all time, the daily average and each tool's share of
+// them, and the current streak of days in a row. The daily average is over
+// the last 30 days, or since the first day logged when that's sooner, rest
+// days included.
 export function summarizePractice(days, today = new Date()) {
   const dayKey = (offset) => {
     const date = new Date(today)
@@ -216,28 +218,35 @@ export function summarizePractice(days, today = new Date()) {
     return localDay(date)
   }
   const sum = (tools) => Object.values(tools ?? {}).reduce((total, seconds) => total + seconds, 0)
-  const week = Array.from({ length: 7 }, (_, offset) => dayKey(offset))
+  const week = new Set(Array.from({ length: 7 }, (_, offset) => dayKey(offset)))
+  const logged = Object.keys(days).filter((day) => sum(days[day]) > 0).sort()
+  const sinceFirst = logged.length ? Math.round((Date.parse(dayKey(0)) - Date.parse(logged[0])) / 86400000) + 1 : 1
+  const averageDays = Math.max(1, Math.min(30, sinceFirst))
+  const averageWindow = new Set(Array.from({ length: averageDays }, (_, offset) => dayKey(offset)))
+
   const tools = {}
   let allTime = 0
+  let weekTotal = 0
+  let averageTotal = 0
   for (const [day, byTool] of Object.entries(days)) {
     for (const [tool, seconds] of Object.entries(byTool)) {
-      tools[tool] ??= { week: 0, allTime: 0 }
+      tools[tool] ??= { week: 0, allTime: 0, dailyAverage: 0 }
       tools[tool].allTime += seconds
-      if (week.includes(day)) tools[tool].week += seconds
       allTime += seconds
+      if (week.has(day)) {
+        tools[tool].week += seconds
+        weekTotal += seconds
+      }
+      if (averageWindow.has(day)) {
+        tools[tool].dailyAverage += seconds / averageDays
+        averageTotal += seconds
+      }
     }
   }
   // A streak still counts today before anything is logged today.
   let streak = 0
   for (let offset = sum(days[dayKey(0)]) > 0 ? 0 : 1; sum(days[dayKey(offset)]) > 0; offset += 1) streak += 1
-  return {
-    week: week.reduce((total, day) => total + sum(days[day]), 0),
-    allTime,
-    streak,
-    tools,
-    recent: Array.from({ length: 14 }, (_, index) => {
-      const day = dayKey(13 - index)
-      return { day, seconds: sum(days[day]) }
-    }),
-  }
+  return { week: weekTotal, allTime, dailyAverage: averageTotal / averageDays, averageDays, streak, tools }
 }
+
+export { localDay }

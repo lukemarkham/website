@@ -22,6 +22,7 @@ import { connectMidi, isMidiSupported } from './lib/midiInput'
 import {
   PRACTICE_TOOL_LABELS,
   fetchStudentPractice,
+  localDay,
   lookUpPracticePin,
   rememberPracticePin,
   summarizePractice,
@@ -6438,11 +6439,102 @@ function PracticePin() {
   )
 }
 
-// Time with the tools: this week, the streak and all time, the last two
-// weeks day by day, and each tool's share.
+// How much a day's practice shades its calendar square: four steps of the
+// accent, near the surface for a little practice and full for an hour or
+// more.
+const PRACTICE_LEVELS = [
+  { from: 1, label: 'Under 15m' },
+  { from: 15 * 60, label: '15–30m' },
+  { from: 30 * 60, label: '30–60m' },
+  { from: 60 * 60, label: '1h+' },
+]
+const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+function practiceLevel(seconds) {
+  return PRACTICE_LEVELS.findLastIndex((level) => seconds >= level.from) + 1
+}
+
+// A month of practice, Monday first, each day shaded by how long it was.
+// Hovering or focusing a day shows its time with each tool.
+function PracticeCalendar({ days }) {
+  const today = new Date()
+  const todayKey = localDay(today)
+  const [month, setMonth] = useState({ year: today.getFullYear(), index: today.getMonth() })
+  const [hovered, setHovered] = useState(null)
+  const first = new Date(month.year, month.index, 1)
+  const daysInMonth = new Date(month.year, month.index + 1, 0).getDate()
+  const lead = (first.getDay() + 6) % 7
+  const isCurrentMonth = month.year === today.getFullYear() && month.index === today.getMonth()
+  const step = (delta) => {
+    const date = new Date(month.year, month.index + delta, 1)
+    setMonth({ year: date.getFullYear(), index: date.getMonth() })
+    setHovered(null)
+  }
+  const cells = Array.from({ length: daysInMonth }, (_, index) => {
+    const key = localDay(new Date(month.year, month.index, index + 1))
+    const byTool = days[key] ?? {}
+    const seconds = Object.values(byTool).reduce((total, value) => total + value, 0)
+    return { key, date: index + 1, byTool, seconds, isFuture: key > todayKey }
+  })
+  const shown = cells.find((cell) => cell.key === hovered)
+
+  return (
+    <div className="practice-calendar">
+      <div className="practice-calendar-header">
+        <button className="practice-calendar-step" type="button" onClick={() => step(-1)} aria-label="Previous month">‹</button>
+        <span>{first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+        <button className="practice-calendar-step" type="button" onClick={() => step(1)} disabled={isCurrentMonth} aria-label="Next month">›</button>
+      </div>
+      <div className="practice-calendar-grid" onMouseLeave={() => setHovered(null)}>
+        {WEEKDAYS.map((day, index) => <span key={index} className="practice-calendar-weekday">{day}</span>)}
+        {Array.from({ length: lead }, (_, index) => <span key={`lead-${index}`} />)}
+        {cells.map((cell) => (
+          <span
+            key={cell.key}
+            className={`practice-calendar-day is-level-${practiceLevel(cell.seconds)}${cell.key === todayKey ? ' is-today' : ''}${cell.isFuture ? ' is-future' : ''}`}
+            tabIndex={cell.isFuture ? undefined : 0}
+            aria-label={`${cell.key}: ${cell.seconds ? formatPracticeTime(cell.seconds) : 'no practice'}`}
+            onMouseEnter={() => setHovered(cell.key)}
+            onFocus={() => setHovered(cell.key)}
+            onBlur={() => setHovered(null)}
+          >
+            {cell.date}
+          </span>
+        ))}
+      </div>
+      <div className="practice-calendar-footer">
+        {shown ? (
+          <span className="practice-calendar-detail">
+            <strong>
+              {new Date(`${shown.key}T12:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}
+              {shown.seconds ? formatPracticeTime(shown.seconds) : 'No practice'}
+            </strong>
+            {Object.entries(shown.byTool)
+              .sort((a, b) => b[1] - a[1])
+              .map(([tool, seconds]) => (
+                <span key={tool}>{PRACTICE_TOOL_LABELS[tool] ?? tool} {formatPracticeTime(seconds)}</span>
+              ))}
+          </span>
+        ) : (
+          <span className="practice-calendar-legend" aria-label="Shading: less to more practice">
+            {PRACTICE_LEVELS.map((level, index) => (
+              <span key={level.label}>
+                <i className={`is-level-${index + 1}`} />
+                {level.label}
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Time with the tools: this week, the daily average, the streak and all
+// time; a calendar of the days; and each tool's share.
 function PracticeStats({ days }) {
   const summary = summarizePractice(days)
-  const busiest = Math.max(...summary.recent.map((item) => item.seconds), 1)
   const tools = Object.entries(summary.tools).sort((a, b) => b[1].allTime - a[1].allTime)
   if (summary.allTime === 0) return <p className="student-notes-status">No practice logged yet.</p>
   return (
@@ -6453,6 +6545,11 @@ function PracticeStats({ days }) {
           <strong>{formatPracticeTime(summary.week)}</strong>
         </div>
         <div>
+          <span className="stat-label">Daily average</span>
+          <strong>{formatPracticeTime(summary.dailyAverage)}</strong>
+          <small>last {summary.averageDays} {summary.averageDays === 1 ? 'day' : 'days'}</small>
+        </div>
+        <div>
           <span className="stat-label">Streak</span>
           <strong>{summary.streak} {summary.streak === 1 ? 'day' : 'days'}</strong>
         </div>
@@ -6461,31 +6558,29 @@ function PracticeStats({ days }) {
           <strong>{formatPracticeTime(summary.allTime)}</strong>
         </div>
       </div>
-      <div className="practice-stats-days" aria-label="Practice over the last 14 days">
-        {summary.recent.map((item) => (
-          <div key={item.day} className="practice-stats-day" title={`${item.day}: ${formatPracticeTime(item.seconds)}`}>
-            <span style={{ height: `${Math.max(item.seconds ? 4 : 0, (item.seconds / busiest) * 100)}%` }} />
-          </div>
-        ))}
-      </div>
-      <table className="practice-stats-tools">
-        <thead>
-          <tr>
-            <th>Tool</th>
-            <th>This week</th>
-            <th>All time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tools.map(([tool, totals]) => (
-            <tr key={tool}>
-              <td>{PRACTICE_TOOL_LABELS[tool] ?? tool}</td>
-              <td>{totals.week ? formatPracticeTime(totals.week) : '–'}</td>
-              <td>{formatPracticeTime(totals.allTime)}</td>
+      <div className="practice-stats-body">
+        <PracticeCalendar days={days} />
+        <table className="practice-stats-tools">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Daily avg</th>
+              <th>This week</th>
+              <th>All time</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {tools.map(([tool, totals]) => (
+              <tr key={tool}>
+                <td>{PRACTICE_TOOL_LABELS[tool] ?? tool}</td>
+                <td>{totals.dailyAverage ? formatPracticeTime(totals.dailyAverage) : '–'}</td>
+                <td>{totals.week ? formatPracticeTime(totals.week) : '–'}</td>
+                <td>{formatPracticeTime(totals.allTime)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -6513,9 +6608,8 @@ function PracticeStatsPage() {
   return (
     <div style={pageShellStyle}>
       <SiteNav showHomeLink />
-      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>{person ? person.name : 'Your Practice'}</h1>
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(20px, 3vw, 30px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(30px, 4vw, 42px)', marginBottom: '16px' }}>{person ? person.name : 'Your Practice'}</h1>
         <PracticePin />
         <div className="surface-card student-notes-card" style={cardStyle}>
           {!person ? <p className="student-notes-status">Enter your PIN to see your practice.</p> : null}

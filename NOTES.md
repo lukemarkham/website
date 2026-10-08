@@ -38,6 +38,11 @@ either machine. Newest first.
   transports; recent clicks/keys/MIDI notes on Tempo Guessr, Ear Trainer
   and Chord Progressions). Stats on student pages and /practice-stats.
   Luke's PIN is 4315; students will choose theirs and Luke reports them.
+- Practice stats: four tiles (this week, daily average over the last 30
+  days or since the first log, streak, all time), a month calendar shaded
+  in four accent steps (under 15m, 15–30m, 30–60m, 1h+; hover a day for its
+  tools), and a per-tool table with daily average. /practice-stats fits one
+  desktop screen without scrolling at 1280×800 and up, at Luke's request.
 - Every session timer (PracticeTimer, PracticeSession, Metronome page,
   floating metronome) opens a "Session complete" dialog at the end: +5 min,
   +10 min, or a number of your own, which restarts the session for that
