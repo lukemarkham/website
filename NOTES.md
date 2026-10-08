@@ -43,6 +43,10 @@ either machine. Newest first.
   in four accent steps (under 15m, 15–30m, 30–60m, 1h+; hover a day for its
   tools), and a per-tool table with daily average. /practice-stats fits one
   desktop screen without scrolling at 1280×800 and up, at Luke's request.
+- Command Calendar (`~/calendar`, separate repo) now ticks off Ear
+  Training, the three Drum Practice tasks and Piano Practice once 15
+  minutes with their tools is logged here (practice-sync.js there; fetched
+  from its Rust side because the endpoint isn't open cross-origin).
 - Every session timer (PracticeTimer, PracticeSession, Metronome page,
   floating metronome) opens a "Session complete" dialog at the end: +5 min,
   +10 min, or a number of your own, which restarts the session for that

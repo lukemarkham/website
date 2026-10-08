@@ -72,6 +72,9 @@ tool gets `<PracticePin />` under its title and `usePracticeLog(tool,
 isPlaying)` (or `useRecentActivity()` when it has nothing to start), with
 its id added to `PRACTICE_TOOLS` and `PRACTICE_TOOL_LABELS`
 (`netlify/lib/practiceLog.mjs`, `src/lib/practiceLog.js`).
+Luke's Command Calendar app (`~/calendar`, `practice-sync.js`) reads his
+totals by PIN to tick off practice tasks, so keep the tool ids and the
+`?pin=` response shape stable, or update it there too.
 
 ## Practice generator feedback
 
