@@ -34,6 +34,10 @@ either machine. Newest first.
   changes, chromatic approaches only from below and rarer, comping lighter
   underneath. Awaiting his next listen.
 - Sight Reading opens on feel "All".
+- Practice log: a four-digit PIN on any tool logs time per tool (running
+  transports; recent clicks/keys/MIDI notes on Tempo Guessr, Ear Trainer
+  and Chord Progressions). Stats on student pages and /practice-stats.
+  Luke's PIN is 4315; students will choose theirs and Luke reports them.
 - Every session timer (PracticeTimer, PracticeSession, Metronome page,
   floating metronome) opens a "Session complete" dialog at the end: +5 min,
   +10 min, or a number of your own, which restarts the session for that
@@ -46,6 +50,12 @@ either machine. Newest first.
   Chord Progressions), and from the home page tool cards.
 - Fixed: a lone eight-bar tune section's halfway change was planned after
   later sections, so directions could come out in the wrong order.
+
+### Open items
+
+- Add students' practice PINs as Luke reports them.
+- A proper login system (also securing student pages) once the site
+  launches more widely; PINs are deliberately low-security for now.
 
 ## 2026-10-07 — ii-Vs becomes Chord Progressions
 

@@ -4,10 +4,12 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { getLiveStatus } from './netlify/lib/twitch.mjs'
 import { handleFeedbackRequest } from './netlify/lib/practiceFeedback.mjs'
 import { handleStudentNotesRequest } from './netlify/lib/studentNotes.mjs'
+import { handlePracticeLogRequest } from './netlify/lib/practiceLog.mjs'
 
 const TWITCH_STATUS_PATH = '/.netlify/functions/twitch-status'
 const PRACTICE_FEEDBACK_PATH = '/.netlify/functions/practice-feedback'
 const STUDENT_NOTES_PATH = '/.netlify/functions/student-notes'
+const PRACTICE_LOG_PATH = '/.netlify/functions/practice-log'
 
 // `vite` alone does not run Netlify functions, so serve the Twitch endpoint
 // from the same module during local dev. Without this the card is simply never
@@ -87,6 +89,50 @@ function studentNotesDevEndpoint() {
   }
 }
 
+// Practice time logged in dev goes to a gitignored file,
+// feedback/practice-log.dev.json, through the same request handling.
+function practiceLogDevEndpoint() {
+  const file = 'feedback/practice-log.dev.json'
+  const read = async () => {
+    try {
+      return JSON.parse(await readFile(file, 'utf8'))
+    } catch {
+      return { days: {}, sessions: {} }
+    }
+  }
+  const store = {
+    async getDays(slug) {
+      return (await read()).days[slug] ?? {}
+    },
+    async addSession(slug, session) {
+      const data = await read()
+      const key = `${slug}/${session.id}`
+      if (data.sessions[key]) return
+      data.sessions[key] = session
+      const day = ((data.days[slug] ??= {})[session.day] ??= {})
+      day[session.tool] = (day[session.tool] ?? 0) + session.seconds
+      await writeFile(file, `${JSON.stringify(data, null, 2)}\n`)
+    },
+  }
+
+  return {
+    name: 'practice-log-dev-endpoint',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(PRACTICE_LOG_PATH, async (req, res) => {
+        let bodyText = ''
+        for await (const chunk of req) bodyText += chunk
+        const query = new URL(req.url, 'http://localhost').searchParams
+        const { statusCode, payload } = await handlePracticeLogRequest({ method: req.method, query, bodyText }, store)
+
+        res.statusCode = statusCode
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(payload))
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Third argument '' loads every var, not just the VITE_ prefixed ones. These
@@ -94,6 +140,6 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react(), twitchStatusDevEndpoint(env), practiceFeedbackDevEndpoint(), studentNotesDevEndpoint()],
+    plugins: [react(), twitchStatusDevEndpoint(env), practiceFeedbackDevEndpoint(), studentNotesDevEndpoint(), practiceLogDevEndpoint()],
   }
 })

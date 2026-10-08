@@ -1,3 +1,4 @@
+import { notePracticeActivity } from './practiceLog'
 // Web MIDI in, so a chord can be answered by playing it rather than spelling
 // it. No dependencies and no build step: the browser either has the API or it
 // does not, and everything here degrades to nothing when it does not.
@@ -58,6 +59,8 @@ export async function connectMidi({ onNote, onChord, onSustain, onDevices, onErr
     // Sounded before anything is worked out about it: the note under the
     // finger should not wait on the name of the chord it is part of.
     onNote?.({ note: data1, on: isNoteOn, velocity: isNoteOn ? data2 / 127 : 0 })
+    // Playing counts as using the page, for the practice log.
+    if (isNoteOn) notePracticeActivity()
 
     if (isNoteOn) {
       if (held.size === 0 && event.timeStamp - lastReleasedAt > GESTURE_GAP_MS) {

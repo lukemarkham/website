@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter, Routes, Route, Link, Navigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, Navigate, useParams, useLocation } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
@@ -19,6 +19,16 @@ import {
   shadeProgression,
 } from './lib/harmony'
 import { connectMidi, isMidiSupported } from './lib/midiInput'
+import {
+  PRACTICE_TOOL_LABELS,
+  fetchStudentPractice,
+  lookUpPracticePin,
+  rememberPracticePin,
+  summarizePractice,
+  usePracticeLog,
+  usePracticePin,
+  useRecentActivity,
+} from './lib/practiceLog'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
 import { renderChartNotation, revealChart } from './lib/chartNotation'
@@ -1127,6 +1137,8 @@ function TempoGuessrPage() {
   const [guess, setGuess] = useState('')
   const [roundActive, setRoundActive] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const isWorking = useRecentActivity()
+  usePracticeLog('tempo-guessr', isPlaying || isWorking)
   const [result, setResult] = useState(null)
   const [history, setHistory] = useState([])
   const audioContextRef = useRef(null)
@@ -1240,6 +1252,7 @@ function TempoGuessrPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
+        <PracticePin />
 
         <PracticeTimer />
 
@@ -1640,6 +1653,7 @@ function MetronomePage() {
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  usePracticeLog('metronome', isPlaying)
   const [activeTick, setActiveTick] = useState(null)
   const audioContextRef = useRef(null)
   const schedulerRef = useRef(null)
@@ -1911,6 +1925,7 @@ function MetronomePage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Metronome</h1>
+        <PracticePin />
 
         <div className="metronome-transport surface-card">
           <div className="metronome-tempo">
@@ -2313,6 +2328,7 @@ function playFillChangeChime(ctx, time) {
 // along with the click.
 function PracticeSession({
   itemName,
+  practiceTool,
   tempo,
   cycleBars = 1,
   onNewItem,
@@ -2328,6 +2344,7 @@ function PracticeSession({
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
   const [isPlaying, setIsPlaying] = useState(false)
+  usePracticeLog(practiceTool, isPlaying)
   const [activeBeat, setActiveBeat] = useState(null)
   const [banner, setBanner] = useState(null)
   const [clock, setClock] = useState({ session: null, nextFill: null })
@@ -3047,6 +3064,7 @@ function FillGeneratorPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Fill Generator</h1>
+        <PracticePin />
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3107,6 +3125,7 @@ function FillGeneratorPage() {
 
         <PracticeSession
           itemName="fill"
+          practiceTool="fill"
           tempo={fill.tempo}
           onNewItem={revealNewFill}
           manualFillCount={manualFillCount}
@@ -3397,6 +3416,7 @@ function StickingGeneratorPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sticking Generator</h1>
+        <PracticePin />
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3465,6 +3485,7 @@ function StickingGeneratorPage() {
 
         <PracticeSession
           itemName="sticking"
+          practiceTool="sticking"
           tempo={pattern.tempo}
           onNewItem={revealNew}
           manualFillCount={manualCount}
@@ -3650,6 +3671,7 @@ function IndependencePage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Independence</h1>
+        <PracticePin />
 
         <div className="sticking-toolbar independence-toolbar">
           <div className="control-card">
@@ -3681,6 +3703,7 @@ function IndependencePage() {
 
         <PracticeSession
           itemName="exercise"
+          practiceTool="independence"
           tempo={exercise.tempo}
           cycleBars={exercise.bars}
           onNewItem={() => generate()}
@@ -4146,6 +4169,7 @@ function SightReadingPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sight Reading</h1>
+        <PracticePin />
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -4214,6 +4238,7 @@ function SightReadingPage() {
 
         <PracticeSession
           itemName="phrase"
+          practiceTool="sight-reading"
           tempo={phrase.tempo}
           cycleBars={phrase.performance.length}
           onNewItem={() => generate()}
@@ -4637,6 +4662,7 @@ function ChordCard({ className, onPlay, children }) {
 }
 
 function EarTrainerPage() {
+  usePracticeLog('ear-training', useRecentActivity())
   const [levels, setLevels] = useState(EAR_TRAINER_DEFAULT_LEVELS)
   const [tempo, setTempo] = useState(78)
   const [varySounds, setVarySounds] = useState(true)
@@ -5151,6 +5177,7 @@ function EarTrainerPage() {
       <section className="surface-panel ear-panel">
         <div className="ear-topbar">
           <h1 className="ear-title">Progression Ear Trainer</h1>
+          <PracticePin />
           <div className="ear-level-chips">
             {PROGRESSION_LEVELS.map((level) => (
               <button
@@ -5605,6 +5632,7 @@ function toggledProgressionTypes(types, id) {
 // Each chord is checked as it is held (see src/lib/chordProgressions.js), and
 // once the last one lands the next question follows on its own.
 function ChordProgressionsPage() {
+  usePracticeLog('chord-progressions', useRecentActivity())
   const [modeId, setModeId] = useState('both')
   const modes = TWO_FIVE_MODE_OPTIONS.find((item) => item.id === modeId).modes
   const [types, setTypes] = useState(storedProgressionTypes)
@@ -5815,6 +5843,7 @@ function ChordProgressionsPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Keys</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Chord Progressions</h1>
+        <PracticePin />
 
         <div className="twofive-layout">
           <div className="twofive-main">
@@ -6030,6 +6059,7 @@ function FloatingMetronome() {
   const [tempoDraft, setTempoDraft] = useState(() => String(settings.tempo))
   const [expanded, setExpanded] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  usePracticeLog('metronome', isPlaying)
   const [activeBeat, setActiveBeat] = useState(null)
   const [sessionMinutes, setSessionMinutes] = useState('0')
   const [remainingSeconds, setRemainingSeconds] = useState(null)
@@ -6313,6 +6343,193 @@ function FloatingMetronome() {
   )
 }
 
+function formatPracticeTime(seconds) {
+  const minutes = Math.round(seconds / 60)
+  if (seconds > 0 && minutes === 0) return '<1m'
+  const hours = Math.floor(minutes / 60)
+  return hours ? `${hours}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`
+}
+
+// On every practice tool: enter a PIN once and this browser logs time spent
+// with each tool against it (src/lib/practiceLog.js).
+function PracticePin() {
+  const person = usePracticePin()
+  const isStatsPage = useLocation().pathname === '/practice-stats'
+  const [isEditing, setIsEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [status, setStatus] = useState(null)
+
+  async function save(event) {
+    event.preventDefault()
+    if (!/^\d{4}$/.test(draft)) {
+      setStatus('A PIN is four digits.')
+      return
+    }
+    setStatus('Checking…')
+    try {
+      const found = await lookUpPracticePin(draft)
+      if (!found) {
+        setStatus("That PIN isn't set up.")
+        return
+      }
+      rememberPracticePin({ pin: draft, name: found.name })
+      setIsEditing(false)
+      setDraft('')
+      setStatus(null)
+    } catch {
+      setStatus("Couldn't check the PIN right now.")
+    }
+  }
+
+  if (person && !isEditing) {
+    return (
+      <div className="practice-pin">
+        <span>Logging practice for {person.name.split(' ')[0]}</span>
+        {isStatsPage ? null : <Link className="text-link" to="/practice-stats">Stats</Link>}
+        <button className="practice-pin-link" type="button" onClick={() => setIsEditing(true)}>Change</button>
+      </div>
+    )
+  }
+  if (!isEditing) {
+    return (
+      <div className="practice-pin">
+        <button className="practice-pin-link" type="button" onClick={() => setIsEditing(true)}>Log my practice</button>
+      </div>
+    )
+  }
+  return (
+    <form className="practice-pin" onSubmit={save}>
+      <input
+        className="control-input practice-pin-input"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength="4"
+        placeholder="PIN"
+        aria-label="Practice PIN"
+        value={draft}
+        autoFocus
+        onChange={(event) => setDraft(event.target.value.replace(/\D/g, ''))}
+      />
+      <button className="secondary-button" type="submit">Save</button>
+      <button
+        className="practice-pin-link"
+        type="button"
+        onClick={() => {
+          setIsEditing(false)
+          setStatus(null)
+        }}
+      >
+        Cancel
+      </button>
+      {person ? (
+        <button
+          className="practice-pin-link"
+          type="button"
+          onClick={() => {
+            rememberPracticePin(null)
+            setIsEditing(false)
+          }}
+        >
+          Stop logging
+        </button>
+      ) : null}
+      {status ? <span className="practice-pin-status">{status}</span> : null}
+    </form>
+  )
+}
+
+// Time with the tools: this week, the streak and all time, the last two
+// weeks day by day, and each tool's share.
+function PracticeStats({ days }) {
+  const summary = summarizePractice(days)
+  const busiest = Math.max(...summary.recent.map((item) => item.seconds), 1)
+  const tools = Object.entries(summary.tools).sort((a, b) => b[1].allTime - a[1].allTime)
+  if (summary.allTime === 0) return <p className="student-notes-status">No practice logged yet.</p>
+  return (
+    <div className="practice-stats">
+      <div className="practice-stats-tiles">
+        <div>
+          <span className="stat-label">This week</span>
+          <strong>{formatPracticeTime(summary.week)}</strong>
+        </div>
+        <div>
+          <span className="stat-label">Streak</span>
+          <strong>{summary.streak} {summary.streak === 1 ? 'day' : 'days'}</strong>
+        </div>
+        <div>
+          <span className="stat-label">All time</span>
+          <strong>{formatPracticeTime(summary.allTime)}</strong>
+        </div>
+      </div>
+      <div className="practice-stats-days" aria-label="Practice over the last 14 days">
+        {summary.recent.map((item) => (
+          <div key={item.day} className="practice-stats-day" title={`${item.day}: ${formatPracticeTime(item.seconds)}`}>
+            <span style={{ height: `${Math.max(item.seconds ? 4 : 0, (item.seconds / busiest) * 100)}%` }} />
+          </div>
+        ))}
+      </div>
+      <table className="practice-stats-tools">
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>This week</th>
+            <th>All time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tools.map(([tool, totals]) => (
+            <tr key={tool}>
+              <td>{PRACTICE_TOOL_LABELS[tool] ?? tool}</td>
+              <td>{totals.week ? formatPracticeTime(totals.week) : '–'}</td>
+              <td>{formatPracticeTime(totals.allTime)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// The stats for whoever's PIN this browser remembers.
+function PracticeStatsPage() {
+  const person = usePracticePin()
+  const [state, setState] = useState({ status: 'loading' })
+
+  useEffect(() => {
+    if (!person) return undefined
+    let cancelled = false
+    lookUpPracticePin(person.pin)
+      .then((found) => {
+        if (!cancelled) setState(found ? { status: 'ready', days: found.days } : { status: 'unknown' })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: 'error' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [person])
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <div style={metaStyle}>Practice</div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>{person ? person.name : 'Your Practice'}</h1>
+        <PracticePin />
+        <div className="surface-card student-notes-card" style={cardStyle}>
+          {!person ? <p className="student-notes-status">Enter your PIN to see your practice.</p> : null}
+          {person && state.status === 'loading' ? <p className="student-notes-status">Loading…</p> : null}
+          {person && state.status === 'unknown' ? <p className="student-notes-status">{"That PIN isn't set up any more."}</p> : null}
+          {person && state.status === 'error' ? <p className="student-notes-status">{"Practice couldn't be loaded right now."}</p> : null}
+          {person && state.status === 'ready' ? <PracticeStats days={state.days} /> : null}
+        </div>
+      </section>
+      <FloatingMetronome />
+    </div>
+  )
+}
+
 // A student's lesson notes, from the Google Doc Luke keeps for them (see
 // netlify/lib/studentNotes.mjs). The address is the student's name, like
 // /oliver-otto. Pages are unlisted: nothing links to them and search engines
@@ -6320,6 +6537,7 @@ function FloatingMetronome() {
 function StudentPage() {
   const { slug } = useParams()
   const [state, setState] = useState({ status: 'loading' })
+  const [practiceDays, setPracticeDays] = useState(null)
 
   useEffect(() => {
     const robots = document.createElement('meta')
@@ -6351,6 +6569,18 @@ function StudentPage() {
     if (state.status === 'ready') document.title = `${state.name} · Lesson Notes · Luke Markham`
   }, [state])
 
+  useEffect(() => {
+    let cancelled = false
+    fetchStudentPractice(slug)
+      .then((days) => {
+        if (!cancelled) setPracticeDays(days)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [slug])
+
   if (state.status === 'missing') return <NotFoundPage />
 
   return (
@@ -6381,6 +6611,13 @@ function StudentPage() {
         </div>
 
         {state.status === 'ready' && state.folder ? <StudentMaterials folder={state.folder} /> : null}
+
+        {state.status === 'ready' && practiceDays ? (
+          <div className="surface-card student-notes-card" style={cardStyle}>
+            <h2 className="card-title">Practice</h2>
+            <PracticeStats days={practiceDays} />
+          </div>
+        ) : null}
       </section>
 
       <FloatingMetronome />
@@ -6455,6 +6692,7 @@ function App() {
         <Route path="/video" element={<VideoPage />} />
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
+        <Route path="/practice-stats" element={<PracticeStatsPage />} />
         <Route path="/:slug" element={<StudentPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
