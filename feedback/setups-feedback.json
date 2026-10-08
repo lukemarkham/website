@@ -258,5 +258,17 @@
     "note": "When the bass starts walking at faster tempos like this the sustain is a bit too long and the notes are slightly bleeding into one another, making it sound a bit muddy overall. Lets tighten up the sustain of the bass instrument to not overlap into the next note.",
     "tags": [],
     "review": "The upright bass added a fixed 0.3 s release after 95% of the written length, so at 190 bpm each quarter rang nearly a beat into the next. The release now fits inside the written length (release = min(0.3 s, 30% of the note), held to 97% minus that), so no bass note overlaps the next at any tempo."
+  },
+  {
+    "id": "2026-10-07T17-29-16-208Z-1qoq33",
+    "createdAt": "2026-10-07T17:29:16.209Z",
+    "tool": "setups",
+    "key": "bossa|32|2@15-5a+11-1m;2@48-3a,51-1m;1@90-2m;4@118-2t;2@156-2m;2@185-3a|27-1a,28-2m,58-2s,62-2s,72-3a,75-1m,136-2s,139-1m,160-1a,161-1m,164-2s,168-3a,171-1m|t0-8/t8-8/t16-8/s24-8@203-1m,208-2t,217-5a,229-1m,236-4a,243-1m,255-1m/r8-4x4/m0:xstick/m8:ride/m16:xstick/m24:solo",
+    "feel": "bossa",
+    "vote": "down",
+    "tempo": 127,
+    "note": "Bossa nova impies a cross stick, so this isn't a useful expression text to have in this context. What would be better would be 3-2 bossa or 2-3 bossa",
+    "tags": [],
+    "review": "Bossa now opens with \"2-3 bossa\" or \"3-2 bossa\" (picked at random) instead of \"Cross stick\", and the band's comping starts on the matching side of the clave. \"Cross stick\" stays as the return marking after a ride section."
   }
 ]

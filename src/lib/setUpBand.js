@@ -103,8 +103,9 @@ const STYLES = {
 
 // Comping rhythms for a bar, as [slot, slots]. Swing favours the & of 2 and
 // the & of 4, the way a big band pianist stays out of the way; straight 8ths
-// is busier; bossa alternates two bars of the classic pattern, and Latin two
-// bars of a syncopated montuno-style figure.
+// is busier; bossa alternates two bars of the classic pattern (its 3 side
+// first, swapped for a 2-3 clave), and Latin two bars of a syncopated
+// montuno-style figure.
 const COMP_PATTERNS = {
   swing: [[[3, 1]], [[0, 1], [3, 1]], [[2, 1], [6, 1]], [[3, 1], [7, 1]], [[5, 1]], [[1, 1], [4, 1]], [[3, 1], [6, 1]], [[0, 1], [5, 1]]],
   straight: [[[0, 2], [3, 1], [6, 2]], [[1, 1], [3, 1], [5, 1]], [[0, 1], [2, 1], [5, 3]], [[3, 1], [6, 2]]],
@@ -147,7 +148,7 @@ function nearestInRange(pc, previous, low, high) {
  *   the piece as played (performPhrase)
  */
 export function arrangeBand(phrase) {
-  const { bars, notes, fills, solos = [], writtenBars, inTwo = [] } = phrase
+  const { bars, notes, fills, solos = [], writtenBars, inTwo = [], clave = '3-2' } = phrase
   const style = STYLES[phrase.feel] ? phrase.feel : 'swing'
   const total = bars * SLOTS_PER_BAR
   const keyPc = pick(KEY_PCS)
@@ -292,7 +293,8 @@ export function arrangeBand(phrase) {
     for (let slot = start; slot < start + SLOTS_PER_BAR; slot += 1) filled ||= inFill(slot)
     if (busy || filled) continue
     const patterns = COMP_PATTERNS[style]
-    const pattern = style === 'bossa' || style === 'latin' ? patterns[bar % 2] : pick(patterns)
+    const side = style === 'bossa' && clave === '2-3' ? (bar + 1) % 2 : bar % 2
+    const pattern = style === 'bossa' || style === 'latin' ? patterns[side] : pick(patterns)
     pattern.forEach(([offset, slots]) => {
       const slot = start + offset
       events.push({ slot, slots, instrument: 'piano', chord: chordFor(slot), short: style === 'swing' || style === 'latin', level: 0.6 })

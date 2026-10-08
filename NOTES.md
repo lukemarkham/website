@@ -16,11 +16,11 @@ either machine. Newest first.
   bounding boxes (SVG text boxes of Bravura glyphs are font-line tall, so
   they can't be used for this).
 
-### Open items
-
-- Unarchived Sight Reading feedback (2026-10-07): bossa's opening "Cross
-  stick" is implied by the style; Luke suggests "2-3 bossa" / "3-2 bossa".
-  Awaiting a decision on which clave direction to print.
+- Bossa opens with "2-3 bossa" or "3-2 bossa" at random (feedback
+  2026-10-07: cross stick is implied). The piano comping starts on the
+  matching side; it was always 3-2 before. Luke may later prefer one.
+- Fixed: a lone eight-bar tune section's halfway change was planned after
+  later sections, so directions could come out in the wrong order.
 
 ## 2026-10-07 — ii-Vs becomes Chord Progressions
 

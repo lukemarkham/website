@@ -255,7 +255,8 @@ export function performanceOf(bars, repeat) {
 
 // The words a chart uses. `bass` is what a swing bass does from there: walk
 // ('four'), play in 2 ('two'), or in 2 the first time through a repeat and
-// walk the second ('twoThenFour').
+// walk the second ('twoThenFour'). `clave` is the side a bossa starts on,
+// which the band's comping follows.
 const CHART_MARKS = {
   two: { text: '2 feel', bass: 'two' },
   twowalk: { text: '2 feel, walk 2nd x', bass: 'twoThenFour' },
@@ -268,6 +269,8 @@ const CHART_MARKS = {
   cascara: { text: 'Cáscara' },
   bell: { text: 'To bell' },
   xstick: { text: 'Cross stick' },
+  bossa23: { text: '2-3 bossa', clave: '2-3' },
+  bossa32: { text: '3-2 bossa', clave: '3-2' },
   trade4: { text: 'Trade 4s', bass: 'four' },
   trade8: { text: 'Trade 8s', bass: 'four' },
   solo: { text: 'Solo around figures' },
@@ -277,7 +280,8 @@ const CHART_MARKS = {
 const GROOVE_MARKS = {
   straight: { open: ['hats'], next: { hats: 'ride', ride: 'tohats', tohats: 'ride' } },
   latin: { open: ['hats', 'cascara'], next: { hats: 'ride', cascara: 'bell', ride: 'tohats', bell: 'cascara', tohats: 'ride' } },
-  bossa: { open: ['xstick'], next: { xstick: 'ride', ride: 'xstick' } },
+  // Cross stick is implied by "bossa", so the opening names the clave.
+  bossa: { open: ['bossa23', 'bossa32'], next: { bossa23: 'ride', bossa32: 'ride', xstick: 'ride', ride: 'xstick' } },
 }
 
 // Where the directions go: the opening sound or feel at bar 1, a change at
@@ -301,7 +305,7 @@ function planMarks(segments, feel, repeat) {
     }
   }
 
-  segments.forEach((segment, index) => {
+  function visit(segment, index) {
     const previous = segments[index - 1]
     if (segment.type === 'trade') return add(segment.bar, segment.turn === 4 ? 'trade4' : 'trade8')
     if (segment.type === 'solo') return add(segment.bar, 'solo')
@@ -316,9 +320,12 @@ function planMarks(segments, feel, repeat) {
     if (repeat?.bar === 0 && repeat.times === 2 && Math.random() < 0.5) return add(0, 'twowalk')
     inTwo = true
     return add(0, 'two')
-  })
-  // A piece with one eight-bar tune section may change halfway through it.
+  }
+  visit(segments[0], 0)
+  // A piece with one eight-bar tune section may change halfway through it,
+  // before any later section changes again.
   if (segments[0].bars === 8 && segments[1]?.type !== 'tune' && Math.random() < 0.5) change(4)
+  segments.slice(1).forEach((segment, index) => visit(segment, index + 1))
   return marks.sort((a, b) => a.bar - b.bar)
 }
 
@@ -592,5 +599,6 @@ export function performPhrase(phrase) {
     timeStop: phrase.timeStop + lastOffset(Math.min(phrase.timeStop, phrase.bars * SLOTS_PER_BAR - 1)),
     writtenBars: performance.map((entry) => entry.bar),
     inTwo,
+    clave: phrase.marks.map((mark) => CHART_MARKS[mark.id].clave).find(Boolean) ?? '3-2',
   }
 }
