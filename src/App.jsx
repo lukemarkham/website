@@ -1263,8 +1263,7 @@ function TempoGuessrPage() {
       <SiteNav showHomeLink />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Tempo Guessr</h1>
-        <p style={introStyle}>Hear a random metronome tempo, then guess the BPM.</p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
 
         <PracticeTimer />
 
@@ -1860,10 +1859,7 @@ function MetronomePage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Metronome</h1>
-        <p style={introStyle}>
-          A probability-based metronome for random subdivision patterns and silent-bar practice.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Metronome</h1>
 
         <div className="metronome-transport surface-card">
           <div className="metronome-tempo">
@@ -2980,11 +2976,7 @@ function FillGeneratorPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Fill Generator</h1>
-        <p style={introStyle}>
-          Generate linear fill stickings built from rudiments, with hands and kick sharing one line and
-          the fill landing on the next downbeat.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Fill Generator</h1>
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3334,11 +3326,7 @@ function StickingGeneratorPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sticking Generator</h1>
-        <p style={introStyle}>
-          Hands-only stickings built from rudiments. A short cycle repeats through the bar, so play it on a loop
-          and move it around the kit once it sits.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sticking Generator</h1>
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3591,12 +3579,7 @@ function IndependencePage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Independence</h1>
-        <p style={introStyle}>
-          Four-limb coordination exercises: some limbs hold an ostinato while the others move against it. They
-          run from comping and groove basics to ideas drawn from Ari Hoenig, like foot ostinatos under a hand
-          phrase, groupings that cycle against the bar, and metric modulation.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Independence</h1>
 
         <div className="sticking-toolbar independence-toolbar">
           <div className="control-card">
@@ -4092,15 +4075,7 @@ function SightReadingPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Sight Reading</h1>
-        <p style={introStyle}>
-          A drum chart written the way big band charts are. Keep time through the slashes, catch the rhythm
-          cues, play a fill for the length of each bracket and land the figure with the band. Follow the
-          directions over the staff, take the repeats, and take your solo: trading 4s or 8s, or soloing
-          around the band's figures. A rhythm section plays standard-style changes in swing, straight 8ths,
-          Latin or bossa nova, and the horns play every figure, so you can hear whether you read it right.
-          During a session the chart scrolls along with the music.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sight Reading</h1>
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -5769,12 +5744,7 @@ function ChordProgressionsPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Keys</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Chord Progressions</h1>
-        <p style={introStyle}>
-          A key and a progression come up. Play each chord on your MIDI keyboard, in any voicing with
-          the third and seventh in it (a sixth will do on the tonic), and the next one follows as soon
-          as the last chord lands.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Chord Progressions</h1>
 
         <div className="twofive-layout">
           <div className="twofive-main">

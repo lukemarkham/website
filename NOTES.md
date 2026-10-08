@@ -26,6 +26,17 @@ either machine. Newest first.
   Chord tones on downbeats, scale or chromatic approaches on the &s, phrases
   with breaths, ending on a held chord tone before the drums. Only checked
   by rendering levels offline, not by ear: Luke to listen and send feedback.
+- Practice sessions (the shared `PracticeSession`) no longer cut off
+  mid-piece: when time's up the current cycle plays out ("Finishing"), and
+  no new piece starts if time would run out during its chime.
+- The trading soloist is now the sampled piano (Luke found the horn synth
+  jarring and some note choices off): more diatonic, guide tones on chord
+  changes, chromatic approaches only from below and rarer, comping lighter
+  underneath. Awaiting his next listen.
+- Sight Reading opens on feel "All".
+- Removed the description paragraph under each practice tool's title
+  (Tempo Guessr, Metronome, Fill, Sticking, Independence, Sight Reading,
+  Chord Progressions). The home page cards keep theirs.
 - Fixed: a lone eight-bar tune section's halfway change was planned after
   later sections, so directions could come out in the wrong order.
 
