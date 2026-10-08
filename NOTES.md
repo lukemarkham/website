@@ -3,7 +3,7 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
-## 2026-10-08 — Sight Reading: directions and rehearsal letters
+## 2026-10-08 — Sight Reading: engraving, bossa clave, chart reveal, trading soloist
 
 ### What changed
 
@@ -15,7 +15,6 @@ either machine. Newest first.
   clear cued figures or a fill bracket under its words, using VexFlow's note
   bounding boxes (SVG text boxes of Bravura glyphs are font-line tall, so
   they can't be used for this).
-
 - Bossa opens with "2-3 bossa" or "3-2 bossa" at random (feedback
   2026-10-07: cross stick is implied). The piano comping starts on the
   matching side; it was always 3-2 before. Luke may later prefer one.
