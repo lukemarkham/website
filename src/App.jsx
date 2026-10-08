@@ -21,7 +21,7 @@ import {
 import { connectMidi, isMidiSupported } from './lib/midiInput'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
-import { renderChartNotation } from './lib/chartNotation'
+import { renderChartNotation, revealChart } from './lib/chartNotation'
 import { SET_UP_FEELS, SET_UP_FILL_LENGTHS, SET_UP_LENGTHS, generateSetUpPhrase, performPhrase } from './lib/setUps'
 import { arrangeBand } from './lib/setUpBand'
 import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
@@ -3775,6 +3775,9 @@ function ChartNotation({ label, fallback, bars, notes, fills, solos, marks, repe
   const hostRef = useRef(null)
   const viewportRef = useRef(null)
   const layoutRef = useRef(null)
+  // When this piece's chart was first written in; a redraw just after (the
+  // phone layout settling) writes it in again, later ones don't.
+  const revealedAtRef = useRef(null)
   const [vexflow, setVexflow] = useState(null)
   const [failed, setFailed] = useState(false)
   const [isWide, setIsWide] = useState(true)
@@ -3822,6 +3825,10 @@ function ChartNotation({ label, fallback, bars, notes, fills, solos, marks, repe
       colors: { ink: token('--text'), muted: token('--text-muted'), accent: token('--accent-quiet') },
       font: style.fontFamily,
     })
+    const now = window.performance.now()
+    revealedAtRef.current ??= now
+    const isNew = now - revealedAtRef.current < 400
+    if (isNew && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) revealChart(host, layoutRef.current)
   }, [vexflow, bars, notes, fills, solos, marks, repeat, end, sections, feel, tempo, isWide])
 
   useEffect(() => {
@@ -6022,7 +6029,7 @@ function FloatingMetronome() {
   }
 
   function tapTempo() {
-    const now = performance.now()
+    const now = window.performance.now()
     const taps = tapTimesRef.current.filter((time) => now - time < 2500)
     taps.push(now)
     tapTimesRef.current = taps.slice(-6)

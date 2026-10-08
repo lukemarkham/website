@@ -3605,3 +3605,17 @@ button.ear-chord-result:focus-visible {
     bottom: 12px;
   }
 }
+
+/* A new Sight Reading chart writes itself in, a line at a time
+   (revealChart, src/lib/chartNotation.js). */
+.chart-reveal-band {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: chart-reveal 520ms cubic-bezier(0.3, 0.6, 0.35, 1) both;
+}
+
+@keyframes chart-reveal {
+  from {
+    transform: scaleX(0);
+  }
+}

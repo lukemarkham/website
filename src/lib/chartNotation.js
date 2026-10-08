@@ -497,3 +497,48 @@ export function renderChartNotation(host, VF, options) {
   svg.style.display = 'block'
   return { width, height, firstLineTop: FIRST_LINE_TOP, lineHeight: LINE_HEIGHT, barsPerLine }
 }
+
+/**
+ * Writes a freshly drawn chart onto the page: each line of music sweeps in
+ * left to right behind a soft edge, a beat behind the line above. Done with
+ * a mask over the whole SVG, removed once the last line is in.
+ * @param {HTMLElement} host   holding the SVG renderChartNotation drew
+ * @param {object} layout      what renderChartNotation returned
+ */
+export function revealChart(host, layout) {
+  const svg = host.querySelector('svg')
+  if (!svg) return
+  const NS = 'http://www.w3.org/2000/svg'
+  const make = (name, attributes) => {
+    const element = document.createElementNS(NS, name)
+    Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value))
+    return element
+  }
+  const id = `chart-reveal-${Math.random().toString(36).slice(2)}`
+  const defs = make('defs', {})
+  const edge = make('linearGradient', { id: `${id}-edge`, x1: 0, x2: 1, y1: 0, y2: 0 })
+  edge.append(make('stop', { offset: 0.94, 'stop-color': '#fff' }), make('stop', { offset: 1, 'stop-color': '#fff', 'stop-opacity': 0 }))
+  const mask = make('mask', { id, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: layout.width, height: layout.height })
+  defs.append(edge, mask)
+
+  // Each line's band runs from just under the line above, so the first
+  // band also brings in the tempo marking.
+  const lineCount = Math.ceil((layout.height - layout.firstLineTop) / layout.lineHeight)
+  const bands = []
+  for (let line = 0; line < lineCount; line += 1) {
+    const top = line === 0 ? 0 : layout.firstLineTop + line * layout.lineHeight - 40
+    const bottom = line === lineCount - 1 ? layout.height : layout.firstLineTop + (line + 1) * layout.lineHeight - 40
+    const band = make('rect', { x: 0, y: top, width: layout.width, height: bottom - top, fill: `url(#${id}-edge)`, class: 'chart-reveal-band' })
+    band.style.animationDelay = `${Math.min(line * 110, 770)}ms`
+    bands.push(band)
+  }
+  mask.append(...bands)
+
+  const group = make('g', { mask: `url(#${id})` })
+  group.append(...svg.childNodes)
+  svg.append(defs, group)
+  bands.at(-1).addEventListener('animationend', () => {
+    group.removeAttribute('mask')
+    defs.remove()
+  })
+}
