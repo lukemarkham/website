@@ -518,13 +518,17 @@ export function generateSetUpPhrase({ bars, fillBeats, feel, cues, repeats = tru
   const notes = [...setUps.flatMap((setUp) => [...setUp.fillHits, ...setUp.notes]), ...soloNotes, ...cueNotes].sort((a, b) => a.slot - b.slot)
 
   // The drummer's solo turns: a whole solo, or every other turn of a trade.
+  // The band's turns of a trade go to a horn soloist.
   const solos = []
+  const trades = []
   segments.forEach((segment) => {
     const start = segment.bar * SLOTS_PER_BAR
     if (segment.type === 'solo') solos.push({ start, end: start + segment.bars * SLOTS_PER_BAR })
     if (segment.type !== 'trade') return
-    for (let turn = segment.turn; turn < segment.bars; turn += segment.turn * 2) {
-      solos.push({ start: start + turn * SLOTS_PER_BAR, end: start + (turn + segment.turn) * SLOTS_PER_BAR })
+    for (let turn = 0; turn < segment.bars; turn += segment.turn) {
+      const range = { start: start + turn * SLOTS_PER_BAR, end: start + (turn + segment.turn) * SLOTS_PER_BAR }
+      if ((turn / segment.turn) % 2 === 1) solos.push(range)
+      else trades.push(range)
     }
   })
 
@@ -550,6 +554,7 @@ export function generateSetUpPhrase({ bars, fillBeats, feel, cues, repeats = tru
     notes,
     fills: setUps.map((setUp) => setUp.fill),
     solos,
+    trades,
     repeat,
     performance: performanceOf(bars, repeat),
     marks: marks.map((mark) => ({ bar: mark.bar, id: mark.id, text: CHART_MARKS[mark.id].text })),
@@ -596,6 +601,7 @@ export function performPhrase(phrase) {
     notes: notes.sort((a, b) => a.slot - b.slot),
     fills: ranges(phrase.fills).sort((a, b) => a.start - b.start),
     solos: ranges(phrase.solos).sort((a, b) => a.start - b.start),
+    trades: ranges(phrase.trades ?? []).sort((a, b) => a.start - b.start),
     timeStop: phrase.timeStop + lastOffset(Math.min(phrase.timeStop, phrase.bars * SLOTS_PER_BAR - 1)),
     writtenBars: performance.map((entry) => entry.bar),
     inTwo,

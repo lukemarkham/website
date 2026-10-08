@@ -19,6 +19,14 @@ either machine. Newest first.
 - Bossa opens with "2-3 bossa" or "3-2 bossa" at random (feedback
   2026-10-07: cross stick is implied). The piano comping starts on the
   matching side; it was always 3-2 before. Luke may later prefer one.
+- New charts write themselves in: each line sweeps in left to right,
+  staggered (`revealChart`, a mask removed when done; skipped with reduced
+  motion).
+- Trading now has a soloist on the band's turns, trumpet or tenor at random
+  per piece (`soloLine` in `setUpBand.js`, `playLeadNote` in `App.jsx`).
+  Chord tones on downbeats, scale or chromatic approaches on the &s, phrases
+  with breaths, ending on a held chord tone before the drums. Only checked
+  by rendering levels offline, not by ear: Luke to listen and send feedback.
 - Fixed: a lone eight-bar tune section's halfway change was planned after
   later sections, so directions could come out in the wrong order.
 

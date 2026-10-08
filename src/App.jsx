@@ -3728,6 +3728,75 @@ function playHornHit(ctx, out, time, { midi, long, seconds, level = 1 }) {
   })
 }
 
+// The trading soloist, one note at a time. Trumpet is a bright, buzzy
+// sawtooth that opens up on the attack; tenor a darker sawtooth and square
+// mix with a breathy edge. Notes longer than a beat get a delayed vibrato.
+const LEAD_VOICES = {
+  trumpet: { waves: [['sawtooth', 1]], open: 3800, body: 2400, breath: 0.012, level: 0.11 },
+  tenor: { waves: [['sawtooth', 0.8], ['square', 0.35]], open: 2200, body: 1300, breath: 0.03, level: 0.08 },
+}
+
+function playLeadNote(ctx, out, time, { voice, midi, seconds, accent }) {
+  const sound = LEAD_VOICES[voice]
+  const holdUntil = time + Math.max(0.06, seconds * 0.92)
+  const endsAt = holdUntil + 0.06
+  const peak = sound.level * (accent ? 1.15 : 0.9)
+  const output = ctx.createGain()
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.Q.value = 2
+  filter.frequency.setValueAtTime(700, time)
+  filter.frequency.exponentialRampToValueAtTime(sound.open, time + 0.03)
+  filter.frequency.exponentialRampToValueAtTime(sound.body, time + 0.15)
+  output.gain.setValueAtTime(0.0001, time)
+  output.gain.exponentialRampToValueAtTime(peak, time + 0.018)
+  output.gain.exponentialRampToValueAtTime(peak * 0.8, time + 0.12)
+  output.gain.setValueAtTime(peak * 0.8, holdUntil)
+  output.gain.exponentialRampToValueAtTime(0.0001, endsAt)
+  filter.connect(output)
+  output.connect(out)
+
+  const vibrato = ctx.createOscillator()
+  const depth = ctx.createGain()
+  vibrato.frequency.value = 5.5
+  depth.gain.setValueAtTime(0, time)
+  if (seconds > 0.4) {
+    depth.gain.setValueAtTime(0, time + 0.25)
+    depth.gain.linearRampToValueAtTime(18, time + Math.min(seconds, 0.7))
+  }
+  vibrato.connect(depth)
+  vibrato.start(time)
+  vibrato.stop(endsAt + 0.02)
+  sound.waves.forEach(([type, level]) => {
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.type = type
+    oscillator.frequency.value = midiToFreq(midi)
+    depth.connect(oscillator.detune)
+    gain.gain.value = level
+    oscillator.connect(gain)
+    gain.connect(filter)
+    oscillator.start(time)
+    oscillator.stop(endsAt + 0.02)
+  })
+
+  // Breath at the front of the note.
+  const noise = ctx.createBufferSource()
+  const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.06), ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let index = 0; index < data.length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / data.length)
+  noise.buffer = buffer
+  const air = ctx.createBiquadFilter()
+  air.type = 'bandpass'
+  air.frequency.value = 2500
+  const airGain = ctx.createGain()
+  airGain.gain.value = sound.breath
+  noise.connect(air)
+  air.connect(airGain)
+  airGain.connect(out)
+  noise.start(time)
+}
+
 const SET_UP_BAND_OPTIONS = [
   { id: 'full', label: 'Full band' },
   { id: 'horns', label: 'Horns only' },
@@ -3997,6 +4066,9 @@ function SightReadingPage() {
       const written = (event.slots / 2) * beatSeconds
       if (event.instrument === 'horns') {
         playHornHit(ctx, out, at, { midi: event.midi, long: !event.short, seconds: written, level: event.level })
+      } else if (event.instrument === 'lead') {
+        // Swung 8ths lean on the &.
+        playLeadNote(ctx, out, at, { voice: phrase.band.soloist, midi: event.midi[0], seconds: written, accent: event.slot % 2 === 1 })
       } else if (event.instrument === 'bass') {
         // Held for the full written length, then a short tail that just
         // overlaps the next note, the way a bassist's notes run into each
