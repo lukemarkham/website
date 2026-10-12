@@ -21,6 +21,9 @@ either machine. Newest first.
   `tools/install-app.sh` to reach the installed app.
 - Sight Reading feedback 2026-10-12: bossa no longer changes to "Cross
   stick"; later sections go "To ride" / "To hi-hats".
+- Redesign mockups from the Taste folder live on the `style-mockups`
+  branch only (not main): `/style-lab?v=lab|signal|liner|stage`, all in
+  `src/StyleLab.jsx` + `src/styleLab.css`. Luke is choosing a direction.
 
 ### Open items
 
