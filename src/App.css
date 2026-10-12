@@ -3630,6 +3630,23 @@ button.ear-chord-result:focus-visible {
   font-size: clamp(26px, 5vw, 34px);
 }
 
+.session-complete-category {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px 0 22px;
+}
+
+.session-complete-category button {
+  width: auto;
+}
+
+.session-complete-category button[aria-checked='true'] {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+  background: rgba(212, 199, 161, 0.14);
+}
+
 .session-complete-options,
 .session-complete-custom {
   display: flex;

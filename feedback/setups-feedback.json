@@ -282,5 +282,17 @@
     "note": "Where the feel change going ti \"in 4\" here happens in unintuitive. Normally a 2 feel (or feel change of any kind for that matter, will last for 8 measures or a \"section\" of a song)",
     "tags": [],
     "review": "Removed the halfway feel/sound change in a lone eight-bar tune section: a direction now only changes at the start of a section and lasts the whole of it."
+  },
+  {
+    "id": "2026-10-12T18-38-36-359Z-uzop78",
+    "createdAt": "2026-10-12T18:38:36.373Z",
+    "tool": "setups",
+    "key": "bossa|32|2@15-5a;1@47-1m,49-1m;2@94-1a,95-1m;2@103-1a,104-2m;4@157-1m;2@170-1a,171-1m|59-1m,73-1m,77-1m,82-1s,83-1m,112-2m,117-1m,178-1s,179-1m|t0-8/t8-8/t16-8/s24-8@207-5a,230-3a,233-1m,239-1m,243-1m,249-1m,251-1m/r4-4x2/m0:bossa23/m8:ride/m16:xstick/m24:solo",
+    "feel": "bossa",
+    "vote": "down",
+    "tempo": 110,
+    "note": "Rehearsal mark c still says \"Cross Stick\" which is, again, redundant in Bossa and Latin music. It probably means to say \"Hi-Hats\" there I would imagine.",
+    "tags": [],
+    "review": "Bossa no longer changes to \"Cross stick\" (implied by bossa): after \"To ride\", a later section goes \"To hi-hats\", and back. The xstick direction is gone."
   }
 ]

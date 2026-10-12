@@ -3,6 +3,30 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-12 — Metronome sessions count as drums or keys
+
+### What changed
+
+- A timed metronome session (Metronome page or floating metronome) ends
+  with "Count it as: Drums / Keys / Neither" in the Session complete
+  dialog. The session's time waits unsent in the practice-log queue
+  (`hold` on `usePracticeLog`, `releaseHeldPractice`) until Done, then
+  logs as `metronome-drums`, `metronome-keys` or `metronome`. +5/+10 min
+  keeps holding; a page closed before answering sends it as `metronome`
+  on next load. Untimed metronome use logs as `metronome` as before.
+- Command Calendar (`~/calendar/practice-sync.js`): `metronome-keys`
+  counts toward Piano Practice; a day with 60+ minutes across the drum
+  tools (independence, sticking, fill, sight-reading, metronome-drums)
+  completes every "Drum Practice…" task that day. Needs
+  `tools/install-app.sh` to reach the installed app.
+- Sight Reading feedback 2026-10-12: bossa no longer changes to "Cross
+  stick"; later sections go "To ride" / "To hi-hats".
+
+### Open items
+
+- Metronome time counted as drums only feeds the 60-minute rule; it
+  doesn't tick a specific drum task on its own. Revisit if Luke wants it to.
+
 ## 2026-10-08 — Sight Reading: engraving, bossa clave, chart reveal, trading soloist
 
 ### What changed

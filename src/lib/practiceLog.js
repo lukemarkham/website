@@ -9,7 +9,7 @@
 // confirms it, so nothing is lost offline; a closing page also sends the
 // queue by beacon, and the server counts a resent session once.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 const PIN_KEY = 'practice-pin'
 const OUTBOX_KEY = 'practice-log-outbox'
@@ -29,7 +29,17 @@ export const PRACTICE_TOOL_LABELS = {
   'sight-reading': 'Sight Reading',
   'ear-training': 'Ear Trainer',
   'chord-progressions': 'Chord Progressions',
+  'metronome-drums': 'Metronome (drums)',
+  'metronome-keys': 'Metronome (keys)',
 }
+
+// A timed metronome session ends by asking what it was for, so its time
+// can count as drum or keyboard practice instead.
+export const METRONOME_CATEGORIES = [
+  { tool: 'metronome-drums', label: 'Drums' },
+  { tool: 'metronome-keys', label: 'Keys' },
+  { tool: 'metronome', label: 'Neither' },
+]
 
 function readJson(key, fallback) {
   try {
@@ -90,19 +100,37 @@ function localDay(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-function queueSession(tool, startedAt, seconds) {
+// A held session waits in the queue, unsent, until releaseHeldPractice
+// says which tool it counts for.
+function queueSession(tool, startedAt, seconds, held) {
   const person = readPracticePin()
   if (!person || seconds < MIN_SECONDS) return
   const id = `${startedAt.getTime().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
   const session = { id, tool, day: localDay(startedAt), seconds: Math.min(Math.round(seconds), 6 * 60 * 60) }
-  writeJson(OUTBOX_KEY, [...readJson(OUTBOX_KEY, []), { pin: person.pin, session }])
+  writeJson(OUTBOX_KEY, [...readJson(OUTBOX_KEY, []), { pin: person.pin, session, ...(held && { held: true }) }])
 }
+
+// Sends the held sessions of `tool` as `asTool`.
+export function releaseHeldPractice(tool, asTool = tool) {
+  writeJson(OUTBOX_KEY, readJson(OUTBOX_KEY, []).map((item) => (
+    item.held && item.session.tool === tool ? { pin: item.pin, session: { ...item.session, tool: asTool } } : item
+  )))
+  flushPracticeLog()
+}
+
+// Held over from a page that closed before its question was answered: they
+// count as they were.
+function releaseAllHeldPractice() {
+  writeJson(OUTBOX_KEY, readJson(OUTBOX_KEY, []).map(({ pin, session }) => ({ pin, session })))
+}
+
+const sendable = () => readJson(OUTBOX_KEY, []).filter((item) => !item.held)
 
 let flushing = false
 
 export async function flushPracticeLog() {
   if (flushing) return
-  const queued = readJson(OUTBOX_KEY, [])
+  const queued = sendable()
   if (queued.length === 0) return
   flushing = true
   try {
@@ -124,21 +152,32 @@ export async function flushPracticeLog() {
 }
 
 function beaconPracticeLog() {
-  const queued = readJson(OUTBOX_KEY, [])
+  const queued = sendable()
   for (const pin of new Set(queued.map((item) => item.pin))) {
     const sessions = queued.filter((item) => item.pin === pin).map((item) => item.session).slice(0, 50)
     navigator.sendBeacon?.(ENDPOINT, new Blob([JSON.stringify({ pin, sessions })], { type: 'application/json' }))
   }
 }
 
+let releasedOnLoad = false
+
 /**
  * Logs `tool` as practised for as long as `isActive` is true and the page
- * is showing.
+ * is showing. With `hold`, time is kept back for releaseHeldPractice.
  */
-export function usePracticeLog(tool, isActive) {
+export function usePracticeLog(tool, isActive, { hold = false } = {}) {
   const startedRef = useRef(null)
+  const holdRef = useRef(hold)
+
+  useLayoutEffect(() => {
+    holdRef.current = hold
+  }, [hold])
 
   useEffect(() => {
+    if (!releasedOnLoad) {
+      releasedOnLoad = true
+      releaseAllHeldPractice()
+    }
     flushPracticeLog()
   }, [])
 
@@ -150,7 +189,7 @@ export function usePracticeLog(tool, isActive) {
       const started = startedRef.current
       if (!started) return
       startedRef.current = null
-      queueSession(tool, started, (Date.now() - started.getTime()) / 1000)
+      queueSession(tool, started, (Date.now() - started.getTime()) / 1000, holdRef.current)
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {

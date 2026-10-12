@@ -270,7 +270,6 @@ const CHART_MARKS = {
   tohats: { text: 'To hi-hats' },
   cascara: { text: 'Cáscara' },
   bell: { text: 'To bell' },
-  xstick: { text: 'Cross stick' },
   bossa23: { text: '2-3 bossa', clave: '2-3' },
   bossa32: { text: '3-2 bossa', clave: '3-2' },
   trade4: { text: 'Trade 4s', bass: 'four' },
@@ -282,8 +281,10 @@ const CHART_MARKS = {
 const GROOVE_MARKS = {
   straight: { open: ['hats'], next: { hats: 'ride', ride: 'tohats', tohats: 'ride' } },
   latin: { open: ['hats', 'cascara'], next: { hats: 'ride', cascara: 'bell', ride: 'tohats', bell: 'cascara', tohats: 'ride' } },
-  // Cross stick is implied by "bossa", so the opening names the clave.
-  bossa: { open: ['bossa23', 'bossa32'], next: { bossa23: 'ride', bossa32: 'ride', xstick: 'ride', ride: 'xstick' } },
+  // Cross stick is implied by "bossa", so the opening names the clave, and
+  // a later section moves the hand between ride and hi-hats, never back to
+  // "Cross stick".
+  bossa: { open: ['bossa23', 'bossa32'], next: { bossa23: 'ride', bossa32: 'ride', ride: 'tohats', tohats: 'ride' } },
 }
 
 // Where the directions go: the opening sound or feel at bar 1, a change at

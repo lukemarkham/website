@@ -20,10 +20,12 @@ import {
 } from './lib/harmony'
 import { connectMidi, isMidiSupported } from './lib/midiInput'
 import {
+  METRONOME_CATEGORIES,
   PRACTICE_TOOL_LABELS,
   fetchStudentPractice,
   localDay,
   lookUpPracticePin,
+  releaseHeldPractice,
   rememberPracticePin,
   summarizePractice,
   usePracticeLog,
@@ -1433,8 +1435,9 @@ function formatSessionTime(totalSeconds) {
 // generator run theirs off their Start button instead. It keeps time against
 // the wall clock, so a throttled background tab still ends on time.
 // Shown by every session timer when it runs out: the session is done, or
-// carry on for 5 or 10 more minutes, or a number of your own.
-function SessionCompleteDialog({ open, onAddMinutes, onClose }) {
+// carry on for 5 or 10 more minutes, or a number of your own. With
+// `categories`, it also asks what the session counts as.
+function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, category, onCategoryChange }) {
   const dialogRef = useRef(null)
   const [customMinutes, setCustomMinutes] = useState('')
 
@@ -1468,6 +1471,25 @@ function SessionCompleteDialog({ open, onAddMinutes, onClose }) {
         }}
       >
         <h2 className="session-complete-title">Session complete</h2>
+        {categories && (
+          <>
+            <span className="control-label">Count it as</span>
+            <div className="session-complete-category" role="radiogroup" aria-label="Count it as">
+              {categories.map((option) => (
+                <button
+                  key={option.tool}
+                  className="secondary-button"
+                  type="button"
+                  role="radio"
+                  aria-checked={option.tool === category}
+                  onClick={() => onCategoryChange(option.tool)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <span className="control-label">Keep going?</span>
         <div className="session-complete-options">
           <button className="secondary-button" type="button" onClick={() => add(5)}>+5 min</button>
@@ -1654,7 +1676,9 @@ function MetronomePage() {
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  usePracticeLog('metronome', isPlaying)
+  const [category, setCategory] = useState('metronome')
+  const holdsPractice = isPlaying ? remainingSessionSeconds !== null : isCompleteOpen
+  usePracticeLog('metronome', isPlaying, { hold: holdsPractice })
   const [activeTick, setActiveTick] = useState(null)
   const audioContextRef = useRef(null)
   const schedulerRef = useRef(null)
@@ -2107,11 +2131,17 @@ function MetronomePage() {
       </section>
       <SessionCompleteDialog
         open={isCompleteOpen}
-        onClose={() => setIsCompleteOpen(false)}
+        onClose={() => {
+          setIsCompleteOpen(false)
+          releaseHeldPractice('metronome', category)
+        }}
         onAddMinutes={(minutes) => {
           setIsCompleteOpen(false)
           startMetronome(minutes)
         }}
+        categories={METRONOME_CATEGORIES}
+        category={category}
+        onCategoryChange={setCategory}
       />
     </div>
   )
@@ -6060,11 +6090,13 @@ function FloatingMetronome() {
   const [tempoDraft, setTempoDraft] = useState(() => String(settings.tempo))
   const [expanded, setExpanded] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  usePracticeLog('metronome', isPlaying)
   const [activeBeat, setActiveBeat] = useState(null)
   const [sessionMinutes, setSessionMinutes] = useState('0')
   const [remainingSeconds, setRemainingSeconds] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
+  const [category, setCategory] = useState('metronome')
+  const holdsPractice = isPlaying ? remainingSeconds !== null : isCompleteOpen
+  usePracticeLog('metronome', isPlaying, { hold: holdsPractice })
   const audioContextRef = useRef(null)
   const schedulerRef = useRef(null)
   const sessionIntervalRef = useRef(null)
@@ -6333,12 +6365,18 @@ function FloatingMetronome() {
       </div>
       <SessionCompleteDialog
         open={isCompleteOpen}
-        onClose={() => setIsCompleteOpen(false)}
+        onClose={() => {
+          setIsCompleteOpen(false)
+          releaseHeldPractice('metronome', category)
+        }}
         onAddMinutes={(minutes) => {
           setIsCompleteOpen(false)
           startSessionTimer(minutes)
           start()
         }}
+        categories={METRONOME_CATEGORIES}
+        category={category}
+        onCategoryChange={setCategory}
       />
     </div>
   )
