@@ -1,10 +1,12 @@
 import './App.css'
 import { BrowserRouter, Routes, Route, Link, Navigate, useParams, useLocation } from 'react-router-dom'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
 import { PROGRESSION_LEVELS, progressions } from './data/progressions'
 import { arrangementToMidi, midiFilename } from './lib/midi'
+
+const StyleLab = lazy(() => import('./StyleLab'))
 import {
   POINTS_PER_CHORD,
   KEYS,
@@ -6825,6 +6827,7 @@ function App() {
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
         <Route path="/practice-stats" element={<PracticeStatsPage />} />
+        <Route path="/style-lab" element={<Suspense fallback={null}><StyleLab /></Suspense>} />
         <Route path="/:slug" element={<StudentPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
