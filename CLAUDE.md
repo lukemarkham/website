@@ -96,10 +96,10 @@ their success is self-reported.
 ## Practice generator feedback
 
 Luke votes mid-practice on what the Fill Generator, Sticking Generator,
-Independence tool and Sight Reading (formerly Set Ups; tool id still `setups`) produce, and downvotes carry notes meant for you. After the
+Independence tool, Sight Reading (formerly Set Ups; tool id still `setups`) and the Ear Trainer (`ear-training`) produce, and downvotes carry notes meant for you. After the
 start-of-session pull, fetch each tool's entries:
 
-    for tool in fill sticking independence setups; do
+    for tool in fill sticking independence setups ear-training; do
       curl -s "https://lukemarkham.netlify.app/.netlify/functions/practice-feedback?tool=$tool"
     done
 
@@ -116,6 +116,10 @@ the generator changes they point to, then append them to the archive with a
 trading, `s<bar>-<bars>@<notes>` a solo around figures, `r<bar>-<bars>x<times>`
 the repeat and `m<bar>:<id>` a direction over the staff, bars counted from 0
 (`generateSetUpPhrase`, `src/lib/setUps.js`). Keys from before 2026-10-05
-have no form part. Votes cast against the local dev server land in
+have no form part. Ear Trainer keys spell out the question as heard:
+`progression|key pc|chords|blanks|instrument/bass/pattern`, each chord
+`numeral.root.quality[.secondary]` after shading (`questionKey` in
+`App.jsx`); `answers` holds what was typed for each blank and its grade,
+and is absent when the answer was revealed. Votes cast against the local dev server land in
 the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
 machine that ran it.

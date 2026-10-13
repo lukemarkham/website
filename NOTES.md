@@ -35,6 +35,15 @@ either machine. Newest first.
 - Chord Progressions weighting was not tried with a real MIDI keyboard
   (only the Ear Trainer was driven in a browser): Luke to try it.
 
+### Ear Trainer: sus grading, feedback votes
+
+- A dominant answer to a sus chord (G7 or V7 for G13sus) is now correct,
+  2 points: same function, missed colour. Not the reverse: calling a
+  dominant sus stays 1 point, since its third is audible.
+- Thumbs up/down beside the progression name once the answer is up, with
+  the shared feedback dialog. Tool id `ear-training`; archive
+  `feedback/ear-training-feedback.json`.
+
 ## 2026-10-12 — Metronome sessions count as drums or keys
 
 ### What changed

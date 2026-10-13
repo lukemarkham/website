@@ -1,5 +1,6 @@
 // Votes and notes on what the practice generators produce, sent from their
-// pages: the Fill Generator, the Sticking Generator, Independence and Set Ups. Each
+// pages: the Fill Generator, the Sticking Generator, Independence, Set Ups and the
+// Ear Trainer. Each
 // tool's entries are kept apart, picked by the `tool` query parameter.
 //
 // Production keeps them in Netlify Blobs (netlify/functions/practice-feedback.mjs);
@@ -9,7 +10,7 @@
 // This endpoint is unauthenticated. That is fine while the site is private,
 // but it needs a key before the site is shared.
 
-export const FEEDBACK_TOOLS = ['fill', 'sticking', 'independence', 'setups']
+export const FEEDBACK_TOOLS = ['fill', 'sticking', 'independence', 'setups', 'ear-training']
 
 const MAX_NOTE_LENGTH = 2000
 const MAX_TAGS = 10
@@ -76,6 +77,24 @@ const SANITIZERS = {
     if (typeof key !== 'string' || !/^(swing|straight|latin|bossa)\|(8|16|32)\|[0-9a-z@;,|+:/-]{4,2400}$/.test(key)) return null
     if (!['swing', 'straight', 'latin', 'bossa'].includes(feel)) return null
     return { key, feel }
+  },
+
+  // The key spells out the question as it sounded (see questionKey in
+  // App.jsx): progression|key pc|chords as numeral.root.quality[.secondary]
+  // after shading|blanks|instrument/bass/pattern. `answers` is what was typed
+  // for each blank and how it was graded, absent when the answer was revealed.
+  'ear-training'(body) {
+    const { key, answers } = body
+    if (typeof key !== 'string' || !/^[a-z0-9-]{2,60}\|\d{1,2}\|[A-Za-z0-9♭♯#ø.,]{4,400}\|[\d,]{1,40}\|[\w-]{1,30}\/[\w-]{1,30}\/[\w-]{1,30}$/u.test(key)) return null
+    if (answers === undefined) return { key }
+    if (!Array.isArray(answers) || answers.length > 16) return null
+    const valid = answers.every((answer) => answer && typeof answer === 'object'
+      && isWholeNumberInRange(answer.index, 0, 15)
+      && (answer.typed === null || (typeof answer.typed === 'string' && answer.typed.length <= 40))
+      && typeof answer.status === 'string' && /^[a-zA-Z]{1,20}$/.test(answer.status)
+      && isWholeNumberInRange(answer.points, 0, 3))
+    if (!valid) return null
+    return { key, answers: answers.map(({ index, typed, status, points }) => ({ index, typed, status, points })) }
   },
 }
 

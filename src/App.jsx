@@ -2223,6 +2223,18 @@ const SET_UP_FEEDBACK_TAGS = [
   'Too hard',
 ]
 
+const EAR_TRAINER_FEEDBACK_TAGS = [
+  'Graded wrong',
+  "Chord doesn't sound like its name",
+  'Voicing unclear',
+  'Bass line off',
+  'Instrument sounds bad',
+  'Chords buried in the mix',
+  'Too fast',
+  'Too easy',
+  'Too hard',
+]
+
 const INDEPENDENCE_FEEDBACK_TAGS = [
   'Too easy',
   'Too hard',
@@ -4665,6 +4677,21 @@ function driftTempo(tempo) {
   return Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
 }
 
+// The question as it sounded, for feedback: enough to rebuild it when the
+// feedback is reviewed (format in netlify/lib/practiceFeedback.mjs).
+function questionKey(question) {
+  const chords = question.chords
+    .map((chord) => [chord.numeral, chord.root, chord.quality, chord.secondary].filter((part) => part !== undefined).join('.'))
+    .join(',')
+  return [
+    question.progression.id,
+    question.key.pc,
+    chords,
+    question.blanks.join(','),
+    `${question.instrumentId}/${question.bassId}/${question.pattern}`,
+  ].join('|')
+}
+
 function formatAnswerSeconds(seconds) {
   return seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
 }
@@ -4740,6 +4767,9 @@ function EarTrainerPage() {
   // What this person misses comes up more, what they name quickly less.
   const answerStats = useAnswerStats('ear-training')
   const answerTimer = useAnswerTimer()
+  // Votes on the question once its answer is up, like the drum generators'.
+  const [upvoted, setUpvoted] = useState(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
   // What is under the fingers now, what the notes played add up to, and which
   // chord on the chart they were played at — the readings on offer belong to
@@ -5205,6 +5235,26 @@ function EarTrainerPage() {
     else setSelected(next)
   }
 
+  function describeQuestion() {
+    return {
+      key: questionKey(question),
+      tempo: question.tempo,
+      ...(results && {
+        answers: results.map((item) => ({ index: item.index, typed: item.typed ?? null, status: item.status, points: item.points })),
+      }),
+    }
+  }
+
+  function upvote() {
+    sendFeedback('ear-training', { vote: 'up', ...describeQuestion() })
+    setUpvoted(question)
+  }
+
+  function submitDownvote({ tags, note }) {
+    sendFeedback('ear-training', { vote: 'down', ...describeQuestion(), tags, note })
+    setIsFeedbackOpen(false)
+  }
+
   function toggleLevel(levelId) {
     setLevels((previous) => {
       const next = { ...previous, [levelId]: !previous[levelId] }
@@ -5254,6 +5304,16 @@ function EarTrainerPage() {
     >
       <SiteNav showHomeLink />
       <ConfettiBurst trigger={celebration} />
+      {question ? (
+        <GeneratorFeedbackDialog
+          open={isFeedbackOpen}
+          summary={`${question.progression.name} in ${question.key.label}: ${question.chords.map((chord) => `${romanLabel(chord)} (${chordSymbol(chord, question.key)})`).join(' – ')}`}
+          tags={EAR_TRAINER_FEEDBACK_TAGS}
+          submitLabel="Log Feedback"
+          onSubmit={submitDownvote}
+          onCancel={() => setIsFeedbackOpen(false)}
+        />
+      ) : null}
 
       <section className="surface-panel ear-panel">
         <div className="ear-topbar">
@@ -5508,6 +5568,27 @@ function EarTrainerPage() {
                         <strong>{question.progression.name}</strong>
                         {question.progression.note ? ` — ${question.progression.note}` : ''}
                         {answerSeconds !== null ? ` Answered in ${formatAnswerSeconds(answerSeconds)}.` : ''}
+                        <span className="ear-votes">
+                          <button
+                            className={`sticking-vote${upvoted === question ? ' is-active' : ''}`}
+                            type="button"
+                            disabled={upvoted === question}
+                            onClick={upvote}
+                            aria-label={upvoted === question ? 'Liked' : 'Thumbs up'}
+                            title={upvoted === question ? 'Liked' : 'Thumbs up'}
+                          >
+                            <ThumbIcon />
+                          </button>
+                          <button
+                            className="sticking-vote"
+                            type="button"
+                            onClick={() => setIsFeedbackOpen(true)}
+                            aria-label="Thumbs down"
+                            title="Thumbs down"
+                          >
+                            <ThumbIcon down />
+                          </button>
+                        </span>
                       </>
                     ) : (
                       manyBlanks

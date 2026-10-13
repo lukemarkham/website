@@ -718,6 +718,13 @@ export function gradeAnswer(text, chords, key) {
     if (token.family === null) {
       return { ...expected, typed: token.token, status: 'rootOnly', points: 1 }
     }
+    // A sus chord is still a dominant in function, so naming it as one gets
+    // the function right and only misses the colour. Not the other way
+    // round: a dominant's third is there to be heard, and calling it sus
+    // means not hearing it.
+    if (expected.family === 'sus' && token.family === 'dominant') {
+      return { ...expected, typed: token.token, status: 'correct', points: 2, exact: false }
+    }
     if (token.family !== expected.family) {
       return { ...expected, typed: token.token, status: 'quality', points: 1 }
     }

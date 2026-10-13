@@ -3280,6 +3280,13 @@ button.ear-chord-result:focus-visible {
   white-space: nowrap;
 }
 
+.ear-votes {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 12px;
+  vertical-align: middle;
+}
+
 .ear-history-time {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
