@@ -10,6 +10,7 @@
 // tension, natural or altered.
 
 import { KEYS, chordSymbol, keyForMode } from './harmony.js'
+import { pickWeighted } from './answerWeights.js'
 
 // Semitones above the root. `oneOf` is the seventh-or-sixth: at least one of
 // them has to be there. `quality` is what the answer shows once played.
@@ -130,17 +131,21 @@ export function questionFor(progression, keyPc) {
 }
 
 // A new key and progression, never the pair just asked. Each type in play is
-// as likely as the next, however many progressions it holds. Null when the
-// filters leave nothing to ask.
-export function randomQuestion(types, modes, previous) {
+// as likely as the next, however many progressions it holds, until
+// `weights` leans on them: `weights.progression(progression)` and
+// `weights.key(pc)` scale how often each comes up (1 is as usual). Null when
+// the filters leave nothing to ask.
+export function randomQuestion(types, modes, previous, weights = {}) {
   const pool = progressionsFor(types, modes)
   if (pool.length === 0) return null
-  const inPlay = [...new Set(pool.map((item) => item.type))]
+  const typeSizes = new Map()
+  pool.forEach((item) => typeSizes.set(item.type, (typeSizes.get(item.type) ?? 0) + 1))
+  const progressionWeight = weights.progression ?? (() => 1)
+  const keyWeight = weights.key ?? (() => 1)
+  const pcs = Array.from({ length: 12 }, (_, pc) => pc)
   for (;;) {
-    const type = inPlay[Math.floor(Math.random() * inPlay.length)]
-    const ofType = pool.filter((item) => item.type === type)
-    const progression = ofType[Math.floor(Math.random() * ofType.length)]
-    const keyPc = Math.floor(Math.random() * 12)
+    const progression = pickWeighted(pool, (item) => progressionWeight(item) / typeSizes.get(item.type))
+    const keyPc = pickWeighted(pcs, keyWeight)
     if (previous && previous.key.pc === keyPc && previous.progression.id === progression.id) continue
     return questionFor(progression, keyPc)
   }

@@ -32,6 +32,8 @@ import {
   usePracticePin,
   useRecentActivity,
 } from './lib/practiceLog'
+import { fetchAnswerStatsByPin, fetchStudentAnswerStats, useAnswerStats, useAnswerTimer } from './lib/answerStats'
+import { answerWeight, pickWeighted as pickByWeight, typicalAnswerTime } from './lib/answerWeights'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
 import { renderChartNotation, revealChart } from './lib/chartNotation'
@@ -45,7 +47,7 @@ import {
   isHand,
   limbName,
 } from './lib/independence'
-import { MIN_NOTES, PROGRESSION_TYPES, matchesChord, randomQuestion } from './lib/chordProgressions'
+import { MIN_NOTES, PROGRESSIONS as KEYBOARD_PROGRESSIONS, PROGRESSION_TYPES, matchesChord, randomQuestion } from './lib/chordProgressions'
 import { createPianoSampler } from './lib/pianoSampler'
 import {
   BASS_INSTRUMENTS,
@@ -4663,6 +4665,10 @@ function driftTempo(tempo) {
   return Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
 }
 
+function formatAnswerSeconds(seconds) {
+  return seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
+}
+
 function describeChordResult(item) {
   if (item.status === 'correct') {
     return item.exact ? 'Correct — extension and all' : 'Correct — right function'
@@ -4728,6 +4734,12 @@ function EarTrainerPage() {
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
   const [sessionPoints, setSessionPoints] = useState(0)
+  // How long the last answer took, from the first sound of the chord asked
+  // about (all of them, in hard mode) to Check.
+  const [answerSeconds, setAnswerSeconds] = useState(null)
+  // What this person misses comes up more, what they name quickly less.
+  const answerStats = useAnswerStats('ear-training')
+  const answerTimer = useAnswerTimer()
   const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
   // What is under the fingers now, what the notes played add up to, and which
   // chord on the chart they were played at — the readings on offer belong to
@@ -4923,6 +4935,7 @@ function EarTrainerPage() {
     if (paused) {
       await engine.ctx.resume()
       setPaused(false)
+      answerTimer.resume()
       if (!frameRef.current) frameRef.current = window.requestAnimationFrame(trackHighlight)
       armRepeat()
       return
@@ -4932,6 +4945,7 @@ function EarTrainerPage() {
     playTimeoutRef.current = null
     frameRef.current = null
     await engine.ctx.suspend()
+    answerTimer.pause()
     setPaused(true)
   }
 
@@ -5017,9 +5031,15 @@ function EarTrainerPage() {
   async function startQuestion() {
     if (pool.length === 0) return
 
-    // Never ask the same progression twice in a row unless it is the only one left.
+    // Never ask the same progression twice in a row unless it is the only one
+    // left. Which one comes up leans on this person's record with each.
     const candidates = pool.filter((item) => !question || item.id !== question.progression.id)
-    const progression = pickRandom(candidates.length > 0 ? candidates : pool)
+    const record = answerStats.items
+    const typicalProgression = typicalAnswerTime(record, 'p:')
+    const progression = pickByWeight(
+      candidates.length > 0 ? candidates : pool,
+      (item) => answerWeight(record[`p:${item.id}`], typicalProgression),
+    )
     // Spelling and the printed label both depend on whether the progression is
     // major or minor, so the key is resolved against the progression's tonic.
     const key = keyForMode(useRandomKey ? pickRandom(KEYS) : KEYS[0], progression.tonic)
@@ -5046,7 +5066,9 @@ function EarTrainerPage() {
       key,
       blanks: hardMode
         ? chords.map((_, index) => index)
-        : [randomInt(0, chords.length - 1)],
+        : [pickByWeight(chords.map((_, index) => index), (index) => (
+          answerWeight(record[`c:${progression.id}:${index}`], typicalAnswerTime(record, 'c:'))
+        ))],
       instrumentId: chordInstrument.id,
       bassId,
       pattern,
@@ -5084,8 +5106,32 @@ function EarTrainerPage() {
     setSelected(next.blanks[0])
     setResults(null)
     setRevealed(false)
+    setAnswerSeconds(null)
     await playQuestion(next)
+    // The clock starts when the chord asked about first sounds, so a long
+    // progression or the tonic reference doesn't count against the answer.
+    const engine = engineRef.current
+    const firstPass = passesRef.current[0]
+    const slot = next.arrangement.timeline.find((item) => item.index === next.blanks[0])
+    answerTimer.start(engine && firstPass && slot
+      ? (firstPass.startTime + slot.start - engine.ctx.currentTime) * 1000
+      : 0)
     if (answerInputRef.current) answerInputRef.current.focus()
+  }
+
+  // Each blank is a chord of that progression answered right or wrong, and
+  // the question as a whole counts for the progression: right only when every
+  // blank was. Only a one-blank question times its chord.
+  function recordAnswers(graded, seconds) {
+    const id = question.progression.id
+    answerStats.record([
+      ...graded.map((item) => ({
+        item: `c:${id}:${item.index}`,
+        correct: item.status === 'correct',
+        seconds: graded.length === 1 ? seconds : null,
+      })),
+      { item: `p:${id}`, correct: graded.every((item) => item.status === 'correct'), seconds },
+    ])
   }
 
   function submitAnswer() {
@@ -5100,6 +5146,9 @@ function EarTrainerPage() {
     }))
     stopPlayback()
     setResults(graded)
+    const seconds = answerTimer.stop()
+    setAnswerSeconds(seconds)
+    recordAnswers(graded, seconds)
 
     const points = graded.reduce((sum, item) => sum + item.points, 0)
     const exact = graded.filter((item) => item.exact).length
@@ -5134,6 +5183,7 @@ function EarTrainerPage() {
           chord: showKey ? chordSymbol(chord, question.key) : romanLabel(chord),
           keyLabel: question.key.label,
           points: item.points,
+          seconds: graded.length === 1 ? seconds : null,
         }
       }),
       ...previous,
@@ -5320,6 +5370,8 @@ function EarTrainerPage() {
                   stopPlayback()
                   setRevealed(true)
                   setStreak(0)
+                  answerTimer.stop()
+                  recordAnswers(question.blanks.map((index) => ({ index, status: 'revealed' })), null)
                 }}
                 disabled={!question || showAnswerKey}
               >
@@ -5455,6 +5507,7 @@ function EarTrainerPage() {
                       <>
                         <strong>{question.progression.name}</strong>
                         {question.progression.note ? ` — ${question.progression.note}` : ''}
+                        {answerSeconds !== null ? ` Answered in ${formatAnswerSeconds(answerSeconds)}.` : ''}
                       </>
                     ) : (
                       manyBlanks
@@ -5619,6 +5672,7 @@ function EarTrainerPage() {
                     <div className="ear-history-row" key={item.id}>
                       <span className="ear-history-chord">{item.chord}</span>
                       <span className="ear-history-name">{item.name}</span>
+                      <span className="ear-history-time">{item.seconds != null ? formatAnswerSeconds(item.seconds) : ''}</span>
                       <span className={`ear-history-points is-p${item.points}`}>{item.points}</span>
                     </div>
                   ))}
@@ -5689,7 +5743,14 @@ function ChordProgressionsPage() {
   // Keys let go of while the pedal is down keep sounding until it comes up.
   const pedalRef = useRef({ down: false, sustained: new Set() })
   const nextTimeoutRef = useRef(null)
-  const askedAtRef = useRef(null)
+  // What this person misses (progressions, keys, single chords) comes up
+  // more, what they play quickly less.
+  const answerStats = useAnswerStats('chord-progressions')
+  const answerTimer = useAnswerTimer()
+  // The chords of this question that were missed (a wrong chord let go of)
+  // before being played right.
+  const missedRef = useRef(new Set())
+  const lapsRef = useRef([])
   // The MIDI callbacks are made once, on connect, so they read the question
   // as it stands now off this ref rather than the render they were made in.
   // `fresh` is the notes pressed since the last chord matched. The next chord
@@ -5698,8 +5759,10 @@ function ChordProgressionsPage() {
   const liveRef = useRef({ question, step: 0, revealed: false, matchedThisGesture: false, held: [], fresh: new Set(), soundOn, solve: () => {} })
 
   useEffect(() => {
-    askedAtRef.current = performance.now()
-  }, [question])
+    answerTimer.start()
+    missedRef.current = new Set()
+    lapsRef.current = []
+  }, [question, answerTimer])
 
   useEffect(() => {
     return () => {
@@ -5711,7 +5774,13 @@ function ChordProgressionsPage() {
 
   function ask(nextModes = modes, nextTypes = types) {
     window.clearTimeout(nextTimeoutRef.current)
-    setQuestion((current) => randomQuestion(nextTypes, nextModes, current))
+    const record = answerStats.items
+    const typicalProgression = typicalAnswerTime(record, 'p:')
+    const typicalKey = typicalAnswerTime(record, 'k:')
+    setQuestion((current) => randomQuestion(nextTypes, nextModes, current, {
+      progression: (item) => answerWeight(record[`p:${item.id}`], typicalProgression),
+      key: (pc) => answerWeight(record[`k:${pc}`], typicalKey),
+    }))
     setStep(0)
     setRevealed(false)
     setMiss(null)
@@ -5733,8 +5802,27 @@ function ChordProgressionsPage() {
 
 
 
+  // The question counts for its progression and key, right when played
+  // through without a miss or the answer shown; each chord counts on its own,
+  // timed from the chord before it.
+  function recordQuestion(solved) {
+    const { question: asked, revealed: shown, step: reached } = liveRef.current
+    const seconds = solved ? answerTimer.stop() : null
+    const clean = solved && !shown && missedRef.current.size === 0
+    const id = asked.progression.id
+    answerStats.record([
+      ...asked.chords.slice(0, solved ? asked.chords.length : reached + 1).map((_, index) => {
+        const right = index < reached && !shown && !missedRef.current.has(index)
+        return { item: `c:${id}:${index}`, correct: right, seconds: right ? lapsRef.current[index] : null }
+      }),
+      { item: `p:${id}`, correct: clean, seconds: clean ? seconds : null },
+      { item: `k:${asked.key.pc}`, correct: clean, seconds: clean ? seconds : null },
+    ])
+    return seconds
+  }
+
   function solve() {
-    const seconds = (performance.now() - askedAtRef.current) / 1000
+    const seconds = recordQuestion(true)
     const clean = !liveRef.current.revealed
     setStats((current) => {
       const streak = clean ? current.streak + 1 : 0
@@ -5742,7 +5830,7 @@ function ChordProgressionsPage() {
         solved: current.solved + 1,
         streak,
         best: Math.max(current.best, streak),
-        totalSeconds: current.totalSeconds + seconds,
+        totalSeconds: current.totalSeconds + (seconds ?? 0),
       }
     })
     const engine = engineRef.current
@@ -5750,7 +5838,10 @@ function ChordProgressionsPage() {
     nextTimeoutRef.current = window.setTimeout(() => ask(), TWO_FIVE_NEXT_DELAY_MS)
   }
 
+  // A skip with a keyboard connected is a question given up on; without one
+  // nothing was attempted.
   function skip() {
+    if (midi.status === 'ready' && question && step < question.chords.length) recordQuestion(false)
     setStats((current) => ({ ...current, streak: 0 }))
     ask()
   }
@@ -5806,6 +5897,7 @@ function ChordProgressionsPage() {
     if (usesFresh && matchesChord(heldNow, target)) {
       live.matchedThisGesture = true
       live.fresh = new Set()
+      lapsRef.current[live.step] = answerTimer.lap()
       live.step += 1
       setStep(live.step)
       setMiss(null)
@@ -5816,6 +5908,7 @@ function ChordProgressionsPage() {
     if (heldNow.length === 0) {
       if (!live.matchedThisGesture && chord.length >= MIN_NOTES) {
         const heard = recogniseChord(chord, live.question.key)
+        missedRef.current.add(live.step)
         setMiss({ role: target.role, heard: heard?.symbol ?? null })
       }
       live.matchedThisGesture = false
@@ -5842,7 +5935,8 @@ function ChordProgressionsPage() {
         onError: (error) => setMidi((previous) => ({ ...previous, error: String(error?.message ?? error) })),
       })
       midiRef.current = connection
-      askedAtRef.current = performance.now()
+      answerTimer.start()
+      lapsRef.current = []
       setMidi({ status: 'ready', devices: connection.devices, error: null })
     } catch (error) {
       setMidi({ status: 'denied', devices: [], error: String(error?.message ?? error) })
@@ -6571,9 +6665,34 @@ function PracticeCalendar({ days }) {
 
 // Time with the tools: this week, the daily average, the streak and all
 // time; a calendar of the days; and each tool's share.
-function PracticeStats({ days }) {
+// Practice time, or once the quiz tools have answers to show, those in its
+// place (in place rather than below, so /practice-stats still fits one
+// screen). The switch between them sits above the stats unless the page puts
+// it somewhere of its own, passing `view` and `onViewChange`.
+function PracticeStatsSwitch({ view, onViewChange, className = '' }) {
+  return (
+    <div className={`sticking-chips practice-stats-switch ${className}`}>
+      {[['time', 'Practice time'], ['answers', 'Answers']].map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          className={`ear-level-chip${view === id ? ' is-active' : ''}`}
+          aria-pressed={view === id}
+          onClick={() => onViewChange(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PracticeStats({ days, answers, view: placedView, onViewChange }) {
+  const [ownView, setOwnView] = useState('time')
+  const view = placedView ?? ownView
   const summary = summarizePractice(days)
   const tools = Object.entries(summary.tools).sort((a, b) => b[1].allTime - a[1].allTime)
+  const insights = answerInsightRows(answers)
   if (summary.allTime === 0) return <p className="student-notes-status">No practice logged yet.</p>
   return (
     <div className="practice-stats">
@@ -6596,29 +6715,101 @@ function PracticeStats({ days }) {
           <strong>{formatPracticeTime(summary.allTime)}</strong>
         </div>
       </div>
-      <div className="practice-stats-body">
-        <PracticeCalendar days={days} />
-        <table className="practice-stats-tools">
-          <thead>
-            <tr>
-              <th>Tool</th>
-              <th>Daily avg</th>
-              <th>This week</th>
-              <th>All time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tools.map(([tool, totals]) => (
-              <tr key={tool}>
-                <td>{PRACTICE_TOOL_LABELS[tool] ?? tool}</td>
-                <td>{totals.dailyAverage ? formatPracticeTime(totals.dailyAverage) : '–'}</td>
-                <td>{totals.week ? formatPracticeTime(totals.week) : '–'}</td>
-                <td>{formatPracticeTime(totals.allTime)}</td>
+      {insights.length > 0 && !onViewChange ? <PracticeStatsSwitch view={view} onViewChange={setOwnView} /> : null}
+      {view === 'answers' && insights.length > 0 ? <AnswerInsights rows={insights} /> : (
+        <div className="practice-stats-body">
+          <PracticeCalendar days={days} />
+          <table className="practice-stats-tools">
+            <thead>
+              <tr>
+                <th>Tool</th>
+                <th>Daily avg</th>
+                <th>This week</th>
+                <th>All time</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {tools.map(([tool, totals]) => (
+                <tr key={tool}>
+                  <td>{PRACTICE_TOOL_LABELS[tool] ?? tool}</td>
+                  <td>{totals.dailyAverage ? formatPracticeTime(totals.dailyAverage) : '–'}</td>
+                  <td>{totals.week ? formatPracticeTime(totals.week) : '–'}</td>
+                  <td>{formatPracticeTime(totals.allTime)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// What the quiz tools' answers say: how often they're right, how quick, and
+// the questions missed most lately (the ones those tools now bring up more).
+const ANSWER_INSIGHT_TOOLS = [
+  {
+    tool: 'ear-training',
+    label(item) {
+      const [kind, id, index] = item.split(':')
+      const progression = progressions.find((entry) => entry.id === id)
+      if (!progression) return null
+      return kind === 'c' ? `${progression.name}: ${romanLabel(progression.chords[Number(index)] ?? {})}` : progression.name
+    },
+  },
+  {
+    tool: 'chord-progressions',
+    label(item) {
+      const [kind, id, index] = item.split(':')
+      if (kind === 'k') return `Key of ${KEYS[Number(id)]?.name ?? '?'}`
+      const progression = KEYBOARD_PROGRESSIONS.find((entry) => entry.id === id)
+      if (!progression) return null
+      return kind === 'c' ? `${progression.name}: ${progression.chords[Number(index)]?.label ?? '?'}` : progression.name
+    },
+  },
+]
+
+function answerInsightRows(tools) {
+  return ANSWER_INSIGHT_TOOLS.map(({ tool, label }) => {
+    const items = Object.entries(tools?.[tool] ?? {})
+    const questions = items.filter(([item]) => item.startsWith('p:'))
+    const asked = questions.reduce((sum, [, record]) => sum + record.n, 0)
+    if (asked === 0) return null
+    const right = questions.reduce((sum, [, record]) => sum + record.right, 0)
+    const typical = typicalAnswerTime(tools[tool], 'p:')
+    const weak = items
+      .filter(([, record]) => record.n >= 2 && record.accuracy < 0.75)
+      .sort((a, b) => a[1].accuracy - b[1].accuracy || b[1].n - a[1].n)
+      .map(([item, record]) => ({ name: label(item), record }))
+      .filter((entry) => entry.name)
+      .slice(0, 4)
+    return { tool, asked, right, typical, weak }
+  }).filter(Boolean)
+}
+
+function AnswerInsights({ rows }) {
+  return (
+    <div className="answer-insights">
+      {rows.map((row) => (
+        <div key={row.tool} className="answer-insights-tool">
+          <h3>{PRACTICE_TOOL_LABELS[row.tool]}</h3>
+          <p>
+            {`${Math.round((row.right / row.asked) * 100)}% right of ${row.asked}`}
+            {row.typical !== null ? ` · usually ${formatAnswerSeconds(row.typical)}` : ''}
+          </p>
+          {row.weak.length > 0 ? <span className="stat-label">Missed most lately</span> : null}
+          {row.weak.length > 0 ? (
+            <ul>
+              {row.weak.map((entry) => (
+                <li key={entry.name}>
+                  <span>{entry.name}</span>
+                  <small>{`${Math.round(entry.record.accuracy * 100)}% lately`}</small>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ))}
     </div>
   )
 }
@@ -6627,13 +6818,15 @@ function PracticeStats({ days }) {
 function PracticeStatsPage() {
   const person = usePracticePin()
   const [state, setState] = useState({ status: 'loading' })
+  const [view, setView] = useState('time')
+  const hasAnswers = state.status === 'ready' && answerInsightRows(state.answers).length > 0
 
   useEffect(() => {
     if (!person) return undefined
     let cancelled = false
-    lookUpPracticePin(person.pin)
-      .then((found) => {
-        if (!cancelled) setState(found ? { status: 'ready', days: found.days } : { status: 'unknown' })
+    Promise.all([lookUpPracticePin(person.pin), fetchAnswerStatsByPin(person.pin).catch(() => null)])
+      .then(([found, answers]) => {
+        if (!cancelled) setState(found ? { status: 'ready', days: found.days, answers } : { status: 'unknown' })
       })
       .catch(() => {
         if (!cancelled) setState({ status: 'error' })
@@ -6647,14 +6840,17 @@ function PracticeStatsPage() {
     <div style={pageShellStyle}>
       <SiteNav showHomeLink />
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(20px, 3vw, 30px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(30px, 4vw, 42px)', marginBottom: '16px' }}>{person ? person.name : 'Your Practice'}</h1>
+        <div className="practice-stats-heading">
+          <h1 style={{ ...titleStyle, fontSize: 'clamp(30px, 4vw, 42px)', marginBottom: '16px' }}>{person ? person.name : 'Your Practice'}</h1>
+          {person && hasAnswers ? <PracticeStatsSwitch view={view} onViewChange={setView} className="is-placed" /> : null}
+        </div>
         <PracticePin />
         <div className="surface-card student-notes-card" style={cardStyle}>
           {!person ? <p className="student-notes-status">Enter your PIN to see your practice.</p> : null}
           {person && state.status === 'loading' ? <p className="student-notes-status">Loading…</p> : null}
           {person && state.status === 'unknown' ? <p className="student-notes-status">{"That PIN isn't set up any more."}</p> : null}
           {person && state.status === 'error' ? <p className="student-notes-status">{"Practice couldn't be loaded right now."}</p> : null}
-          {person && state.status === 'ready' ? <PracticeStats days={state.days} /> : null}
+          {person && state.status === 'ready' ? <PracticeStats days={state.days} answers={state.answers} view={view} onViewChange={setView} /> : null}
         </div>
       </section>
       <FloatingMetronome />
@@ -6670,6 +6866,7 @@ function StudentPage() {
   const { slug } = useParams()
   const [state, setState] = useState({ status: 'loading' })
   const [practiceDays, setPracticeDays] = useState(null)
+  const [practiceAnswers, setPracticeAnswers] = useState(null)
 
   useEffect(() => {
     const robots = document.createElement('meta')
@@ -6706,6 +6903,11 @@ function StudentPage() {
     fetchStudentPractice(slug)
       .then((days) => {
         if (!cancelled) setPracticeDays(days)
+      })
+      .catch(() => {})
+    fetchStudentAnswerStats(slug)
+      .then((tools) => {
+        if (!cancelled) setPracticeAnswers(tools)
       })
       .catch(() => {})
     return () => {
@@ -6747,7 +6949,7 @@ function StudentPage() {
         {state.status === 'ready' && practiceDays ? (
           <div className="surface-card student-notes-card" style={cardStyle}>
             <h2 className="card-title">Practice</h2>
-            <PracticeStats days={practiceDays} />
+            <PracticeStats days={practiceDays} answers={practiceAnswers} />
           </div>
         ) : null}
       </section>

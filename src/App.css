@@ -3259,7 +3259,7 @@ button.ear-chord-result:focus-visible {
 
 .ear-history-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -3278,6 +3278,11 @@ button.ear-chord-result:focus-visible {
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ear-history-time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .ear-history-points {
@@ -3722,6 +3727,68 @@ button.ear-chord-result:focus-visible {
   grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   text-align: center;
+}
+
+.practice-stats-switch {
+  justify-content: center;
+}
+
+.practice-stats-heading {
+  position: relative;
+}
+
+/* Beside the name on /practice-stats, where it costs no height. */
+.practice-stats-switch.is-placed {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+@media (max-width: 760px) {
+  .practice-stats-switch.is-placed {
+    position: static;
+    margin-bottom: 16px;
+    transform: none;
+  }
+}
+
+.answer-insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px 28px;
+  text-align: center;
+}
+
+.answer-insights-tool h3 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+}
+
+.answer-insights-tool p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.answer-insights-tool .stat-label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.answer-insights-tool ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.answer-insights-tool small {
+  margin-left: 8px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .practice-stats-tiles {

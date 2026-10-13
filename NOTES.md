@@ -17,6 +17,24 @@ either machine. Newest first.
 
 - Luke to confirm Signal × Lab before it's built into the real site.
 
+### Answer stats and timing (Ear Trainer, Chord Progressions)
+
+- Each answer is timed (`useAnswerTimer`): Ear Trainer from the moment the
+  chord being asked about first sounds to Check, held while paused or the
+  tab is hidden; an answer before that chord sounds is untimed. Chord
+  Progressions times each chord from the one before, and the question as
+  a whole. Times show in the Ear Trainer's caption and Recent list.
+- Right/wrong per progression, per chord of it, and (Chord Progressions)
+  per key, kept under the PIN in Netlify Blobs (`answer-stats` store).
+  Misses make a question come up more (up to ~3× for always missed),
+  quick right answers less (~0.7× for the fastest). Revealing or (with a
+  keyboard connected) skipping counts as a miss.
+- "Answers" view on student pages and /practice-stats: % right, typical
+  answer time, and what's been missed most lately. On /practice-stats the
+  switch sits beside the name so the page still fits 1280×800.
+- Chord Progressions weighting was not tried with a real MIDI keyboard
+  (only the Ear Trainer was driven in a browser): Luke to try it.
+
 ## 2026-10-12 — Metronome sessions count as drums or keys
 
 ### What changed

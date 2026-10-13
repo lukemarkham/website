@@ -79,6 +79,20 @@ Luke's Command Calendar app (`~/calendar`, `practice-sync.js`) reads his
 totals by PIN to tick off practice tasks, so keep the tool ids and the
 `?pin=` response shape stable, or update it there too.
 
+## Answer stats
+
+The quiz tools (Ear Trainer, Chord Progressions) time each answer with the
+shared `useAnswerTimer` and record right/wrong per kind of question with
+`useAnswerStats(tool)` (`src/lib/answerStats.js`), stored under the
+practice-log PIN by `netlify/functions/answer-stats.mjs` (browser-only
+without a PIN). Questions the person misses come up more and ones they
+answer quickly come up less (`answerWeight`, `src/lib/answerWeights.js`).
+Item ids are `p:<progression id>`, `c:<progression id>:<chord index>` and,
+on Chord Progressions, `k:<key pitch class>`, so renaming a progression id
+or reordering its chords orphans its record. Results show on student
+pages and /practice-stats under "Answers". The drum tools don't take part:
+their success is self-reported.
+
 ## Practice generator feedback
 
 Luke votes mid-practice on what the Fill Generator, Sticking Generator,
