@@ -3,6 +3,20 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-13 — Redesign direction: Signal layout, Lab colours
+
+### What changed
+
+- Luke likes Signal's layout, Lab's colours (paper #ebebe8, ink #111,
+  orange #ff4a1c), the "Practice room." name for the tools section and
+  Signal's review treatment (big uppercase quote in the accent colour,
+  "Name · 5 stars on SoundBetter" under it). That combination is a fifth
+  mockup, `/style-lab?v=signal-lab`, still only on `style-mockups`.
+
+### Open items
+
+- Luke to confirm Signal × Lab before it's built into the real site.
+
 ## 2026-10-12 — Metronome sessions count as drums or keys
 
 ### What changed
