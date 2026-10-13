@@ -769,6 +769,42 @@
 
 /* ---------- Liner Notes: dark editorial serif, photo-filled numerals ---------- */
 
+/* Signal × Lab: Signal's layout in Lab's paper, ink and orange */
+
+.sl-signal.is-lab {
+  --lime: #ff4a1c;
+  color: #111;
+  background: #ebebe8;
+}
+
+.sl-signal.is-lab .sl-signal-copy p {
+  color: #3a3a3a;
+}
+
+.sl-signal.is-lab .sl-signal-pill i,
+.sl-signal.is-lab .sl-signal-toolgrid a:hover,
+.sl-signal.is-lab .sl-signal-toolgrid a:hover em {
+  color: #ebebe8;
+}
+
+.sl-signal.is-lab .sl-signal-icon {
+  color: #111;
+}
+
+.sl-signal.is-lab .sl-signal-strip p,
+.sl-signal.is-lab .sl-signal-review cite,
+.sl-signal.is-lab .sl-signal-toolgrid em {
+  color: #666;
+}
+
+.sl-signal.is-lab .sl-signal-strip,
+.sl-signal.is-lab .sl-signal-strip article,
+.sl-signal.is-lab .sl-signal-toolgrid,
+.sl-signal.is-lab .sl-signal-toolgrid a,
+.sl-signal.is-lab .sl-signal-about {
+  border-color: #c9c9c4;
+}
+
 .sl-liner {
   padding-bottom: 72px;
   --rust: #d0683f;

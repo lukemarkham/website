@@ -43,6 +43,7 @@ const STYLES = [
   { id: 'signal', label: 'Signal', from: 'SNDWAV' },
   { id: 'liner', label: 'Liner Notes', from: 'Richard Gore / Designer' },
   { id: 'stage', label: 'Stage', from: 'John Mark McMillan / Jazz Sound' },
+  { id: 'signal-lab', label: 'Signal × Lab', from: 'SNDWAV layout, lab. colours' },
 ]
 
 function Lab() {
@@ -115,9 +116,9 @@ const ICONS = [
   <svg key="grid" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" /><path d="M1 11h30M1 21h30M11 1v30M21 1v30" /></svg>,
 ]
 
-function Signal() {
+function Signal({ palette }) {
   return (
-    <div className="sl-signal">
+    <div className={palette ? `sl-signal is-${palette}` : 'sl-signal'}>
       <nav className="sl-signal-nav">
         <span className="sl-signal-logo">
           <svg viewBox="0 0 40 20" aria-hidden="true"><path d="M0 10h8l3-7 4 14 4-17 4 20 3-14 3 6 3-2h8" /></svg>
@@ -308,7 +309,9 @@ function Stage() {
   )
 }
 
-const VIEWS = { lab: Lab, signal: Signal, liner: LinerNotes, stage: Stage }
+const SignalLab = () => <Signal palette="lab" />
+
+const VIEWS = { lab: Lab, signal: Signal, liner: LinerNotes, stage: Stage, 'signal-lab': SignalLab }
 
 export default function StyleLab() {
   const [style, setStyle] = useState(() => {
