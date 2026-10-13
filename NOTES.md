@@ -16,6 +16,12 @@ either machine. Newest first.
 ### Open items
 
 - Luke to confirm Signal × Lab before it's built into the real site.
+- Hero imagery comes from `src/assets/hero-photos/` (Luke's own photos,
+  currently a zip of two red NYC night shots, untracked), never the
+  photography portfolio. Swap one into Signal × Lab, and commit optimized
+  copies rather than the zip.
+- The mockup branch is checked out in a worktree at `../website-style-mockups`
+  on the machine that made it (dev server: `npx vite --port 5174`).
 
 ### Answer stats and timing (Ear Trainer, Chord Progressions)
 
