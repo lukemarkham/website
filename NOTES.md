@@ -47,6 +47,11 @@ either machine. Newest first.
   Progressions now finish the question in progress when time runs out
   ("Finishing"), as the PracticeSession tools already did. The metronome
   still ends on time (no exercise to finish).
+- The practice PIN moved from each tool page into the nav: last item, on
+  practice pages and /practice-stats only (`PRACTICE_PATHS`, built from
+  `practiceToolMenu`). Shows the student's first name with a dot while
+  logging, "Log Practice" otherwise; the menu has the PIN form, My Stats
+  and Change PIN.
 
 ## 2026-10-12 — Metronome sessions count as drums or keys
 

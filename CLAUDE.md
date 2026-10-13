@@ -68,12 +68,12 @@ the words' attacks never sit on the beat.
 
 ## Practice log
 
-Students (and Luke, PIN 4315) enter a four-digit PIN on any practice tool
-and their time with each tool is logged, shown on their student page and at
+Students (and Luke, PIN 4315) enter a four-digit PIN in the nav (last item, shown
+only on practice pages) and their time with each tool is logged, shown on their student page and at
 `/practice-stats`. Students choose their own PIN and tell Luke; add it as
 `pin` on their entry in `netlify/lib/students.mjs` (PINs must be unique;
 people without a notes page go in `PRACTICE_ONLY` there). A new practice
-tool gets `<PracticePin />` under its title and `usePracticeLog(tool,
+tool goes in `practiceToolMenu` (which also puts the PIN in its nav) and gets `usePracticeLog(tool,
 isPlaying)` (or `useRecentActivity()` when it has nothing to start), with
 its id added to `PRACTICE_TOOLS` and `PRACTICE_TOOL_LABELS`
 (`netlify/lib/practiceLog.mjs`, `src/lib/practiceLog.js`).

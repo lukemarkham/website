@@ -261,16 +261,16 @@ h3 {
   transform: translateX(-50%) translateY(0);
 }
 
-/* The last menu in the bar is centred under a link that sits at the right edge,
+/* The last menus in the bar are centred under a link that sits at the right edge,
    so half of it hangs off the page. It lines up with its trigger instead. */
-.nav-dropdown:last-of-type .nav-dropdown-menu {
+.nav-dropdown.is-end .nav-dropdown-menu {
   left: auto;
   right: 0;
   transform: translateY(6px);
 }
 
-.nav-dropdown:last-of-type:hover .nav-dropdown-menu,
-.nav-dropdown:last-of-type:focus-within .nav-dropdown-menu {
+.nav-dropdown.is-end:hover .nav-dropdown-menu,
+.nav-dropdown.is-end:focus-within .nav-dropdown-menu {
   transform: translateY(0);
 }
 
@@ -3684,6 +3684,48 @@ button.ear-chord-result:focus-visible {
 
 /* Practice PIN under each tool's title, and practice stats (PracticePin,
    PracticeStats). */
+.nav-practice-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  vertical-align: 1px;
+}
+
+/* In the nav it's a menu: the PIN, or who's logging and what to do about it. */
+.nav-practice .nav-dropdown-menu {
+  min-width: 230px;
+}
+
+.nav-practice .practice-pin {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin: 0;
+  padding: 4px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.nav-practice .practice-pin > span:first-child {
+  padding: 4px 7px 6px;
+}
+
+.nav-practice .practice-pin .control-input.practice-pin-input {
+  width: 100%;
+}
+
+button.dropdown-link {
+  width: 100%;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .practice-pin {
   display: flex;
   flex-wrap: wrap;

@@ -349,6 +349,32 @@ const practiceToolMenu = [
   { label: 'Tempo Guessr', to: '/tempo-guessr' },
 ]
 
+// Every page the practice log applies to: the tools in the menu (so a new
+// tool there gets it too) and the stats page.
+const PRACTICE_PATHS = new Set([
+  ...practiceToolMenu.flatMap((item) => (item.tools ? item.tools.map((tool) => tool.to) : [item.to])),
+  '/practice-stats',
+])
+
+// The practice PIN, last in the nav on practice pages only: the student's
+// name while their time is being logged, "Log Practice" until then. The menu
+// holds the PIN form, the stats link and the way to change or stop.
+function NavPracticePin() {
+  const person = usePracticePin()
+  const { pathname } = useLocation()
+  if (!PRACTICE_PATHS.has(pathname)) return null
+  return (
+    <div className="nav-dropdown is-end nav-practice">
+      <button type="button" className="nav-link nav-trigger" aria-haspopup="menu">
+        {person ? <><span className="nav-practice-dot" aria-hidden="true" />{person.name.split(' ')[0]}</> : 'Log Practice'}
+      </button>
+      <div className="nav-dropdown-menu" role="menu">
+        <PracticePin />
+      </div>
+    </div>
+  )
+}
+
 function NavSubmenu({ label, tools }) {
   const [open, setOpen] = useState(false)
 
@@ -425,7 +451,7 @@ function SiteNav({ showHomeLink = false }) {
         <a className="nav-link" href="/#store">Beat Store</a>
         <a className="nav-link" href="/#gear-shop">Gear Shop</a>
         <a className="nav-link" href="/#contact">Contact</a>
-        <div className="nav-dropdown">
+        <div className="nav-dropdown is-end">
           <button
             type="button"
             className="nav-link nav-trigger"
@@ -439,6 +465,7 @@ function SiteNav({ showHomeLink = false }) {
             </Link>
           </div>
         </div>
+        <NavPracticePin />
       </div>
     </nav>
   )
@@ -1257,7 +1284,6 @@ function TempoGuessrPage() {
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
-        <PracticePin />
 
         <PracticeTimer busy={roundActive} />
 
@@ -1965,7 +1991,6 @@ function MetronomePage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Metronome</h1>
-        <PracticePin />
 
         <div className="metronome-transport surface-card">
           <div className="metronome-tempo">
@@ -3122,7 +3147,6 @@ function FillGeneratorPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Fill Generator</h1>
-        <PracticePin />
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3474,7 +3498,6 @@ function StickingGeneratorPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sticking Generator</h1>
-        <PracticePin />
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3729,7 +3752,6 @@ function IndependencePage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Independence</h1>
-        <PracticePin />
 
         <div className="sticking-toolbar independence-toolbar">
           <div className="control-card">
@@ -4227,7 +4249,6 @@ function SightReadingPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Drums</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sight Reading</h1>
-        <PracticePin />
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -5331,7 +5352,6 @@ function EarTrainerPage() {
       <section className="surface-panel ear-panel">
         <div className="ear-topbar">
           <h1 className="ear-title">Progression Ear Trainer</h1>
-          <PracticePin />
           <div className="ear-level-chips">
             {PROGRESSION_LEVELS.map((level) => (
               <button
@@ -6062,7 +6082,6 @@ function ChordProgressionsPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Keys</div>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Chord Progressions</h1>
-        <PracticePin />
 
         <div className="twofive-layout">
           <div className="twofive-main">
@@ -6612,20 +6631,14 @@ function PracticePin() {
     return (
       <div className="practice-pin">
         <span>Logging practice for {person.name.split(' ')[0]}</span>
-        {isStatsPage ? null : <Link className="text-link" to="/practice-stats">Stats</Link>}
-        <button className="practice-pin-link" type="button" onClick={() => setIsEditing(true)}>Change</button>
-      </div>
-    )
-  }
-  if (!isEditing) {
-    return (
-      <div className="practice-pin">
-        <button className="practice-pin-link" type="button" onClick={() => setIsEditing(true)}>Log my practice</button>
+        {isStatsPage ? null : <Link className="dropdown-link" to="/practice-stats">My Stats</Link>}
+        <button className="dropdown-link" type="button" onClick={() => setIsEditing(true)}>Change PIN</button>
       </div>
     )
   }
   return (
     <form className="practice-pin" onSubmit={save}>
+      {person ? null : <span>Enter your PIN to log your practice.</span>}
       <input
         className="control-input practice-pin-input"
         inputMode="numeric"
@@ -6638,16 +6651,18 @@ function PracticePin() {
         onChange={(event) => setDraft(event.target.value.replace(/\D/g, ''))}
       />
       <button className="secondary-button" type="submit">Save</button>
-      <button
-        className="practice-pin-link"
-        type="button"
-        onClick={() => {
-          setIsEditing(false)
-          setStatus(null)
-        }}
-      >
-        Cancel
-      </button>
+      {person ? (
+        <button
+          className="practice-pin-link"
+          type="button"
+          onClick={() => {
+            setIsEditing(false)
+            setStatus(null)
+          }}
+        >
+          Cancel
+        </button>
+      ) : null}
       {person ? (
         <button
           className="practice-pin-link"
@@ -6938,7 +6953,7 @@ function PracticeStatsPage() {
           <h1 style={{ ...titleStyle, fontSize: 'clamp(30px, 4vw, 42px)', marginBottom: '16px' }}>{person ? person.name : 'Your Practice'}</h1>
           {person && hasAnswers ? <PracticeStatsSwitch view={view} onViewChange={setView} className="is-placed" /> : null}
         </div>
-        <PracticePin />
+        {person ? null : <PracticePin />}
         <div className="surface-card student-notes-card" style={cardStyle}>
           {!person ? <p className="student-notes-status">Enter your PIN to see your practice.</p> : null}
           {person && state.status === 'loading' ? <p className="student-notes-status">Loading…</p> : null}
