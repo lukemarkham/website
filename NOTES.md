@@ -43,6 +43,10 @@ either machine. Newest first.
 - Thumbs up/down beside the progression name once the answer is up, with
   the shared feedback dialog. Tool id `ear-training`; archive
   `feedback/ear-training-feedback.json`.
+- `<PracticeTimer busy>`: the Ear Trainer, Tempo Guessr and Chord
+  Progressions now finish the question in progress when time runs out
+  ("Finishing"), as the PracticeSession tools already did. The metronome
+  still ends on time (no exercise to finish).
 
 ## 2026-10-12 — Metronome sessions count as drums or keys
 

@@ -55,6 +55,11 @@ their own Start/Stop transport, like the metronome and the drum generators,
 run the countdown off that transport instead, finishing with
 `playSessionCompleteSound`. Every timer's end also opens the shared
 `<SessionCompleteDialog />` (add 5, 10 or a chosen number of minutes).
+Time running out never cuts off an exercise in progress: the timer reads
+"Finishing" and the session ends once the exercise does. `PracticeSession`
+plays the current cycle out; with `<PracticeTimer />`, pass `busy` while a
+question is asked and not yet answered (Ear Trainer, Tempo Guessr, Chord
+Progressions).
 
 Anything that counts the player in uses the standard count-off on the tool's
 own click: a bar of half notes, then a bar of quarters, then time starts

@@ -1259,7 +1259,7 @@ function TempoGuessrPage() {
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
         <PracticePin />
 
-        <PracticeTimer />
+        <PracticeTimer busy={roundActive} />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '18px', marginBottom: '24px' }}>
           <div className="control-card">
@@ -1519,7 +1519,10 @@ function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, catego
   )
 }
 
-function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
+// `busy` is true while an exercise is under way (a question asked and not yet
+// answered). Time running out then doesn't cut it off: the timer reads
+// "Finishing" and the session ends once the exercise does.
+function PracticeTimer({ onComplete, busy = false, defaultMinutes = 10 }) {
   const [minutesDraft, setMinutesDraft] = useState(String(defaultMinutes))
   const [status, setStatus] = useState('idle')
   const [remaining, setRemaining] = useState(null)
@@ -1530,6 +1533,7 @@ function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
   const audioContextRef = useRef(null)
   const wakeLockRef = useRef(null)
   const onCompleteRef = useRef(onComplete)
+  const busyRef = useRef(busy)
 
   useEffect(() => {
     onCompleteRef.current = onComplete
@@ -1572,6 +1576,10 @@ function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
     setIsCompleteOpen(true)
   }
 
+  useEffect(() => {
+    busyRef.current = busy
+  }, [busy])
+
   function run(durationMs) {
     endsAtRef.current = Date.now() + durationMs
     setStatus('running')
@@ -1579,7 +1587,12 @@ function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
     window.clearInterval(tickRef.current)
     tickRef.current = window.setInterval(() => {
       const leftMs = endsAtRef.current - Date.now()
-      if (leftMs <= 0) {
+      // Past time with an exercise still going, it keeps checking until the
+      // exercise is done.
+      if (leftMs <= 0 && busyRef.current) {
+        setStatus('finishing')
+        setRemaining(0)
+      } else if (leftMs <= 0) {
         finish()
       } else {
         setRemaining(Math.ceil(leftMs / 1000))
@@ -1637,7 +1650,7 @@ function PracticeTimer({ onComplete, defaultMinutes = 10 }) {
       ) : (
         <>
           <div className="practice-timer-clock" aria-live="polite">
-            {status === 'done' ? 'Session complete' : formatSessionTime(remaining)}
+            {status === 'done' ? 'Session complete' : status === 'finishing' ? 'Finishing' : formatSessionTime(remaining)}
           </div>
           <div className="practice-timer-row">
             {status === 'running' ? (
@@ -5710,7 +5723,7 @@ function EarTrainerPage() {
           </div>
 
           <aside className="ear-sidebar">
-            <PracticeTimer onComplete={stopPlayback} />
+            <PracticeTimer onComplete={stopPlayback} busy={Boolean(question) && !showAnswerKey} />
 
             <div className="surface-card ear-score-card">
               <span className="control-label">Session</span>
@@ -6191,7 +6204,7 @@ function ChordProgressionsPage() {
           </div>
 
           <aside className="ear-sidebar">
-            <PracticeTimer />
+            <PracticeTimer busy={midi.status === 'ready' && question !== null && !isSolved} />
 
             <div className="surface-card ear-score-card" style={cardStyle}>
               <span className="control-label">Session</span>
