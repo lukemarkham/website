@@ -1548,7 +1548,9 @@ function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, catego
 // `busy` is true while an exercise is under way (a question asked and not yet
 // answered). Time running out then doesn't cut it off: the timer reads
 // "Finishing" and the session ends once the exercise does.
-function PracticeTimer({ onComplete, busy = false, defaultMinutes = 10 }) {
+const DEFAULT_SESSION_MINUTES = 15
+
+function PracticeTimer({ onComplete, busy = false, defaultMinutes = DEFAULT_SESSION_MINUTES }) {
   const [minutesDraft, setMinutesDraft] = useState(String(defaultMinutes))
   const [status, setStatus] = useState('idle')
   const [remaining, setRemaining] = useState(null)
@@ -1713,7 +1715,7 @@ function MetronomePage() {
   const [silentBarProbability, setSilentBarProbability] = useState(0)
   const [probabilities, setProbabilities] = useState(() => getDefaultMetronomeProbabilities())
   const [isPatternLocked, setIsPatternLocked] = useState(false)
-  const [sessionMinutes, setSessionMinutes] = useState(0)
+  const [sessionMinutes, setSessionMinutes] = useState(DEFAULT_SESSION_MINUTES)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -2423,7 +2425,7 @@ function PracticeSession({
   click = true,
   onRunningChange,
 }) {
-  const [sessionMinutes, setSessionMinutes] = useState(10)
+  const [sessionMinutes, setSessionMinutes] = useState(DEFAULT_SESSION_MINUTES)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -6298,7 +6300,7 @@ function FloatingMetronome() {
   const [expanded, setExpanded] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [activeBeat, setActiveBeat] = useState(null)
-  const [sessionMinutes, setSessionMinutes] = useState('0')
+  const [sessionMinutes, setSessionMinutes] = useState(String(DEFAULT_SESSION_MINUTES))
   const [remainingSeconds, setRemainingSeconds] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [category, setCategory] = useState('metronome')

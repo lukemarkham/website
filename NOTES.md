@@ -3,6 +3,12 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-14 — Practice timers default to 15 minutes
+
+- Every practice tool's session timer now starts at 15 minutes
+  (`DEFAULT_SESSION_MINUTES` in `App.jsx`), including the metronome page
+  and floating metronome, which used to default to off (0).
+
 ## 2026-10-13 — Redesign direction: Signal layout, Lab colours
 
 ### What changed
