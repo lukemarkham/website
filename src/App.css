@@ -3644,6 +3644,7 @@ button.ear-chord-result:focus-visible {
 
 .session-complete-category {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
   margin: 12px 0 22px;
@@ -3651,6 +3652,10 @@ button.ear-chord-result:focus-visible {
 
 .session-complete-category button {
   width: auto;
+}
+
+.session-complete-category + .session-complete-category {
+  margin-top: -12px;
 }
 
 .session-complete-category button[aria-checked='true'] {

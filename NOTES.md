@@ -12,6 +12,12 @@ either machine. Newest first.
   75–100 BPM, two sliders in the Tempo card; replaces the single tempo and
   the old ±drift under "New sound each question"). Hard mode and the
   advanced progressions are on by default.
+- A timed metronome session counted as drums now also asks which kind:
+  Independence, Sticking, Vocab or General, logged as
+  `metronome-drums-independence` / `-sticking` / `-vocab` / `metronome-drums`.
+  Command Calendar's `practice-sync.js` counts each towards its Drum
+  Practice task (and all of them towards the drum hour). Keys stays one
+  category, as the calendar has only Piano Practice.
 
 ## 2026-10-13 — Redesign direction: Signal layout, Lab colours
 

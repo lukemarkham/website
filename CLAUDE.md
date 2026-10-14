@@ -78,8 +78,10 @@ isPlaying)` (or `useRecentActivity()` when it has nothing to start), with
 its id added to `PRACTICE_TOOLS` and `PRACTICE_TOOL_LABELS`
 (`netlify/lib/practiceLog.mjs`, `src/lib/practiceLog.js`).
 A timed metronome session (page or floating) ends by asking whether it
-counts as drums or keys; its time is held back until then and logged as
-`metronome-drums`, `metronome-keys` or plain `metronome`.
+counts as drums or keys, and for drums which kind (matching the Command
+Calendar's drum tasks); its time is held back until then and logged as
+`metronome-drums-independence`, `-sticking`, `-vocab`, `metronome-drums`
+(general), `metronome-keys` or plain `metronome` (`METRONOME_CATEGORIES`).
 Luke's Command Calendar app (`~/calendar`, `practice-sync.js`) reads his
 totals by PIN to tick off practice tasks, so keep the tool ids and the
 `?pin=` response shape stable, or update it there too.

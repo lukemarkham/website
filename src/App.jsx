@@ -1464,7 +1464,8 @@ function formatSessionTime(totalSeconds) {
 // the wall clock, so a throttled background tab still ends on time.
 // Shown by every session timer when it runs out: the session is done, or
 // carry on for 5 or 10 more minutes, or a number of your own. With
-// `categories`, it also asks what the session counts as.
+// `categories`, it also asks what the session counts as, and for a category
+// with `parts`, which kind of it.
 function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, category, onCategoryChange }) {
   const dialogRef = useRef(null)
   const [customMinutes, setCustomMinutes] = useState('')
@@ -1499,25 +1500,34 @@ function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, catego
         }}
       >
         <h2 className="session-complete-title">Session complete</h2>
-        {categories && (
-          <>
-            <span className="control-label">Count it as</span>
-            <div className="session-complete-category" role="radiogroup" aria-label="Count it as">
-              {categories.map((option) => (
+        {categories && (() => {
+          const chosen = categories.find((option) => option.tool === category || option.parts?.some((part) => part.tool === category))
+          const choices = (options, label, keepPart) => (
+            <div className="session-complete-category" role="radiogroup" aria-label={label}>
+              {options.map((option) => (
                 <button
                   key={option.tool}
                   className="secondary-button"
                   type="button"
                   role="radio"
-                  aria-checked={option.tool === category}
-                  onClick={() => onCategoryChange(option.tool)}
+                  aria-checked={keepPart ? option === chosen : option.tool === category}
+                  onClick={() => {
+                    if (!(keepPart && option === chosen)) onCategoryChange(option.tool)
+                  }}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
-          </>
-        )}
+          )
+          return (
+            <>
+              <span className="control-label">Count it as</span>
+              {choices(categories, 'Count it as', true)}
+              {chosen?.parts && choices(chosen.parts, `${chosen.label} practice`, false)}
+            </>
+          )
+        })()}
         <span className="control-label">Keep going?</span>
         <div className="session-complete-options">
           <button className="secondary-button" type="button" onClick={() => add(5)}>+5 min</button>

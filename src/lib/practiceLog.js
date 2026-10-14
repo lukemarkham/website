@@ -31,12 +31,27 @@ export const PRACTICE_TOOL_LABELS = {
   'chord-progressions': 'Chord Progressions',
   'metronome-drums': 'Metronome (drums)',
   'metronome-keys': 'Metronome (keys)',
+  'metronome-drums-independence': 'Metronome (drums: independence)',
+  'metronome-drums-sticking': 'Metronome (drums: sticking)',
+  'metronome-drums-vocab': 'Metronome (drums: vocab)',
 }
 
 // A timed metronome session ends by asking what it was for, so its time
-// can count as drum or keyboard practice instead.
+// can count as drum or keyboard practice instead. Drum time is split into
+// the drum practice tasks on Luke's Command Calendar (~/calendar,
+// practice-sync.js); plain `metronome-drums` is drum practice of no
+// particular kind.
 export const METRONOME_CATEGORIES = [
-  { tool: 'metronome-drums', label: 'Drums' },
+  {
+    tool: 'metronome-drums',
+    label: 'Drums',
+    parts: [
+      { tool: 'metronome-drums-independence', label: 'Independence' },
+      { tool: 'metronome-drums-sticking', label: 'Sticking' },
+      { tool: 'metronome-drums-vocab', label: 'Vocab' },
+      { tool: 'metronome-drums', label: 'General' },
+    ],
+  },
   { tool: 'metronome-keys', label: 'Keys' },
   { tool: 'metronome', label: 'Neither' },
 ]
