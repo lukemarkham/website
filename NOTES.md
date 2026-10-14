@@ -8,6 +8,10 @@ either machine. Newest first.
 - Every practice tool's session timer now starts at 15 minutes
   (`DEFAULT_SESSION_MINUTES` in `App.jsx`), including the metronome page
   and floating metronome, which used to default to off (0).
+- Ear Trainer: each question picks a random tempo from a range (default
+  75–100 BPM, two sliders in the Tempo card; replaces the single tempo and
+  the old ±drift under "New sound each question"). Hard mode and the
+  advanced progressions are on by default.
 
 ## 2026-10-13 — Redesign direction: Signal layout, Lab colours
 

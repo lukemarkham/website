@@ -4693,7 +4693,7 @@ function ConfettiBurst({ trigger }) {
   return <canvas ref={canvasRef} className="ear-confetti" aria-hidden="true" />
 }
 
-const EAR_TRAINER_DEFAULT_LEVELS = { core: true, intermediate: true, advanced: false }
+const EAR_TRAINER_DEFAULT_LEVELS = { core: true, intermediate: true, advanced: true }
 
 // Settled once at load rather than during a render, so nothing has to reach for
 // the browser while React is deciding what the page looks like.
@@ -4709,8 +4709,10 @@ function beatsPerChordFor(progression) {
 
 // A little tempo drift stops the ear from anchoring on one groove. It lives out
 // here with the other rolls of the dice, away from anything React renders.
-function driftTempo(tempo) {
-  return Math.round(Number(tempo) * (0.9 + Math.random() * 0.28))
+// Each question gets its own tempo from the chosen range.
+function randomTempo(min, max) {
+  const low = Math.min(min, max)
+  return low + Math.floor(Math.random() * (Math.abs(max - min) + 1))
 }
 
 // The question as it sounded, for feedback: enough to rebuild it when the
@@ -4764,7 +4766,8 @@ function ChordCard({ className, onPlay, children }) {
 function EarTrainerPage() {
   usePracticeLog('ear-training', useRecentActivity())
   const [levels, setLevels] = useState(EAR_TRAINER_DEFAULT_LEVELS)
-  const [tempo, setTempo] = useState(78)
+  const [minTempo, setMinTempo] = useState(75)
+  const [maxTempo, setMaxTempo] = useState(100)
   const [varySounds, setVarySounds] = useState(true)
   const [instrumentId, setInstrumentId] = useState(CHORD_INSTRUMENTS[0].id)
   const [useRandomKey, setUseRandomKey] = useState(true)
@@ -4775,7 +4778,7 @@ function EarTrainerPage() {
   const [showRoman, setShowRoman] = useState(true)
   // Hard mode leaves nothing on the page: the key centre sounds, the changes go
   // round, and every chord in them is a blank to be named.
-  const [hardMode, setHardMode] = useState(false)
+  const [hardMode, setHardMode] = useState(true)
   const [question, setQuestion] = useState(null)
   // A draft per blank, kept against the chord's place in the progression. One
   // blank or all of them is only a difference in how many keys this has, so the
@@ -5116,7 +5119,7 @@ function EarTrainerPage() {
     // the same Rhodes can come back under a different rhythm section.
     const bassId = varySounds ? pickRandom(chordInstrument.bass) : chordInstrument.bass[0]
     const pattern = varySounds ? pickRandom(PATTERNS).id : 'block'
-    const questionTempo = varySounds ? driftTempo(tempo) : Number(tempo)
+    const questionTempo = randomTempo(minTempo, maxTempo)
     const beatsPerChord = beatsPerChordFor(progression)
     // With every chord hidden the tonic is the only way into the key, so hard
     // mode sounds it whether or not the toggle asked for it.
@@ -5374,17 +5377,32 @@ function EarTrainerPage() {
           <div className="ear-main">
             <div className="ear-toolbar">
               <div className="control-card">
-                <label className="control-label" htmlFor="ear-tempo">Tempo</label>
-                <div className="range-value">{tempo} BPM</div>
+                <label className="control-label" htmlFor="ear-tempo-min">Tempo</label>
+                <div className="range-value">
+                  {Math.min(minTempo, maxTempo) === Math.max(minTempo, maxTempo)
+                    ? minTempo
+                    : `${Math.min(minTempo, maxTempo)}–${Math.max(minTempo, maxTempo)}`} BPM
+                </div>
                 <input
-                  id="ear-tempo"
+                  id="ear-tempo-min"
                   className="range-input"
                   type="range"
                   min="50"
                   max="140"
                   step="1"
-                  value={tempo}
-                  onChange={(event) => setTempo(Number(event.target.value))}
+                  value={minTempo}
+                  aria-label="Slowest tempo"
+                  onChange={(event) => setMinTempo(Number(event.target.value))}
+                />
+                <input
+                  className="range-input"
+                  type="range"
+                  min="50"
+                  max="140"
+                  step="1"
+                  value={maxTempo}
+                  aria-label="Fastest tempo"
+                  onChange={(event) => setMaxTempo(Number(event.target.value))}
                 />
               </div>
 
