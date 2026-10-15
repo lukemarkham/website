@@ -18,6 +18,11 @@ either machine. Newest first.
   Command Calendar's `practice-sync.js` counts each towards its Drum
   Practice task (and all of them towards the drum hour). Keys stays one
   category, as the calendar has only Piano Practice.
+- Hero photos: `src/assets/hero-photos/` is now gitignored (originals and
+  zips stay local) and `npm run hero:optimize` writes 2400px WebPs to the
+  committed `src/assets/hero-photos-optimized/`. The two red night shots are
+  in; nothing uses them yet. The zip itself is still in git history from a
+  mistaken commit — Luke chose to leave it.
 
 ## 2026-10-13 — Redesign direction: Signal layout, Lab colours
 

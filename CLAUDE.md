@@ -17,7 +17,10 @@ Netlify builds and deploys from `main`, so pushing to `main` publishes the site.
 
 Originals go in the gitignored `src/assets/photography/`; only the generated
 WebPs in `src/assets/photography-optimized/` are committed. See the Photography
-section of `README.md` for the full workflow and its gotchas.
+section of `README.md` for the full workflow and its gotchas. The music
+site's hero photos work the same way: originals in the gitignored
+`src/assets/hero-photos/`, committed WebPs in
+`src/assets/hero-photos-optimized/` (`npm run hero:optimize`).
 
 ## Reviews
 

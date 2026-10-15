@@ -106,3 +106,7 @@ Delete the original and re-run the script — it prunes the orphaned WebP, which
 - `PHOTO_SOURCE=/path/to/photos npm run photography:optimize` points the script somewhere else, e.g. an external drive.
 - When the source folder is empty or missing — on Netlify, or any fresh clone — the script no-ops and leaves the committed WebPs alone, so the build still succeeds.
 - Because the originals are gitignored, git is **not** backing them up, and `git clean -xfd` would delete them. Keep them somewhere else too.
+
+### Hero photos
+
+The music site's own imagery is kept apart from the portfolio and goes through the same script as a second set. Drop originals (unzip any zips first) into the gitignored `src/assets/hero-photos/`; `npm run hero:optimize` (also run by `predev` and `prebuild`) writes WebPs up to 2400px wide to `src/assets/hero-photos-optimized/`, which is committed. The same `git add -A` caveat applies.

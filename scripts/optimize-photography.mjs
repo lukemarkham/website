@@ -2,17 +2,29 @@ import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
 
-// Drop full-resolution originals here, the same way review screenshots go into
-// src/assets/reviews. The folder is gitignored, so the originals stay local.
+// Two sets of photos go through here: the photography portfolio (the default)
+// and, with `hero` as the argument, the music site's own hero photos, which
+// are kept apart from the portfolio and sized for full-bleed use.
+const sets = {
+  photography: { source: 'src/assets/photography', output: 'src/assets/photography-optimized', maxWidth: 1800 },
+  hero: { source: 'src/assets/hero-photos', output: 'src/assets/hero-photos-optimized', maxWidth: 2400 },
+}
+const setName = process.argv[2] ?? 'photography'
+const set = sets[setName]
+if (!set) throw new Error(`Unknown photo set "${setName}" (expected ${Object.keys(sets).join(' or ')})`)
+
+// Drop full-resolution originals in the source folder, the same way review
+// screenshots go into src/assets/reviews. The folder is gitignored, so the
+// originals stay local.
 // Override with PHOTO_SOURCE=/some/other/folder npm run photography:optimize
 const sourceRoot = process.env.PHOTO_SOURCE
   ? path.resolve(process.env.PHOTO_SOURCE)
-  : path.resolve('src/assets/photography')
+  : path.resolve(set.source)
 
 // The optimized WebPs *are* committed — that is what Netlify builds and ships.
-const outputRoot = path.resolve('src/assets/photography-optimized')
+const outputRoot = path.resolve(set.output)
 const imageExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif'])
-const maxWidth = 1800
+const maxWidth = set.maxWidth
 const webpQuality = 78
 
 async function findImages(directory) {
@@ -97,7 +109,7 @@ async function main() {
   // survive — otherwise a deploy would ship an empty gallery. It also means the
   // last photo can only be removed from the site by deleting its WebP directly.
   if (images.length === 0) {
-    console.log(`No photography originals in ${sourceRoot} — using the committed optimized images.`)
+    console.log(`No ${setName} originals in ${sourceRoot} — using the committed optimized images.`)
     return
   }
 
@@ -109,7 +121,7 @@ async function main() {
   const written = results.filter((result) => !result.skipped).length
   const skipped = results.length - written
   const summary = [
-    `Optimized ${written} photography image${written === 1 ? '' : 's'}`,
+    `Optimized ${written} ${setName} image${written === 1 ? '' : 's'}`,
     skipped > 0 ? `${skipped} unchanged` : null,
     pruned > 0 ? `${pruned} removed` : null,
   ].filter(Boolean)

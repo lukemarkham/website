@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node scripts/optimize-photography.mjs",
+    "predev": "node scripts/optimize-photography.mjs && node scripts/optimize-photography.mjs hero",
     "dev": "vite",
-    "prebuild": "node scripts/optimize-photography.mjs",
+    "prebuild": "node scripts/optimize-photography.mjs && node scripts/optimize-photography.mjs hero",
     "build": "vite build",
     "lint": "eslint .",
     "photography:optimize": "node scripts/optimize-photography.mjs",
+    "hero:optimize": "node scripts/optimize-photography.mjs hero",
     "preview": "vite preview"
   },
   "dependencies": {
