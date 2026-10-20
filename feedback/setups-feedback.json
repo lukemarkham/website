@@ -294,5 +294,29 @@
     "note": "Rehearsal mark c still says \"Cross Stick\" which is, again, redundant in Bossa and Latin music. It probably means to say \"Hi-Hats\" there I would imagine.",
     "tags": [],
     "review": "Bossa no longer changes to \"Cross stick\" (implied by bossa): after \"To ride\", a later section goes \"To hi-hats\", and back. The xstick direction is gone."
+  },
+  {
+    "id": "2026-10-14T18-39-31-726Z-f1299d",
+    "createdAt": "2026-10-14T18:39:31.726Z",
+    "tool": "setups",
+    "key": "swing|32|2@31-1m;4@63-1a,64-2m;2@78-2m;2@97-1a,98-2m+93-1m;2@218-2m+215-1m;2@250-2t+247-1m|8-3a,11-1m,18-2s,22-2s,115-3a,118-2m,227-3a,230-2m|t0-8/t8-8/x4@16-8/t24-8/r0-4x2/m0:twowalk/m16:trade4/m24:time",
+    "feel": "swing",
+    "vote": "up",
+    "tempo": 106,
+    "note": "",
+    "tags": [],
+    "review": "Upvote, nothing to change."
+  },
+  {
+    "id": "2026-10-14T18-40-12-214Z-l84mh3",
+    "createdAt": "2026-10-14T18:40:12.214Z",
+    "tool": "setups",
+    "key": "swing|32|2@31-1m;4@63-1a,64-2m;2@78-2m;2@97-1a,98-2m+93-1m;2@218-2m+215-1m;2@250-2t+247-1m|8-3a,11-1m,18-2s,22-2s,115-3a,118-2m,227-3a,230-2m|t0-8/t8-8/x4@16-8/t24-8/r0-4x2/m0:twowalk/m16:trade4/m24:time",
+    "feel": "swing",
+    "vote": "down",
+    "tempo": 106,
+    "note": "I am actually leaving positive feedback here. I really like the different feels on repeats. However, it should read \"1st x - 2 feel, 2nd x - In 4\" or something to that effect",
+    "tags": [],
+    "review": "Positive: Luke likes the feel changing on the repeat. Asks for the direction to read \"1st x – 2 feel, 2nd x – in 4\". Proposed 2026-10-19, not yet made."
   }
 ]

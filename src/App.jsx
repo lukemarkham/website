@@ -25,6 +25,7 @@ import {
   fetchStudentPractice,
   localDay,
   lookUpPracticePin,
+  readPracticePin,
   releaseHeldPractice,
   rememberPracticePin,
   summarizePractice,
@@ -2285,6 +2286,18 @@ const EAR_TRAINER_FEEDBACK_TAGS = [
   'Too hard',
 ]
 
+const CHORD_PROGRESSION_FEEDBACK_TAGS = [
+  'Wrong chord in the progression',
+  'Chord symbol spelled wrong',
+  'Right voicing not accepted',
+  'Wrong voicing accepted',
+  'Hint named the wrong chord',
+  'Progression name off',
+  'Piano sounds off',
+  'Too easy',
+  'Too hard',
+]
+
 const INDEPENDENCE_FEEDBACK_TAGS = [
   'Too easy',
   'Too hard',
@@ -2359,8 +2372,14 @@ async function flushFeedbackOutbox(tool) {
 }
 
 function sendFeedback(tool, entry) {
-  writeStoredList(outboxKey(tool), [...readStoredList(outboxKey(tool)), { ...entry, queuedAt: Date.now() }])
+  writeStoredList(outboxKey(tool), [...readStoredList(outboxKey(tool)), { ...entry, pin: readPracticePin()?.pin, queuedAt: Date.now() }])
   flushFeedbackOutbox(tool)
+}
+
+// Only Luke votes (the endpoint checks his PIN too), so the vote buttons show
+// only while his practice PIN is entered.
+function useCanVote() {
+  return usePracticePin()?.name === 'Luke Markham'
 }
 
 function rememberDownvote(tool, key) {
@@ -3009,6 +3028,7 @@ function FillGeneratorPage() {
   const [reveal, setReveal] = useState(null)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const canVote = useCanVote()
   const revealTimerRef = useRef(null)
   const sessionControlRef = useRef(null)
   const { cells } = fill
@@ -3240,26 +3260,30 @@ function FillGeneratorPage() {
           />
 
           <div className="sticking-board-actions">
-            <button
-              className={`sticking-vote${upvoted === fill ? ' is-active' : ''}`}
-              type="button"
-              disabled={reveal !== null || upvoted === fill}
-              onClick={upvote}
-              aria-label={upvoted === fill ? 'Liked' : 'Thumbs up'}
-              title={upvoted === fill ? 'Liked' : 'Thumbs up'}
-            >
-              <ThumbIcon />
-            </button>
-            <button
-              className="sticking-vote"
-              type="button"
-              disabled={reveal !== null}
-              onClick={downvote}
-              aria-label="Thumbs down"
-              title="Thumbs down"
-            >
-              <ThumbIcon down />
-            </button>
+            {canVote ? (
+              <>
+                <button
+                  className={`sticking-vote${upvoted === fill ? ' is-active' : ''}`}
+                  type="button"
+                  disabled={reveal !== null || upvoted === fill}
+                  onClick={upvote}
+                  aria-label={upvoted === fill ? 'Liked' : 'Thumbs up'}
+                  title={upvoted === fill ? 'Liked' : 'Thumbs up'}
+                >
+                  <ThumbIcon />
+                </button>
+                <button
+                  className="sticking-vote"
+                  type="button"
+                  disabled={reveal !== null}
+                  onClick={downvote}
+                  aria-label="Thumbs down"
+                  title="Thumbs down"
+                >
+                  <ThumbIcon down />
+                </button>
+              </>
+            ) : null}
             <button className="primary-button" type="button" onClick={() => generateByHand()}>
               Generate Fill
             </button>
@@ -3380,6 +3404,7 @@ function StickingGeneratorPage() {
   const [reveal, setReveal] = useState(null)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const canVote = useCanVote()
   const revealTimerRef = useRef(null)
   const sessionControlRef = useRef(null)
   const { cells } = pattern
@@ -3597,26 +3622,30 @@ function StickingGeneratorPage() {
           />
 
           <div className="sticking-board-actions">
-            <button
-              className={`sticking-vote${upvoted === pattern ? ' is-active' : ''}`}
-              type="button"
-              disabled={reveal !== null || upvoted === pattern}
-              onClick={upvote}
-              aria-label={upvoted === pattern ? 'Liked' : 'Thumbs up'}
-              title={upvoted === pattern ? 'Liked' : 'Thumbs up'}
-            >
-              <ThumbIcon />
-            </button>
-            <button
-              className="sticking-vote"
-              type="button"
-              disabled={reveal !== null}
-              onClick={downvote}
-              aria-label="Thumbs down"
-              title="Thumbs down"
-            >
-              <ThumbIcon down />
-            </button>
+            {canVote ? (
+              <>
+                <button
+                  className={`sticking-vote${upvoted === pattern ? ' is-active' : ''}`}
+                  type="button"
+                  disabled={reveal !== null || upvoted === pattern}
+                  onClick={upvote}
+                  aria-label={upvoted === pattern ? 'Liked' : 'Thumbs up'}
+                  title={upvoted === pattern ? 'Liked' : 'Thumbs up'}
+                >
+                  <ThumbIcon />
+                </button>
+                <button
+                  className="sticking-vote"
+                  type="button"
+                  disabled={reveal !== null}
+                  onClick={downvote}
+                  aria-label="Thumbs down"
+                  title="Thumbs down"
+                >
+                  <ThumbIcon down />
+                </button>
+              </>
+            ) : null}
             <button className="primary-button" type="button" onClick={() => generateByHand()}>
               Generate Sticking
             </button>
@@ -3699,6 +3728,7 @@ function IndependencePage() {
   const [manualCount, setManualCount] = useState(0)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const canVote = useCanVote()
   const sessionControlRef = useRef(null)
   const notation = useMemo(() => exerciseNotation(exercise), [exercise])
   const newTempo = exercise.newTempoRatio
@@ -3819,19 +3849,23 @@ function IndependencePage() {
           </div>
 
           <div className="sticking-board-actions">
-            <button
-              className={`sticking-vote${upvoted === exercise ? ' is-active' : ''}`}
-              type="button"
-              disabled={upvoted === exercise}
-              onClick={upvote}
-              aria-label={upvoted === exercise ? 'Liked' : 'Thumbs up'}
-              title={upvoted === exercise ? 'Liked' : 'Thumbs up'}
-            >
-              <ThumbIcon />
-            </button>
-            <button className="sticking-vote" type="button" onClick={downvote} aria-label="Thumbs down" title="Thumbs down">
-              <ThumbIcon down />
-            </button>
+            {canVote ? (
+              <>
+                <button
+                  className={`sticking-vote${upvoted === exercise ? ' is-active' : ''}`}
+                  type="button"
+                  disabled={upvoted === exercise}
+                  onClick={upvote}
+                  aria-label={upvoted === exercise ? 'Liked' : 'Thumbs up'}
+                  title={upvoted === exercise ? 'Liked' : 'Thumbs up'}
+                >
+                  <ThumbIcon />
+                </button>
+                <button className="sticking-vote" type="button" onClick={downvote} aria-label="Thumbs down" title="Thumbs down">
+                  <ThumbIcon down />
+                </button>
+              </>
+            ) : null}
             <button className="primary-button" type="button" onClick={() => generateByHand()}>
               New Exercise
             </button>
@@ -4108,6 +4142,7 @@ function SightReadingPage() {
   const [manualCount, setManualCount] = useState(0)
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const canVote = useCanVote()
   const sessionControlRef = useRef(null)
   const feelLabel = SET_UP_FEELS.find((item) => item.id === phrase.feel).label
 
@@ -4362,19 +4397,23 @@ function SightReadingPage() {
           />
 
           <div className="sticking-board-actions">
-            <button
-              className={`sticking-vote${upvoted === phrase ? ' is-active' : ''}`}
-              type="button"
-              disabled={upvoted === phrase}
-              onClick={upvote}
-              aria-label={upvoted === phrase ? 'Liked' : 'Thumbs up'}
-              title={upvoted === phrase ? 'Liked' : 'Thumbs up'}
-            >
-              <ThumbIcon />
-            </button>
-            <button className="sticking-vote" type="button" onClick={downvote} aria-label="Thumbs down" title="Thumbs down">
-              <ThumbIcon down />
-            </button>
+            {canVote ? (
+              <>
+                <button
+                  className={`sticking-vote${upvoted === phrase ? ' is-active' : ''}`}
+                  type="button"
+                  disabled={upvoted === phrase}
+                  onClick={upvote}
+                  aria-label={upvoted === phrase ? 'Liked' : 'Thumbs up'}
+                  title={upvoted === phrase ? 'Liked' : 'Thumbs up'}
+                >
+                  <ThumbIcon />
+                </button>
+                <button className="sticking-vote" type="button" onClick={downvote} aria-label="Thumbs down" title="Thumbs down">
+                  <ThumbIcon down />
+                </button>
+              </>
+            ) : null}
             <button className="primary-button" type="button" onClick={() => generateByHand()}>
               New Phrase
             </button>
@@ -4819,6 +4858,7 @@ function EarTrainerPage() {
   // Votes on the question once its answer is up, like the drum generators'.
   const [upvoted, setUpvoted] = useState(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const canVote = useCanVote()
   const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
   // What is under the fingers now, what the notes played add up to, and which
   // chord on the chart they were played at — the readings on offer belong to
@@ -5632,25 +5672,29 @@ function EarTrainerPage() {
                         {question.progression.note ? ` — ${question.progression.note}` : ''}
                         {answerSeconds !== null ? ` Answered in ${formatAnswerSeconds(answerSeconds)}.` : ''}
                         <span className="ear-votes">
-                          <button
-                            className={`sticking-vote${upvoted === question ? ' is-active' : ''}`}
-                            type="button"
-                            disabled={upvoted === question}
-                            onClick={upvote}
-                            aria-label={upvoted === question ? 'Liked' : 'Thumbs up'}
-                            title={upvoted === question ? 'Liked' : 'Thumbs up'}
-                          >
-                            <ThumbIcon />
-                          </button>
-                          <button
-                            className="sticking-vote"
-                            type="button"
-                            onClick={() => setIsFeedbackOpen(true)}
-                            aria-label="Thumbs down"
-                            title="Thumbs down"
-                          >
-                            <ThumbIcon down />
-                          </button>
+                          {canVote ? (
+                            <>
+                              <button
+                                className={`sticking-vote${upvoted === question ? ' is-active' : ''}`}
+                                type="button"
+                                disabled={upvoted === question}
+                                onClick={upvote}
+                                aria-label={upvoted === question ? 'Liked' : 'Thumbs up'}
+                                title={upvoted === question ? 'Liked' : 'Thumbs up'}
+                              >
+                                <ThumbIcon />
+                              </button>
+                              <button
+                                className="sticking-vote"
+                                type="button"
+                                onClick={() => setIsFeedbackOpen(true)}
+                                aria-label="Thumbs down"
+                                title="Thumbs down"
+                              >
+                                <ThumbIcon down />
+                              </button>
+                            </>
+                          ) : null}
                         </span>
                       </>
                     ) : (
@@ -5872,6 +5916,11 @@ function ChordProgressionsPage() {
   const [miss, setMiss] = useState(null)
   const [held, setHeld] = useState([])
   const [stats, setStats] = useState({ solved: 0, streak: 0, best: 0, totalSeconds: 0 })
+  const [upvoted, setUpvoted] = useState(null)
+  // The question the open feedback form is about, kept apart from the live
+  // one, which moves on by itself once solved.
+  const [feedbackOn, setFeedbackOn] = useState(null)
+  const canVote = useCanVote()
   const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
   const [soundOn, setSoundOn] = useState(() => {
     try {
@@ -6096,6 +6145,25 @@ function ChordProgressionsPage() {
     }
   }
 
+  function describeQuestion(asked, reached, shown) {
+    return {
+      key: [asked.progression.id, asked.key.pc, asked.chords.map((chord) => chord.symbol).join(',')].join('|'),
+      reached,
+      revealed: shown,
+    }
+  }
+
+  function upvote() {
+    sendFeedback('chord-progressions', { vote: 'up', ...describeQuestion(question, step, revealed) })
+    setUpvoted(question)
+  }
+
+  function submitDownvote({ tags, note }) {
+    const { asked, reached, shown } = feedbackOn
+    sendFeedback('chord-progressions', { vote: 'down', ...describeQuestion(asked, reached, shown), tags, note })
+    setFeedbackOn(null)
+  }
+
   // Declared after solve so the ref always holds this render's copy.
   useEffect(() => {
     liveRef.current = { ...liveRef.current, question, step, revealed, soundOn, solve }
@@ -6108,6 +6176,16 @@ function ChordProgressionsPage() {
   return (
     <div style={pageShellStyle}>
       <SiteNav showHomeLink />
+      {feedbackOn ? (
+        <GeneratorFeedbackDialog
+          open
+          summary={`${feedbackOn.asked.progression.name} in ${feedbackOn.asked.key.label}: ${feedbackOn.asked.chords.map((chord) => `${chord.role} (${chord.symbol})`).join(' – ')}`}
+          tags={CHORD_PROGRESSION_FEEDBACK_TAGS}
+          submitLabel="Log Feedback"
+          onSubmit={submitDownvote}
+          onCancel={() => setFeedbackOn(null)}
+        />
+      ) : null}
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Practice Tools · Keys</div>
@@ -6242,6 +6320,29 @@ function ChordProgressionsPage() {
               </div>
 
               <div className="twofive-actions">
+                {canVote && question ? (
+                  <>
+                    <button
+                      className={`sticking-vote${upvoted === question ? ' is-active' : ''}`}
+                      type="button"
+                      disabled={upvoted === question}
+                      onClick={upvote}
+                      aria-label={upvoted === question ? 'Liked' : 'Thumbs up'}
+                      title={upvoted === question ? 'Liked' : 'Thumbs up'}
+                    >
+                      <ThumbIcon />
+                    </button>
+                    <button
+                      className="sticking-vote"
+                      type="button"
+                      onClick={() => setFeedbackOn({ asked: question, reached: step, shown: revealed })}
+                      aria-label="Thumbs down"
+                      title="Thumbs down"
+                    >
+                      <ThumbIcon down />
+                    </button>
+                  </>
+                ) : null}
                 <button className="secondary-button" type="button" disabled={!question || revealed || isSolved} onClick={() => setRevealed(true)}>
                   Show Answer
                 </button>

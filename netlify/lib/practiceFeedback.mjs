@@ -1,16 +1,21 @@
 // Votes and notes on what the practice generators produce, sent from their
-// pages: the Fill Generator, the Sticking Generator, Independence, Set Ups and the
-// Ear Trainer. Each
-// tool's entries are kept apart, picked by the `tool` query parameter.
+// pages: the Fill Generator, the Sticking Generator, Independence, Set Ups, the
+// Ear Trainer and Chord Progressions. Each tool's entries are kept apart,
+// picked by the `tool` query parameter.
 //
 // Production keeps them in Netlify Blobs (netlify/functions/practice-feedback.mjs);
 // local dev keeps them in gitignored JSON files (vite.config.js). Both hand a
 // store to handleFeedbackRequest so the validation lives in one place.
 //
-// This endpoint is unauthenticated. That is fine while the site is private,
-// but it needs a key before the site is shared.
+// Only Luke votes: a vote must carry his practice PIN, and the pages show
+// the vote buttons only while his PIN is entered. Reading stays open, as
+// every visitor's generators skip the downvoted picks.
 
-export const FEEDBACK_TOOLS = ['fill', 'sticking', 'independence', 'setups', 'ear-training']
+import { PRACTICE_ONLY } from './students.mjs'
+
+export const FEEDBACK_TOOLS = ['fill', 'sticking', 'independence', 'setups', 'ear-training', 'chord-progressions']
+
+const OWNER_PIN = PRACTICE_ONLY['luke-markham'].pin
 
 const MAX_NOTE_LENGTH = 2000
 const MAX_TAGS = 10
@@ -25,11 +30,12 @@ function isWholeNumberInRange(value, min, max) {
 function sanitizeCommon(body) {
   const { vote, tempo, note = '', tags = [] } = body
   if (vote !== 'up' && vote !== 'down') return null
-  if (!isWholeNumberInRange(tempo, 30, 300)) return null
+  // Chord Progressions has no tempo; every other tool sends one.
+  if (tempo !== undefined && !isWholeNumberInRange(tempo, 30, 300)) return null
   if (typeof note !== 'string' || note.length > MAX_NOTE_LENGTH) return null
   if (!Array.isArray(tags) || tags.length > MAX_TAGS) return null
   if (!tags.every((tag) => typeof tag === 'string' && tag.length > 0 && tag.length <= MAX_TAG_LENGTH)) return null
-  return { vote, tempo, note: note.trim(), tags }
+  return { vote, ...(tempo !== undefined && { tempo }), note: note.trim(), tags }
 }
 
 // Only the fields each page sends, each checked, so nothing unexpected can be
@@ -96,6 +102,18 @@ const SANITIZERS = {
     if (!valid) return null
     return { key, answers: answers.map(({ index, typed, status, points }) => ({ index, typed, status, points })) }
   },
+
+  // The key spells out the question: progression|key pc|chord symbols (see
+  // questionFor in src/lib/chordProgressions.js). `reached` is how many
+  // chords had been played right when the vote was cast, `revealed` whether
+  // the answer was showing.
+  'chord-progressions'(body) {
+    const { key, reached, revealed } = body
+    if (typeof key !== 'string' || !/^[a-z0-9-]{2,60}\|\d{1,2}\|[^|]{2,300}$/u.test(key)) return null
+    if (!isWholeNumberInRange(reached, 0, 16)) return null
+    if (typeof revealed !== 'boolean') return null
+    return { key, reached, revealed }
+  },
 }
 
 export function sanitizeFeedback(tool, body) {
@@ -136,6 +154,10 @@ export async function handleFeedbackRequest({ method, tool, bodyText }, storeFor
     body = JSON.parse(bodyText)
   } catch {
     return { statusCode: 400, payload: { error: 'Body is not JSON' } }
+  }
+
+  if (body?.pin !== OWNER_PIN) {
+    return { statusCode: 403, payload: { error: 'Only the site owner can leave feedback' } }
   }
 
   const feedback = sanitizeFeedback(tool, body)

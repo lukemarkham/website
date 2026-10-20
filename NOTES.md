@@ -3,6 +3,22 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-19 — Feedback only for Luke; Chord Progressions gets votes
+
+- The thumbs up / down on every practice tool now show only while Luke's
+  PIN is entered (`useCanVote` in `App.jsx`, by the name the PIN lookup
+  returns). The feedback endpoint also requires his PIN on every vote, so
+  students can't post to it (closes the "feedback endpoint has no
+  authentication" item). Reading the feedback stays open: every visitor's
+  generators skip downvoted picks.
+- Chord Progressions has thumbs up / down next to Show Answer and Skip,
+  tool id `chord-progressions`, archive `feedback/chord-progressions-feedback.json`.
+- Sight Reading feedback: Luke likes the feel changing on the repeat but
+  wants the direction to read "1st x – 2 feel, 2nd x – in 4". Proposed, not
+  yet made.
+- The home page SoundBetter client map is a static screenshot
+  (`public/soundbetter-map/client-map.png`, from April); nothing refreshes it.
+
 ## 2026-10-14 — Practice timers default to 15 minutes
 
 - Every practice tool's session timer now starts at 15 minutes
