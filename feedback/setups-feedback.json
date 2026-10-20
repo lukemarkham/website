@@ -317,6 +317,6 @@
     "tempo": 106,
     "note": "I am actually leaving positive feedback here. I really like the different feels on repeats. However, it should read \"1st x - 2 feel, 2nd x - In 4\" or something to that effect",
     "tags": [],
-    "review": "Positive: Luke likes the feel changing on the repeat. Asks for the direction to read \"1st x – 2 feel, 2nd x – in 4\". Proposed 2026-10-19, not yet made."
+    "review": "Positive: Luke likes the feel changing on the repeat. The direction now reads \"1st x – 2 feel, 2nd x – in 4\" (twowalk in CHART_MARKS, src/lib/setUps.js), 2026-10-20."
   }
 ]

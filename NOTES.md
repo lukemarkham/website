@@ -13,9 +13,8 @@ either machine. Newest first.
   generators skip downvoted picks.
 - Chord Progressions has thumbs up / down next to Show Answer and Skip,
   tool id `chord-progressions`, archive `feedback/chord-progressions-feedback.json`.
-- Sight Reading feedback: Luke likes the feel changing on the repeat but
-  wants the direction to read "1st x – 2 feel, 2nd x – in 4". Proposed, not
-  yet made.
+- Sight Reading: the repeat's direction now reads "1st x – 2 feel, 2nd x –
+  in 4" (was "2 feel, walk 2nd x"), from Luke's feedback.
 - The home page client map is now live: `netlify/functions/soundbetter-map.mjs`
   reads the Mapbox image off Luke's SoundBetter map page and serves it
   (re-requested in a card-friendly 540×640@2x), cached on Netlify's CDN for a

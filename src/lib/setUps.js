@@ -261,7 +261,7 @@ export function performanceOf(bars, repeat) {
 // which the band's comping follows.
 const CHART_MARKS = {
   two: { text: '2 feel', bass: 'two' },
-  twowalk: { text: '2 feel, walk 2nd x', bass: 'twoThenFour' },
+  twowalk: { text: '1st x – 2 feel, 2nd x – in 4', bass: 'twoThenFour' },
   walk: { text: 'Walk', bass: 'four' },
   in4: { text: 'In 4', bass: 'four' },
   time: { text: 'Time', bass: 'four' },
