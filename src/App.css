@@ -592,7 +592,9 @@ h3 {
 }
 
 .map-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   height: 100%;
   min-height: 360px;
   padding: 18px;
@@ -603,11 +605,21 @@ h3 {
 }
 
 .map-card-media {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(6, 9, 12, 0.68);
   height: 100%;
+}
+
+.map-card-summary {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .map-card-image {

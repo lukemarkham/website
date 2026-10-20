@@ -586,7 +586,27 @@ function ReviewGallery() {
   )
 }
 
+// SoundBetter's "Luke has helped … musicians" line, read with the map; left
+// out if it can't be had (and on the dev server, which has no functions).
+function useClientMapSummary() {
+  const [summary, setSummary] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${SOUNDBETTER_MAP_IMAGE}?part=summary`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && typeof data?.summary === 'string') setSummary(data.summary)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  return summary
+}
+
 function ClientMapSection() {
+  const summary = useClientMapSummary()
   return (
     <a
       className="map-card surface-card"
@@ -606,6 +626,7 @@ function ClientMapSection() {
           }}
         />
       </div>
+      {summary ? <p className="map-card-summary">{summary}</p> : null}
     </a>
   )
 }

@@ -19,7 +19,9 @@ either machine. Newest first.
 - The home page client map is now live: `netlify/functions/soundbetter-map.mjs`
   reads the Mapbox image off Luke's SoundBetter map page and serves it
   (re-requested in a card-friendly 540×640@2x), cached on Netlify's CDN for a
-  day, so new clients show up within a day. If SoundBetter can't be read, it
+  day, so new clients show up within a day. `?part=summary` returns
+  SoundBetter's "Luke has helped N musicians finish N projects in N cities"
+  line, shown under the map (left out if it can't be read). If SoundBetter can't be read, it
   (and the dev server) falls back to the April screenshot in
   `public/soundbetter-map/client-map.png`.
 
