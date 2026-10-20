@@ -21,7 +21,12 @@ either machine. Newest first.
   (re-requested in a card-friendly 540×640@2x), cached on Netlify's CDN for a
   day, so new clients show up within a day. `?part=summary` returns
   SoundBetter's "Luke has helped N musicians finish N projects in N cities"
-  line, shown under the map (left out if it can't be read). If SoundBetter can't be read, it
+  line, shown above the map (left out if it can't be read).
+- Reviews come live from SoundBetter too (`soundbetter-reviews` function,
+  daily), merged with the saved `src/data/reviews.js`, newest first.
+  `npm run reviews:sync` saves new ones; it added Dr Funk's three from
+  2026-08-28, and Clayton H.'s review now has its full text (the screenshot
+  had cut it off). If SoundBetter can't be read, it
   (and the dev server) falls back to the April screenshot in
   `public/soundbetter-map/client-map.png`.
 

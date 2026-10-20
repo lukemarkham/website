@@ -482,7 +482,36 @@ function SecondaryButton({ children }) {
   return <button className="secondary-button">{children}</button>
 }
 
+// The saved reviews (src/data/reviews.js) plus any newer ones SoundBetter has
+// (netlify/functions/soundbetter-reviews.mjs, refreshed daily), newest first.
+// A saved review keeps its saved wording, which has typos fixed; the saved
+// list alone shows until SoundBetter answers, or if it can't be reached.
+function byNewest(list) {
+  return [...list].sort((a, b) => Number(b.id.slice(7)) - Number(a.id.slice(7)))
+}
+
+function useReviews() {
+  const [all, setAll] = useState(() => byNewest(reviews))
+  useEffect(() => {
+    let cancelled = false
+    fetch('/.netlify/functions/soundbetter-reviews')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled || !Array.isArray(data?.reviews)) return
+        const saved = new Set(reviews.map((review) => review.id))
+        const fresh = data.reviews.filter((review) => !saved.has(review.id) && review.stars === 5)
+        if (fresh.length > 0) setAll(byNewest([...reviews, ...fresh]))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  return all
+}
+
 function ReviewGallery() {
+  const reviews = useReviews()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isReviewVisible, setIsReviewVisible] = useState(true)
   const transitionTimeoutRef = useRef(null)
@@ -614,6 +643,7 @@ function ClientMapSection() {
       target="_blank"
       rel="noreferrer"
     >
+      {summary ? <p className="map-card-summary">{summary}</p> : null}
       <div className="map-card-media">
         {/* The live map from SoundBetter (netlify/functions/soundbetter-map.mjs),
             or the saved screenshot where functions don't run, as on the dev server. */}
@@ -626,7 +656,6 @@ function ClientMapSection() {
           }}
         />
       </div>
-      {summary ? <p className="map-card-summary">{summary}</p> : null}
     </a>
   )
 }

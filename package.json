@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "photography:optimize": "node scripts/optimize-photography.mjs",
     "hero:optimize": "node scripts/optimize-photography.mjs hero",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "reviews:sync": "node scripts/sync-reviews.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.0",

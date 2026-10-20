@@ -24,18 +24,16 @@ site's hero photos work the same way: originals in the gitignored
 
 ## Reviews
 
-The home page review gallery shows text from `src/data/reviews.js`; the
-SoundBetter screenshots in `src/assets/reviews/` are only source material, and
-Luke adds new ones without transcribing them. After the start-of-session pull,
-check that every `screenshot_review_<id>.png` has a `review-<id>` entry:
-
-    diff <(ls src/assets/reviews | sed -n 's/^screenshot_review_\(.*\)\.png$/\1/p' | sort) \
-         <(grep -o "review-[0-9]*" src/data/reviews.js | sed 's/review-//' | sort)
-
-For each screenshot missing an entry, read the image and append `{ id, quote,
-source, stars }` in id order, keeping the reviewer's wording (fix only obvious
-typos; if a screenshot is cut off, keep the complete sentences). Commit the
-screenshot with its entry and tell Luke which reviews were added.
+The home page review gallery reads Luke's SoundBetter profile once a day
+(`netlify/functions/soundbetter-reviews.mjs`, parsing in
+`netlify/lib/soundbetterReviews.mjs`) and shows any 5-star review newer than
+the saved ones in `src/data/reviews.js`, newest first. The profile only shows
+the 20 most recent, so the saved list is what keeps older reviews on the
+site. After the start-of-session pull, run `npm run reviews:sync`: it appends
+reviews the saved list is missing. Fix only obvious typos in what it adds (a
+saved review's wording wins over SoundBetter's), commit, and tell Luke which
+reviews were added. Screenshots are no longer needed; the old ones in
+`src/assets/reviews/` are only history.
 
 ## Student pages
 

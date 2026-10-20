@@ -77,7 +77,7 @@ export const reviews = [
   {
     id: 'review-708950',
     quote:
-      'Luke is the absolute best! His playing is superb. It is tasteful, and locked into the pocket. He breathed life into the ideas I started with, and took everything to a much higher level with his own suggestions. The drum sounds he was able to get were not only phenomenal, but exactly in line with what I was looking for.',
+      'Luke is the absolute best! His playing is superb. It is tasteful, and locked into the pocket. He breathed life into the ideas I started with, and took everything to a much higher level with his own suggestions. The drum sounds he was able to get were not only phenomenal, but exactly in line with what I was looking for. His contribution to my song cannot be understated. He is a consummate professional, a master of his craft, and you should hire him to play on your track. Period.',
     source: 'Clayton H.',
     stars: 5,
   },
@@ -126,6 +126,27 @@ export const reviews = [
     id: 'review-726944',
     quote: '9th song with Luke, highly recommend!',
     source: 'Jaima',
+    stars: 5,
+  },
+  {
+    id: 'review-722140',
+    quote:
+      "Stellar work as always. Luke delivers quality and professionalism every step of the way!",
+    source: "Dr Funk",
+    stars: 5,
+  },
+  {
+    id: 'review-722141',
+    quote:
+      "Luke was able to pivot and give us the sick samba grooves we needed! The drums and bongos sound sick as always!!",
+    source: "Dr Funk",
+    stars: 5,
+  },
+  {
+    id: 'review-722142',
+    quote:
+      "Such a pleasure having Luke on another project. This one had all the elements, from hip-hop to pop to jazz and Luke didn't disappoint!",
+    source: "Dr Funk",
     stars: 5,
   },
 ]
