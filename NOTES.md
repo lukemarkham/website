@@ -16,8 +16,12 @@ either machine. Newest first.
 - Sight Reading feedback: Luke likes the feel changing on the repeat but
   wants the direction to read "1st x – 2 feel, 2nd x – in 4". Proposed, not
   yet made.
-- The home page SoundBetter client map is a static screenshot
-  (`public/soundbetter-map/client-map.png`, from April); nothing refreshes it.
+- The home page client map is now live: `netlify/functions/soundbetter-map.mjs`
+  reads the Mapbox image off Luke's SoundBetter map page and serves it
+  (re-requested in a card-friendly 540×640@2x), cached on Netlify's CDN for a
+  day, so new clients show up within a day. If SoundBetter can't be read, it
+  (and the dev server) falls back to the April screenshot in
+  `public/soundbetter-map/client-map.png`.
 
 ## 2026-10-14 — Practice timers default to 15 minutes
 

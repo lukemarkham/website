@@ -65,6 +65,8 @@ const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
 const SOUNDBETTER_MAP_URL = 'https://soundbetter.com/profiles/45761-luke-markham/map'
+const SOUNDBETTER_MAP_IMAGE = '/.netlify/functions/soundbetter-map'
+const SOUNDBETTER_MAP_FALLBACK = '/soundbetter-map/client-map.png'
 const REVERB_SHOP_SLUG = import.meta.env.VITE_REVERB_SHOP_SLUG || 'lukes-gear-emporium-220'
 const REVERB_SHOP_URL = import.meta.env.VITE_REVERB_SHOP_URL || `https://reverb.com/shop/${REVERB_SHOP_SLUG}`
 const REVERB_EMBED_SCRIPT_URL = 'https://d1g5417jjjo7sf.cloudfront.net/assets/embed/reverb.js'
@@ -593,10 +595,15 @@ function ClientMapSection() {
       rel="noreferrer"
     >
       <div className="map-card-media">
+        {/* The live map from SoundBetter (netlify/functions/soundbetter-map.mjs),
+            or the saved screenshot where functions don't run, as on the dev server. */}
         <img
           className="map-card-image"
-          src="/soundbetter-map/client-map.png"
-          alt="SoundBetter client map preview"
+          src={SOUNDBETTER_MAP_IMAGE}
+          alt="Map of Luke's SoundBetter clients"
+          onError={(event) => {
+            if (!event.currentTarget.src.endsWith(SOUNDBETTER_MAP_FALLBACK)) event.currentTarget.src = SOUNDBETTER_MAP_FALLBACK
+          }}
         />
       </div>
     </a>
