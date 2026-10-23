@@ -22,6 +22,7 @@ export const STUDENTS = {
     name: 'Oliver Otto',
     doc: 'https://docs.google.com/document/d/1Y73iwtkq96EIpXOwqZnZx7U4YhKqOovXz6HbtVIZBoM/edit?tab=t.0',
     folder: 'https://drive.google.com/drive/folders/1iINnajX7LFXrw-qmRtFZrfiy4Ri8AiQr',
+    pin: '1000',
   },
 }
 
