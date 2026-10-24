@@ -25,8 +25,8 @@ either machine. Newest first.
 ### Open items / ideas
 - Ravi: last name to come (move the page to `/ravi-<last>`, keep `/ravi`
   working if he already has the link) and a PIN once he picks one.
-- The Reverb shop embed draws nothing (live too, before this move): only
-  the "Open Reverb shop" link shows.
+- The Gear Shop's Reverb embed is empty because the shop has no listings
+  right now (not a bug).
 - Home page to fit one screen without scrolling (Luke's eventual goal).
 - Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
   (/home /videos /blog /store /beats-sound-packs /misc; /bio, /credits,
