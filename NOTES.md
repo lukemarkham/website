@@ -18,10 +18,9 @@ either machine. Newest first.
   (/home /bio /about /credits /contact /videos /blog /store
   /beats-sound-packs /used-gear /misc /book-list), then set HostGator's
   nameservers to dns1–dns4.p01.nsone.net and verify site + MX with dig.
-- New feedback not yet acted on (not archived): Sight Reading — "Time" at a
-  rehearsal mark is ambiguous when a later direction switches to ride (say
-  "Hats" or don't switch later); Chord Progressions — the tritone turnaround
-  should resolve to the I chord at the end.
+- Feedback acted on: Sight Reading straight feels now name the sound they
+  return to after a solo ("Hi-hats", "Ride", "Bell", or the bossa) instead of
+  "Time" (`RESTATE_MARKS`); the tritone-sub turnaround resolves to I.
 
 ## 2026-10-19 — Feedback only for Luke; Chord Progressions gets votes
 

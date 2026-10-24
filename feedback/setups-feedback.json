@@ -318,5 +318,17 @@
     "note": "I am actually leaving positive feedback here. I really like the different feels on repeats. However, it should read \"1st x - 2 feel, 2nd x - In 4\" or something to that effect",
     "tags": [],
     "review": "Positive: Luke likes the feel changing on the repeat. The direction now reads \"1st x – 2 feel, 2nd x – in 4\" (twowalk in CHART_MARKS, src/lib/setUps.js), 2026-10-20."
+  },
+  {
+    "id": "2026-10-20T18-42-57-589Z-gvammh",
+    "createdAt": "2026-10-20T18:42:57.590Z",
+    "tool": "setups",
+    "key": "straight|32|2@19-1m;4@35-1m,37-1m;2@152-1a,153-1m;2@186-2m;2@208-3a,211-1m+205-1m;2@255-1m|58-2s,62-2s,160-2m,165-1m,170-1s,171-1m,223-1m,232-2s,235-1m|t0-8/s8-8@83-1m,89-1m,101-1m,118-3a,121-1m,125-3a/t16-8/t24-8/r8-8x2/m0:hats/m8:solo/m16:time/m24:ride",
+    "feel": "straight",
+    "vote": "down",
+    "tempo": 127,
+    "note": "At rehearsal mark C here, \"Time\" does not necessarily indicate going back to the Hats. So it should either say \"Hats\" speicifcally, or not later indicate a switch to the ride, since \"Time\" allows room for interpretation by the drummer",
+    "tags": [],
+    "review": "Coming back after a solo, straight feels now name the sound they return to (\"Hi-hats\", \"Ride\", \"Bell\", or the bossa) instead of \"Time\", so a later \"To ride\" follows on. Swing keeps \"Time\". (RESTATE_MARKS, src/lib/setUps.js)"
   }
 ]

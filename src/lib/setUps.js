@@ -268,6 +268,8 @@ const CHART_MARKS = {
   hats: { text: 'Hi-hats' },
   ride: { text: 'To ride' },
   tohats: { text: 'To hi-hats' },
+  onride: { text: 'Ride' },
+  onbell: { text: 'Bell' },
   cascara: { text: 'Cáscara' },
   bell: { text: 'To bell' },
   bossa23: { text: '2-3 bossa', clave: '2-3' },
@@ -287,9 +289,14 @@ const GROOVE_MARKS = {
   bossa: { open: ['bossa23', 'bossa32'], next: { bossa23: 'ride', bossa32: 'ride', ride: 'tohats', tohats: 'ride' } },
 }
 
+// Coming back after a solo, a straight feel names the sound it returns to:
+// "Time" would leave the cymbal to the drummer, and a later "To ride" then
+// makes no sense.
+const RESTATE_MARKS = { ride: 'onride', tohats: 'hats', bell: 'onbell' }
+
 // Where the directions go: the opening sound or feel at bar 1, a change at
-// the next tune section (never mid-section), "Time" when the
-// band comes back after a solo, and the solo's own heading. Swing often
+// the next tune section (never mid-section), "Time" (or, in a straight
+// feel, the sound in use) when the band comes back after a solo, and the solo's own heading. Swing often
 // starts in 2 and goes to 4 for the next section.
 function planMarks(segments, feel, repeat) {
   const marks = []
@@ -312,7 +319,9 @@ function planMarks(segments, feel, repeat) {
     const previous = segments[index - 1]
     if (segment.type === 'trade') return add(segment.bar, segment.turn === 4 ? 'trade4' : 'trade8')
     if (segment.type === 'solo') return add(segment.bar, 'solo')
-    if (previous && previous.type !== 'tune') return add(segment.bar, 'time')
+    if (previous && previous.type !== 'tune') {
+      return add(segment.bar, feel === 'swing' ? 'time' : RESTATE_MARKS[groove] ?? groove)
+    }
     if (index > 0) return change(segment.bar)
     if (feel !== 'swing') {
       groove = pick(GROOVE_MARKS[feel].open)

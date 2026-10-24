@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "2026-10-20T14-45-53-960Z-8pbzko",
+    "createdAt": "2026-10-20T14:45:53.960Z",
+    "tool": "chord-progressions",
+    "key": "tritone-turnaround|7|Gmaj7,B♭7,Am7,A♭7",
+    "reached": 3,
+    "revealed": false,
+    "vote": "down",
+    "note": "I would like this example to resolve at the end on the I chord so as to practice the entire resolution movement",
+    "tags": [],
+    "review": "Tritone-sub turnaround now resolves to I at the end (Imaj7 ♭III7 ii7 ♭II7 I)."
+  }
+]

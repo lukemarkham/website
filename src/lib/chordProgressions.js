@@ -71,7 +71,7 @@ export const PROGRESSIONS = [
   { id: 'tritone-sub-related-ii', type: 'tritone', mode: 'major', name: 'Tritone sub with its own ii',
     chords: [c('♭vi7', '♭vi', 8, 'm7'), c('♭II7', '♭II', 1, '7'), c('I', 'I', 0, 'I')] },
   { id: 'tritone-turnaround', type: 'tritone', mode: 'major', name: 'Tritone-sub turnaround',
-    chords: [c('I', 'I', 0, 'I'), c('♭III7', '♭III', 3, '7'), c('ii7', 'ii', 2, 'm7'), c('♭II7', '♭II', 1, '7')] },
+    chords: [c('I', 'I', 0, 'I'), c('♭III7', '♭III', 3, '7'), c('ii7', 'ii', 2, 'm7'), c('♭II7', '♭II', 1, '7'), c('I', 'I', 0, 'I')] },
 
   // Turnarounds
   { id: 'i-vi-ii-v', type: 'turnaround', mode: 'major', name: 'I–vi–ii–V',
