@@ -467,9 +467,9 @@ function SiteNav({ showHomeLink = false }) {
             )}
           </div>
         </div>
-        <a className="nav-link" href="/#store">Beat Store</a>
-        <a className="nav-link" href="/#gear-shop">Gear Shop</a>
-        <a className="nav-link" href="/#contact">Contact</a>
+        <Link className="nav-link" to="/beats">Beat Store</Link>
+        <Link className="nav-link" to="/gear-shop">Gear Shop</Link>
+        <Link className="nav-link" to="/contact">Contact</Link>
         <div className="nav-dropdown is-end">
           <button
             type="button"
@@ -832,100 +832,6 @@ function HomePage() {
       </section>
 
       <SoundBetterSection />
-
-      <section id="tools" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Practice Tools</h2>
-        <div style={gridStyle}>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Tempo Guessr</h3>
-            <Link className="text-link" to="/tempo-guessr">Go to Tempo Guessr</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Metronome</h3>
-            <Link className="text-link" to="/metronome">Go to Metronome</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Fill Generator</h3>
-            <Link className="text-link" to="/fill-generator">Go to Fill Generator</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Sticking Generator</h3>
-            <Link className="text-link" to="/sticking-generator">Go to Sticking Generator</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Independence</h3>
-            <Link className="text-link" to="/independence">Go to Independence</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Sight Reading</h3>
-            <Link className="text-link" to="/sight-reading">Go to Sight Reading</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Progression Ear Trainer</h3>
-            <Link className="text-link" to="/ear-training">Go to Ear Trainer</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Chord Progressions</h3>
-            <Link className="text-link" to="/chord-progressions">Go to Chord Progressions</Link>
-          </div>
-        </div>
-      </section>
-
-      <section id="content" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Content</h2>
-        <div style={gridStyle}>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Video</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Live clips, studio sessions, playthroughs, and performance videos in one dedicated viewing space.
-            </p>
-            <Link className="text-link" to="/video">Open Video Page</Link>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Audio</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A listening hub for productions, drum work, beats, and selected recordings.
-            </p>
-            <Link className="text-link" to="/audio">Open Audio Page</Link>
-          </div>
-        </div>
-      </section>
-
-      <section id="extras" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Extras</h2>
-        <div style={gridStyle}>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Photography</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              A small gallery for favorite photos, side experiments, and visual notes.
-            </p>
-            <Link className="text-link" to="/photography">Open Gallery</Link>
-          </div>
-        </div>
-      </section>
-
-      <section id="store" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Beat Store</h2>
-        <div style={gridStyle}>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Beat Store</h3>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              Browse beats and production-ready instrumentals through the embedded BeatStars store.
-            </p>
-            <Link className="text-link" to="/beats">Go to Beat Store</Link>
-          </div>
-        </div>
-      </section>
-
-      <ReverbShopSection />
-
-      <section id="contact" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Contact</h2>
-        <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
-          Reach out about recording sessions, private lessons, live work, production support, or custom music.
-        </p>
-        <a className="text-link" href="mailto:luke@lukemarkham.com">Email Me</a>
-      </section>
     </div>
   )
 }
@@ -7310,7 +7216,6 @@ function DocPage({ page, title }) {
 
   useEffect(() => {
     document.title = `${title} · Luke Markham`
-    setState({ status: 'loading' })
     let cancelled = false
     fetch(`/.netlify/functions/doc-page?page=${page}`)
       .then(async (response) => {
@@ -7340,6 +7245,39 @@ function DocPage({ page, title }) {
             <div className="student-notes" dangerouslySetInnerHTML={{ __html: state.html }} />
           ) : null}
         </div>
+      </section>
+    </div>
+  )
+}
+
+function GearShopPage() {
+  useEffect(() => {
+    document.title = 'Gear Shop · Luke Markham'
+  }, [])
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+      <ReverbShopSection />
+    </div>
+  )
+}
+
+function ContactPage() {
+  useEffect(() => {
+    document.title = 'Contact · Luke Markham'
+  }, [])
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Contact</h1>
+        <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
+          Reach out about recording sessions, private lessons, live work, production support, or custom music.
+        </p>
+        <a className="text-link" href="mailto:luke@lukemarkham.com">Email Me</a>
       </section>
     </div>
   )
@@ -7380,9 +7318,12 @@ function App() {
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
         <Route path="/practice-stats" element={<PracticeStatsPage />} />
-        <Route path="/bio" element={<DocPage page="bio" title="Bio" />} />
-        <Route path="/credits" element={<DocPage page="credits" title="Credits" />} />
-        <Route path="/book-list" element={<DocPage page="book-list" title="Book List" />} />
+        <Route path="/bio" element={<DocPage key="bio" page="bio" title="Bio" />} />
+        <Route path="/credits" element={<DocPage key="credits" page="credits" title="Credits" />} />
+        <Route path="/gear-shop" element={<GearShopPage />} />
+        <Route path="/used-gear" element={<Navigate to="/gear-shop" replace />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/book-list" element={<DocPage key="book-list" page="book-list" title="Book List" />} />
         <Route path="/about" element={<Navigate to="/bio" replace />} />
         <Route path="/:slug" element={<StudentPage />} />
         <Route path="*" element={<NotFoundPage />} />

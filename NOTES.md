@@ -14,12 +14,20 @@ either machine. Newest first.
   Netlify's nameservers.
 
 - `/book-list` (under Extras) shows Luke's book reviews Doc the same way.
+- Home page trimmed to hero, Services and SoundBetter: Luke wants it a hub
+  the nav moves people around from, not a one-page site, ideally one screen
+  with no scrolling eventually. Gear Shop and Contact are now their own
+  pages (`/gear-shop`, `/contact`; `/used-gear` goes to `/gear-shop`), and
+  the nav's Beat Store goes straight to `/beats`.
 - New student Ravi at `/ravi` (notes Doc is his practice log, plus his
   Drive folder).
 
 ### Open items / ideas
 - Ravi: last name to come (move the page to `/ravi-<last>`, keep `/ravi`
   working if he already has the link) and a PIN once he picks one.
+- The Reverb shop embed draws nothing (live too, before this move): only
+  the "Open Reverb shop" link shows.
+- Home page to fit one screen without scrolling (Luke's eventual goal).
 - Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
   (/home /credits /contact /videos /blog /store /beats-sound-packs
   /used-gear /misc; /bio, /credits and /book-list are pages now and /about goes to it), then set HostGator's
