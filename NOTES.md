@@ -13,17 +13,23 @@ either machine. Newest first.
   (`v=spf1 include:_spf.google.com ~all`), checked with dig against
   Netlify's nameservers.
 
+- New student Ravi at `/ravi` (notes Doc is his practice log, plus his
+  Drive folder).
+
 ### Open items / ideas
+- Ravi: last name to come (move the page to `/ravi-<last>`, keep `/ravi`
+  working if he already has the link) and a PIN once he picks one.
 - Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
   (/home /credits /contact /videos /blog /store /beats-sound-packs
-  /used-gear /misc /book-list; /bio is a page now and /about goes to it), then set HostGator's
+  /used-gear /misc /book-list; /bio and /credits are pages now and /about goes to it), then set HostGator's
   nameservers to dns1–dns4.p01.nsone.net and verify site + MX with dig.
 - Feedback acted on: Sight Reading straight feels now name the sound they
   return to after a solo ("Hi-hats", "Ride", "Bell", or the bossa) instead of
   "Time" (`RESTATE_MARKS`); the tritone-sub turnaround resolves to I.
-- `/bio` shows Luke's bio from its Google Doc (`netlify/lib/bio.mjs`, CDN
-  cached 5 minutes), left-aligned; `/about` redirects there. The nav's About is a dropdown
-  (Bio; Credits to come, link from Luke pending) and the home page no longer
+- `/bio` and `/credits` show Luke's Google Docs (`DOC_PAGES` in
+  `netlify/lib/docPages.mjs`, one `doc-page` function, CDN cached 5 minutes),
+  left-aligned; `/about` redirects there. The nav's About is a dropdown
+  (Bio, Credits) and the home page no longer
   has an About section, at Luke's request.
 
 ## 2026-10-19 — Feedback only for Luke; Chord Progressions gets votes

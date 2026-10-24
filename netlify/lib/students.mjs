@@ -24,6 +24,12 @@ export const STUDENTS = {
     folder: 'https://drive.google.com/drive/folders/1iINnajX7LFXrw-qmRtFZrfiy4Ri8AiQr',
     pin: '1000',
   },
+  // Last name to come; the address becomes ravi-<last> then.
+  ravi: {
+    name: 'Ravi',
+    doc: 'https://docs.google.com/document/d/1P7yrWsPdsZVrsfl_wnqIteTl3gCOzsmJIqlyKWfnfjk/edit',
+    folder: 'https://drive.google.com/drive/folders/1Es9YsdJyzUBVZV-pYEGHMh8UKtK-HFeh',
+  },
 }
 
 // People who log practice but have no notes page. Their stats are at

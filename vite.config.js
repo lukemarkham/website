@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { getLiveStatus } from './netlify/lib/twitch.mjs'
 import { handleFeedbackRequest } from './netlify/lib/practiceFeedback.mjs'
 import { handleStudentNotesRequest } from './netlify/lib/studentNotes.mjs'
-import { handleBioRequest } from './netlify/lib/bio.mjs'
+import { handleDocPageRequest } from './netlify/lib/docPages.mjs'
 import { handlePracticeLogRequest } from './netlify/lib/practiceLog.mjs'
 import { handleAnswerStatsRequest } from './netlify/lib/answerStats.mjs'
 import { recordAnswer } from './src/lib/answerWeights.js'
@@ -12,7 +12,7 @@ import { recordAnswer } from './src/lib/answerWeights.js'
 const TWITCH_STATUS_PATH = '/.netlify/functions/twitch-status'
 const PRACTICE_FEEDBACK_PATH = '/.netlify/functions/practice-feedback'
 const STUDENT_NOTES_PATH = '/.netlify/functions/student-notes'
-const BIO_PATH = '/.netlify/functions/bio'
+const DOC_PAGE_PATH = '/.netlify/functions/doc-page'
 const PRACTICE_LOG_PATH = '/.netlify/functions/practice-log'
 const ANSWER_STATS_PATH = '/.netlify/functions/answer-stats'
 
@@ -75,7 +75,7 @@ function practiceFeedbackDevEndpoint() {
   }
 }
 
-// Student notes and the bio come straight from Google Docs, so dev can serve
+// Student notes and the Doc pages (bio, credits) come straight from Google Docs, so dev can serve
 // them the same way production does.
 function studentNotesDevEndpoint() {
   return {
@@ -90,8 +90,9 @@ function studentNotesDevEndpoint() {
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(payload))
       })
-      server.middlewares.use(BIO_PATH, async (_req, res) => {
-        const { statusCode, payload } = await handleBioRequest()
+      server.middlewares.use(DOC_PAGE_PATH, async (req, res) => {
+        const page = new URL(req.url, 'http://localhost').searchParams.get('page')
+        const { statusCode, payload } = await handleDocPageRequest({ page })
 
         res.statusCode = statusCode
         res.setHeader('Content-Type', 'application/json')

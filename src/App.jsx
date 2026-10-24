@@ -424,6 +424,9 @@ function SiteNav({ showHomeLink = false }) {
             <Link className="dropdown-link" to="/bio">
               Bio
             </Link>
+            <Link className="dropdown-link" to="/credits">
+              Credits
+            </Link>
           </div>
         </div>
         <a className="nav-link" href="/#services">Services</a>
@@ -7296,15 +7299,17 @@ function StudentMaterials({ folder }) {
   )
 }
 
-// The bio lives in a Google Doc Luke edits; the page reads it through
-// netlify/lib/bio.mjs, built from an allowlist like a student's notes.
-function BioPage() {
+// Bio and Credits live in Google Docs Luke edits; the page reads its Doc
+// through netlify/lib/docPages.mjs, built from an allowlist like a
+// student's notes.
+function DocPage({ page, title }) {
   const [state, setState] = useState({ status: 'loading' })
 
   useEffect(() => {
-    document.title = 'Bio · Luke Markham'
+    document.title = `${title} · Luke Markham`
+    setState({ status: 'loading' })
     let cancelled = false
-    fetch('/.netlify/functions/bio')
+    fetch(`/.netlify/functions/doc-page?page=${page}`)
       .then(async (response) => {
         const data = await response.json().catch(() => ({}))
         if (cancelled) return
@@ -7316,18 +7321,18 @@ function BioPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page, title])
 
   return (
     <div style={pageShellStyle}>
       <SiteNav showHomeLink />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Bio</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>{title}</h1>
 
-        <div className="surface-card student-notes-card bio-card" style={cardStyle}>
+        <div className="surface-card student-notes-card doc-page-card" style={cardStyle}>
           {state.status === 'loading' ? <p className="student-notes-status">Loading…</p> : null}
-          {state.status === 'error' ? <p className="student-notes-status">{"The bio couldn't be loaded right now."}</p> : null}
+          {state.status === 'error' ? <p className="student-notes-status">{`The ${title.toLowerCase()} couldn't be loaded right now.`}</p> : null}
           {state.status === 'ready' && state.html ? (
             <div className="student-notes" dangerouslySetInnerHTML={{ __html: state.html }} />
           ) : null}
@@ -7372,7 +7377,8 @@ function App() {
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
         <Route path="/practice-stats" element={<PracticeStatsPage />} />
-        <Route path="/bio" element={<BioPage />} />
+        <Route path="/bio" element={<DocPage page="bio" title="Bio" />} />
+        <Route path="/credits" element={<DocPage page="credits" title="Credits" />} />
         <Route path="/about" element={<Navigate to="/bio" replace />} />
         <Route path="/:slug" element={<StudentPage />} />
         <Route path="*" element={<NotFoundPage />} />

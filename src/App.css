@@ -2348,8 +2348,8 @@ code {
   text-align: center;
 }
 
-/* The bio is read as prose, so it isn't centred like the student pages. */
-.bio-card {
+/* Bio and Credits are read as prose, so they aren't centred like the student pages. */
+.doc-page-card {
   text-align: left;
 }
 
