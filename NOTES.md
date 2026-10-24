@@ -22,8 +22,9 @@ either machine. Newest first.
   return to after a solo ("Hi-hats", "Ride", "Bell", or the bossa) instead of
   "Time" (`RESTATE_MARKS`); the tritone-sub turnaround resolves to I.
 - `/bio` shows Luke's bio from its Google Doc (`netlify/lib/bio.mjs`, CDN
-  cached 5 minutes), left-aligned; `/about` redirects there, and the home
-  page's About section links to it.
+  cached 5 minutes), left-aligned; `/about` redirects there. The nav's About is a dropdown
+  (Bio; Credits to come, link from Luke pending) and the home page no longer
+  has an About section, at Luke's request.
 
 ## 2026-10-19 — Feedback only for Luke; Chord Progressions gets votes
 

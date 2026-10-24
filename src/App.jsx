@@ -412,7 +412,20 @@ function SiteNav({ showHomeLink = false }) {
       <div className="wordmark">Luke Markham</div>
       <div className="nav-links">
         {showHomeLink ? <Link className="nav-link" to="/">Home</Link> : null}
-        <a className="nav-link" href="/#about">About</a>
+        <div className="nav-dropdown">
+          <button
+            type="button"
+            className="nav-link nav-trigger"
+            aria-haspopup="menu"
+          >
+            About
+          </button>
+          <div className="nav-dropdown-menu" role="menu">
+            <Link className="dropdown-link" to="/bio">
+              Bio
+            </Link>
+          </div>
+        </div>
         <a className="nav-link" href="/#services">Services</a>
         <div className="nav-dropdown">
           <button
@@ -788,15 +801,6 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="about" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>About</h2>
-        <p style={{ ...mutedTextStyle, maxWidth: '760px', margin: '0 auto' }}>
-          Luke is an NYC-based drummer, producer, and collaborator with 12+ years of professional experience across remote sessions, live performances, original productions, and private instruction. His work centers on serving the song, keeping the process organized, and making each part feel intentional.
-        </p>
-        <p style={{ margin: '18px 0 0' }}>
-          <Link className="text-link" to="/bio">Read the full bio</Link>
-        </p>
-      </section>
 
       <section id="services" className="surface-panel" style={sectionStyle}>
         <h2 style={sectionHeadingStyle}>Services</h2>
