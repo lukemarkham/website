@@ -48,6 +48,12 @@ bottom of the page. The Doc and folder must be shared as "anyone with the link
 can view", or the page shows an error saying so. Student pages are centred
 throughout, at Luke's request. The roster is server-only, so the site's code never lists students.
 
+## Bio
+
+`/bio` shows Luke's bio from a Google Doc he edits (ID in
+`netlify/lib/bio.mjs`), restyled like the student pages but left-aligned.
+Netlify's CDN caches it for five minutes.
+
 ## Practice tools
 
 Every practice tool gets a session timer. Drop in the shared `<PracticeTimer />`

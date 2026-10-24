@@ -793,6 +793,9 @@ function HomePage() {
         <p style={{ ...mutedTextStyle, maxWidth: '760px', margin: '0 auto' }}>
           Luke is an NYC-based drummer, producer, and collaborator with 12+ years of professional experience across remote sessions, live performances, original productions, and private instruction. His work centers on serving the song, keeping the process organized, and making each part feel intentional.
         </p>
+        <p style={{ margin: '18px 0 0' }}>
+          <Link className="text-link" to="/bio">Read the full bio</Link>
+        </p>
       </section>
 
       <section id="services" className="surface-panel" style={sectionStyle}>
@@ -7289,6 +7292,47 @@ function StudentMaterials({ folder }) {
   )
 }
 
+// The bio lives in a Google Doc Luke edits; the page reads it through
+// netlify/lib/bio.mjs, built from an allowlist like a student's notes.
+function BioPage() {
+  const [state, setState] = useState({ status: 'loading' })
+
+  useEffect(() => {
+    document.title = 'Bio · Luke Markham'
+    let cancelled = false
+    fetch('/.netlify/functions/bio')
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        if (cancelled) return
+        setState(response.ok ? { status: 'ready', ...data } : { status: 'error' })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: 'error' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav showHomeLink />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Bio</h1>
+
+        <div className="surface-card student-notes-card bio-card" style={cardStyle}>
+          {state.status === 'loading' ? <p className="student-notes-status">Loading…</p> : null}
+          {state.status === 'error' ? <p className="student-notes-status">{"The bio couldn't be loaded right now."}</p> : null}
+          {state.status === 'ready' && state.html ? (
+            <div className="student-notes" dangerouslySetInnerHTML={{ __html: state.html }} />
+          ) : null}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function NotFoundPage() {
   return (
     <div style={pageShellStyle}>
@@ -7324,6 +7368,8 @@ function App() {
         <Route path="/audio" element={<AudioPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
         <Route path="/practice-stats" element={<PracticeStatsPage />} />
+        <Route path="/bio" element={<BioPage />} />
+        <Route path="/about" element={<Navigate to="/bio" replace />} />
         <Route path="/:slug" element={<StudentPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

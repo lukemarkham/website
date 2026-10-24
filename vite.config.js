@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { getLiveStatus } from './netlify/lib/twitch.mjs'
 import { handleFeedbackRequest } from './netlify/lib/practiceFeedback.mjs'
 import { handleStudentNotesRequest } from './netlify/lib/studentNotes.mjs'
+import { handleBioRequest } from './netlify/lib/bio.mjs'
 import { handlePracticeLogRequest } from './netlify/lib/practiceLog.mjs'
 import { handleAnswerStatsRequest } from './netlify/lib/answerStats.mjs'
 import { recordAnswer } from './src/lib/answerWeights.js'
@@ -11,6 +12,7 @@ import { recordAnswer } from './src/lib/answerWeights.js'
 const TWITCH_STATUS_PATH = '/.netlify/functions/twitch-status'
 const PRACTICE_FEEDBACK_PATH = '/.netlify/functions/practice-feedback'
 const STUDENT_NOTES_PATH = '/.netlify/functions/student-notes'
+const BIO_PATH = '/.netlify/functions/bio'
 const PRACTICE_LOG_PATH = '/.netlify/functions/practice-log'
 const ANSWER_STATS_PATH = '/.netlify/functions/answer-stats'
 
@@ -73,8 +75,8 @@ function practiceFeedbackDevEndpoint() {
   }
 }
 
-// Student notes come straight from Google Docs, so dev can serve them the
-// same way production does.
+// Student notes and the bio come straight from Google Docs, so dev can serve
+// them the same way production does.
 function studentNotesDevEndpoint() {
   return {
     name: 'student-notes-dev-endpoint',
@@ -83,6 +85,13 @@ function studentNotesDevEndpoint() {
       server.middlewares.use(STUDENT_NOTES_PATH, async (req, res) => {
         const slug = new URL(req.url, 'http://localhost').searchParams.get('slug')
         const { statusCode, payload } = await handleStudentNotesRequest({ slug })
+
+        res.statusCode = statusCode
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(payload))
+      })
+      server.middlewares.use(BIO_PATH, async (_req, res) => {
+        const { statusCode, payload } = await handleBioRequest()
 
         res.statusCode = statusCode
         res.setHeader('Content-Type', 'application/json')

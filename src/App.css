@@ -2348,6 +2348,11 @@ code {
   text-align: center;
 }
 
+/* The bio is read as prose, so it isn't centred like the student pages. */
+.bio-card {
+  text-align: left;
+}
+
 .student-notes-status {
   margin: 0;
   color: var(--text-muted);

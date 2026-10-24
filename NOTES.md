@@ -15,12 +15,15 @@ either machine. Newest first.
 
 ### Open items / ideas
 - Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
-  (/home /bio /about /credits /contact /videos /blog /store
-  /beats-sound-packs /used-gear /misc /book-list), then set HostGator's
+  (/home /credits /contact /videos /blog /store /beats-sound-packs
+  /used-gear /misc /book-list; /bio is a page now and /about goes to it), then set HostGator's
   nameservers to dns1–dns4.p01.nsone.net and verify site + MX with dig.
 - Feedback acted on: Sight Reading straight feels now name the sound they
   return to after a solo ("Hi-hats", "Ride", "Bell", or the bossa) instead of
   "Time" (`RESTATE_MARKS`); the tritone-sub turnaround resolves to I.
+- `/bio` shows Luke's bio from its Google Doc (`netlify/lib/bio.mjs`, CDN
+  cached 5 minutes), left-aligned; `/about` redirects there, and the home
+  page's About section links to it.
 
 ## 2026-10-19 — Feedback only for Luke; Chord Progressions gets votes
 
