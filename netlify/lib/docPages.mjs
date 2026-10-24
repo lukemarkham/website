@@ -1,4 +1,4 @@
-// Pages whose text is a Google Doc Luke edits, like /bio and /credits: the
+// Pages whose text is a Google Doc Luke edits, like /bio, /credits and /book-list: the
 // page shows the Doc in the site's styling, read the same way as a student's
 // notes (studentNotes.mjs). Each Doc must be shared as "anyone with the link
 // can view".
@@ -8,6 +8,7 @@ import { docHtmlToNotes } from './studentNotes.mjs'
 export const DOC_PAGES = {
   bio: '1z6XSWghbqVKXeDqFB3L3kkX2tBuK4qsoDTwsW3QUT08',
   credits: '1V4R2RtxjdLbeYigNEFRnPV07tkpC6JKzVPhRDTQjb-k',
+  'book-list': '1H3cNiBORV5BIpg72iRmt2i5n-2yWpkC6M-XichjRmD0',
 }
 
 // fetchImpl is passed in so dev and tests can swap it.

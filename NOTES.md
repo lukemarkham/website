@@ -13,6 +13,7 @@ either machine. Newest first.
   (`v=spf1 include:_spf.google.com ~all`), checked with dig against
   Netlify's nameservers.
 
+- `/book-list` (under Extras) shows Luke's book reviews Doc the same way.
 - New student Ravi at `/ravi` (notes Doc is his practice log, plus his
   Drive folder).
 
@@ -21,7 +22,7 @@ either machine. Newest first.
   working if he already has the link) and a PIN once he picks one.
 - Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
   (/home /credits /contact /videos /blog /store /beats-sound-packs
-  /used-gear /misc /book-list; /bio and /credits are pages now and /about goes to it), then set HostGator's
+  /used-gear /misc; /bio, /credits and /book-list are pages now and /about goes to it), then set HostGator's
   nameservers to dns1–dns4.p01.nsone.net and verify site + MX with dig.
 - Feedback acted on: Sight Reading straight feels now name the sound they
   return to after a solo ("Hi-hats", "Ride", "Bell", or the bossa) instead of

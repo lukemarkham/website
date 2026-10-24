@@ -48,9 +48,10 @@ bottom of the page. The Doc and folder must be shared as "anyone with the link
 can view", or the page shows an error saying so. Student pages are centred
 throughout, at Luke's request. The roster is server-only, so the site's code never lists students.
 
-## Bio and Credits
+## Bio, Credits and Book List
 
-`/bio` and `/credits` (under About in the nav) show Google Docs Luke edits
+`/bio`, `/credits` (under About in the nav) and `/book-list` (under Extras)
+show Google Docs Luke edits
 (IDs in `DOC_PAGES`, `netlify/lib/docPages.mjs`), restyled like the student
 pages but left-aligned. Netlify's CDN caches them for five minutes.
 

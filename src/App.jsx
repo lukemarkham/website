@@ -482,6 +482,9 @@ function SiteNav({ showHomeLink = false }) {
             <Link className="dropdown-link" to="/photography">
               Photography
             </Link>
+            <Link className="dropdown-link" to="/book-list">
+              Book List
+            </Link>
           </div>
         </div>
         <NavPracticePin />
@@ -7299,7 +7302,7 @@ function StudentMaterials({ folder }) {
   )
 }
 
-// Bio and Credits live in Google Docs Luke edits; the page reads its Doc
+// Bio, Credits and the Book List live in Google Docs Luke edits; the page reads its Doc
 // through netlify/lib/docPages.mjs, built from an allowlist like a
 // student's notes.
 function DocPage({ page, title }) {
@@ -7379,6 +7382,7 @@ function App() {
         <Route path="/practice-stats" element={<PracticeStatsPage />} />
         <Route path="/bio" element={<DocPage page="bio" title="Bio" />} />
         <Route path="/credits" element={<DocPage page="credits" title="Credits" />} />
+        <Route path="/book-list" element={<DocPage page="book-list" title="Book List" />} />
         <Route path="/about" element={<Navigate to="/bio" replace />} />
         <Route path="/:slug" element={<StudentPage />} />
         <Route path="*" element={<NotFoundPage />} />
