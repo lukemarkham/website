@@ -29,8 +29,9 @@ either machine. Newest first.
   the "Open Reverb shop" link shows.
 - Home page to fit one screen without scrolling (Luke's eventual goal).
 - Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
-  (/home /credits /contact /videos /blog /store /beats-sound-packs
-  /used-gear /misc; /bio, /credits and /book-list are pages now and /about goes to it), then set HostGator's
+  (/home /videos /blog /store /beats-sound-packs /misc; /bio, /credits,
+  /book-list, /contact are pages now, and /about and /used-gear go to /bio
+  and /gear-shop), then set HostGator's
   nameservers to dns1–dns4.p01.nsone.net and verify site + MX with dig.
 - Feedback acted on: Sight Reading straight feels now name the sound they
   return to after a solo ("Hi-hats", "Ride", "Bell", or the bossa) instead of
