@@ -3,6 +3,26 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-24 — lukemarkham.com staged on Netlify DNS
+
+- The domain is registered at HostGator (registrar Launchpad.com). Its
+  nameservers still point at Bandzoogle, which serves the old site, so
+  nothing public has changed yet.
+- Netlify DNS zone is set up: the NETLIFY apex/www records, Google Workspace
+  MX (1 ASPMX, 5 ALT1/ALT2, 10 ALT3/ALT4) and an SPF TXT
+  (`v=spf1 include:_spf.google.com ~all`), checked with dig against
+  Netlify's nameservers.
+
+### Open items / ideas
+- Go-live, when Luke is ready: add `_redirects` for the old Bandzoogle pages
+  (/home /bio /about /credits /contact /videos /blog /store
+  /beats-sound-packs /used-gear /misc /book-list), then set HostGator's
+  nameservers to dns1–dns4.p01.nsone.net and verify site + MX with dig.
+- New feedback not yet acted on (not archived): Sight Reading — "Time" at a
+  rehearsal mark is ambiguous when a later direction switches to ride (say
+  "Hats" or don't switch later); Chord Progressions — the tritone turnaround
+  should resolve to the I chord at the end.
+
 ## 2026-10-19 — Feedback only for Luke; Chord Progressions gets votes
 
 - The thumbs up / down on every practice tool now show only while Luke's
