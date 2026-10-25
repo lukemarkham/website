@@ -71,7 +71,7 @@ export const PROGRESSIONS = [
   { id: 'tritone-sub-related-ii', type: 'tritone', mode: 'major', name: 'Tritone sub with its own ii',
     chords: [c('♭vi7', '♭vi', 8, 'm7'), c('♭II7', '♭II', 1, '7'), c('I', 'I', 0, 'I')] },
   // Not a true tritone sub (♭IImaj7 has no tritone), but it sits where one would.
-  { id: 'neapolitan-sub', type: 'tritone', mode: 'major', name: 'Neapolitan ♭IImaj7',
+  { id: 'neapolitan-sub', type: 'tritone', mode: 'major', name: 'The Neapolitan',
     chords: [c('ii7', 'ii', 2, 'm7'), c('♭IImaj7', '♭II', 1, 'maj7'), c('I', 'I', 0, 'I')] },
   { id: 'tritone-turnaround', type: 'tritone', mode: 'major', name: 'Tritone-sub turnaround',
     chords: [c('I', 'I', 0, 'I'), c('♭III7', '♭III', 3, '7'), c('ii7', 'ii', 2, 'm7'), c('♭II7', '♭II', 1, '7'), c('I', 'I', 0, 'I')] },
