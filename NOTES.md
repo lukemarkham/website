@@ -3,6 +3,12 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-25 — Chord Progressions additions
+
+- Rising diminished now resolves back to I (I–♯i°7–ii7–V7–I).
+- New "The Neapolitan" under Tritone subs: ii7–♭IImaj7–Imaj7, major only.
+  Luke isn't sure how common it is in minor, so no minor version for now.
+
 ## 2026-10-24 — lukemarkham.com staged on Netlify DNS
 
 - The domain is registered at HostGator (registrar Launchpad.com). Its
