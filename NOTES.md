@@ -3,6 +3,31 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-29 — Sticking Generator: flams, drags and true rudiments
+
+- Chained stickings can now use flam and drag cells taken from the PAS
+  rudiments (flam, flam tap, flam accent, flam paradiddle, flammed mill,
+  inverted flam tap, pataflafla, drag, drag tap, Lesson 25, ratamacue).
+  About 4 in 10 stickings carry at least one. Rules: grace notes don't count
+  toward "three in a row", a drag can't follow a stroke by its grace hand,
+  no more than two ornaments side by side, at most half the strokes ornamented.
+- 15% of the time (`RUDIMENT_CHANCE`, `src/lib/handStickings.js`) the
+  sticking is a true PAS International Drum Rudiment, played as written on
+  the PAS sheet (pas.org/resources/rudiments), with its own accents, badged
+  "True Rudiment · <name>" and listed with its PAS number. Only rudiments
+  that fit the rate and divide the cycle are picked: 24 entries covering
+  Nos. 1, 5, 6, 16–29, 31–34. Left out: buzz and measured rolls, Single
+  Stroke Four/Seven, Flam Drag, Dragadiddle, Drag Paradiddles and
+  Ratamacues (rhythms the 16th/triplet grid can't hold). Where PAS writes
+  sextuplets or 6/8 (double paradiddle, paradiddle-diddle, flam accent,
+  double drag tap...) they sit on the triplet rate.
+- Notation follows PAS: a flam is a slashed 8th grace note, a drag two
+  beamed 16th grace notes, both slurred, with the grace sticking set in small
+  capitals in front of the stroke.
+- Falling diminished now resolves to I, from Luke's feedback.
+- `npm run reviews:sync` failed with "No reviews on the profile": the
+  SoundBetter parse may need a look.
+
 ## 2026-10-25 — Chord Progressions additions
 
 - Rising diminished now resolves back to I (I–♯i°7–ii7–V7–I).
