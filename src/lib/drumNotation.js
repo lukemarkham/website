@@ -41,8 +41,11 @@ const LABEL_ROW_Y = { withFeet: [146, 164], handsOnly: [112, 130] }
  * @param {object} options
  *   slotsPerBeat: 2, 3 or 4
  *   bars: how many 4/4 bars to draw
- *   voices: [{ stem: 1 | -1, hits: { [slot]: { keys: string[], accent?: boolean } } }]
- *   labels: [{ slot, row: 0 | 1, text, color? }] drawn under the note at that slot
+ *   voices: [{ stem: 1 | -1, hits: { [slot]: { keys: string[], accent?: boolean, grace?: 1 | 2 } } }]
+ *     grace: a flam (1) or drag (2) in front of the note, written the PAS
+ *     way: a slashed 8th grace note, or two beamed 16ths, slurred to the note
+ *   labels: [{ slot, row: 0 | 1, text, grace?, color? }] drawn under the note
+ *     at that slot; grace is the grace notes' sticking, set small in front
  *   feel: text over the first bar ('Swing', 'Straight'), or null
  *   repeat: draw repeat barlines around the whole thing
  *   barsPerLine: how many bars before wrapping to a new line
@@ -50,7 +53,7 @@ const LABEL_ROW_Y = { withFeet: [146, 164], handsOnly: [112, 130] }
  *   font: the family for labels and the feel marking
  */
 export function renderDrumNotation(host, VF, options) {
-  const { Renderer, Stave, StaveNote, Voice, Formatter, Beam, Tuplet, Dot, Articulation, Modifier, Fraction, BarlineType } = VF
+  const { Renderer, Stave, StaveNote, GraceNote, GraceNoteGroup, Voice, Formatter, Beam, Tuplet, Dot, Articulation, Modifier, Fraction, BarlineType } = VF
   const { slotsPerBeat: spb, bars, voices, labels = [], feel, repeat = false, colors, font } = options
   const barsPerLine = Math.max(1, Math.min(options.barsPerLine ?? bars, bars))
   const lineCount = Math.ceil(bars / barsPerLine)
@@ -102,6 +105,13 @@ export function renderDrumNotation(host, VF, options) {
       const hit = voice.hits[firstSlot + offset]
       const note = make(hit.keys, length, false)
       if (hit.accent) note.addModifier(new Articulation('a>').setPosition(Modifier.Position.ABOVE), 0)
+      if (hit.grace) {
+        const graces = Array.from({ length: hit.grace }, () =>
+          new GraceNote({ keys: hit.keys, duration: hit.grace === 1 ? '8' : '16', slash: hit.grace === 1, stemDirection: 1 }).setStyle(ink))
+        const group = new GraceNoteGroup(graces, true)
+        if (hit.grace > 1) group.beamNotes()
+        note.addModifier(group, 0)
+      }
       tickables.push(note)
       if (!noteAtSlot.has(firstSlot + offset)) noteAtSlot.set(firstSlot + offset, note)
     })
@@ -169,14 +179,23 @@ export function renderDrumNotation(host, VF, options) {
   drawLater.forEach((item) => item.setContext(ctx).draw())
 
   const centreOf = (note) => (note.getNoteHeadBeginX() + note.getNoteHeadEndX()) / 2
-  labels.forEach(({ slot, row, text, color, size }) => {
+  labels.forEach(({ slot, row, text, grace, color, size }) => {
     const note = noteAtSlot.get(slot)
     if (!note) return
     const line = Math.floor(Math.floor(slot / slotsPerBar) / barsPerLine)
-    ctx.setFont(font, size ?? (row === 0 ? 16 : 11), 'bold')
+    const fontSize = size ?? (row === 0 ? 16 : 11)
+    const y = LINE_TOP_PADDING + line * lineHeight + labelRows[row]
+    ctx.setFont(font, fontSize, 'bold')
     ctx.setFillStyle(color ?? (row === 0 ? colors.ink : colors.muted))
     const measured = ctx.measureText(text).width
-    ctx.fillText(text, centreOf(note) - measured / 2, LINE_TOP_PADDING + line * lineHeight + labelRows[row])
+    const x = centreOf(note) - measured / 2
+    ctx.fillText(text, x, y)
+    // PAS sets the grace notes' sticking in small capitals: lR reads L R.
+    if (grace) {
+      ctx.setFont(font, Math.round(fontSize * 0.7), 'bold')
+      const graceText = grace.toUpperCase().split('').join(' ')
+      ctx.fillText(graceText, x - ctx.measureText(graceText).width - 2, y)
+    }
   })
 
   // Scale to the container rather than rendering at a fixed pixel size.

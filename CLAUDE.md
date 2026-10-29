@@ -137,6 +137,8 @@ have no form part. Ear Trainer keys spell out the question as heard:
 `App.jsx`); `answers` holds what was typed for each blank and its grade,
 and is absent when the answer was revealed. Chord Progressions keys are
 `progression id|key pc|chord symbols`, with `reached` (chords played right
-when the vote was cast) and `revealed`. Votes cast against the local dev server land in
+when the vote was cast) and `revealed`. Sticking entries write `strokes` the PAS way (`lR` a
+flam, `llR` a drag, `-` a rest) and carry `rudiment`, the PAS number, when
+the sticking was a true rudiment. Votes cast against the local dev server land in
 the gitignored `feedback/<tool>-feedback.dev.json`, so check those too on the
 machine that ran it.

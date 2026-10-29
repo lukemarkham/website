@@ -54,15 +54,19 @@ const SANITIZERS = {
     return { strokes, resolution, rateId, beats, cells, ...(source !== undefined && { source: source.trim() }) }
   },
 
+  // Strokes as PAS writes sticking: lR a flam, llR a drag, - a rest (rests
+  // only in true rudiments, which also send their PAS number).
   sticking(body) {
-    const { strokes, rateId, beats, accents, cells } = body
-    if (typeof strokes !== 'string' || !/^[RL]{2,32}$/.test(strokes)) return null
+    const { strokes, rateId, beats, accents, cells, rudiment } = body
+    const stroke = '(?:(?:ll?|rr?)?[RL]|-)'
+    if (typeof strokes !== 'string' || !new RegExp(`^${stroke}{2,32}$`).test(strokes)) return null
     if (!['sixteenth', 'triplet'].includes(rateId)) return null
     if (!isWholeNumberInRange(beats, 1, 4)) return null
     if (typeof accents !== 'boolean') return null
-    if (!Array.isArray(cells) || cells.length > 32 || !cells.every((cell) => /^[RL]{1,8}$/.test(cell))) return null
+    if (!Array.isArray(cells) || cells.length > 32 || !cells.every((cell) => typeof cell === 'string' && new RegExp(`^${stroke}{1,32}$`).test(cell))) return null
     if (cells.join('') !== strokes) return null
-    return { strokes, rateId, beats, accents, cells }
+    if (rudiment !== undefined && !isWholeNumberInRange(rudiment, 1, 40)) return null
+    return { strokes, rateId, beats, accents, cells, ...(rudiment !== undefined && { rudiment }) }
   },
 
   // The key spells out the whole exercise (see src/lib/independence.js), so

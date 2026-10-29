@@ -40,7 +40,7 @@ import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
 import { renderChartNotation, revealChart } from './lib/chartNotation'
 import { SET_UP_FEELS, SET_UP_FILL_LENGTHS, SET_UP_LENGTHS, generateSetUpPhrase, performPhrase } from './lib/setUps'
 import { arrangeBand } from './lib/setUpBand'
-import { HAND_CYCLE_BEATS, HAND_RATES, drawHandSticking } from './lib/handStickings'
+import { HAND_CYCLE_BEATS, HAND_RATES, RUDIMENT_CHANCE, drawHandSticking, drawRudiment, rudimentsFor, strokeGrace, strokeHand } from './lib/handStickings'
 import {
   COUNT_SYLLABLES,
   INSTRUMENTS,
@@ -3354,17 +3354,22 @@ function countLabel(slot, slotsPerBeat) {
   return COUNT_SYLLABLES[slotsPerBeat][offset]
 }
 
+// Now and then a true PAS rudiment instead of a chained sticking. The choice
+// is made first, so the recent-history check can't crowd the few rudiments out.
 function getRandomHandSticking(length, rateId, downvoted) {
-  const strokesOf = (cells) => cells.map((cell) => cell.pattern).join('')
-  return drawFresh('sticking', () => drawHandSticking(length), {
+  const strokesOf = (cells) => cells.flatMap((cell) => cell.strokes).join('')
+  const isRudiment = Math.random() < RUDIMENT_CHANCE && rudimentsFor(rateId, length).length > 0
+  const draw = isRudiment ? () => drawRudiment(rateId, length) : () => drawHandSticking(length)
+  return drawFresh('sticking', draw, {
     idOf: (cells) => `${rateId}:${strokesOf(cells)}`,
     downvoteKeyOf: strokesOf,
     downvoted,
   })
 }
 
-// Hands only: a short cycle of rudiment cells, repeated to fill a bar and
-// looped. The Fill Generator covers hands and kick together.
+// Hands only: a short cycle of rudiment cells (or now and then one true PAS
+// rudiment), repeated to fill a bar and looped. Flams and drags are written
+// lR and llR. The Fill Generator covers hands and kick together.
 function StickingGeneratorPage() {
   const [rateId, setRateId] = useState('sixteenth')
   const [beats, setBeats] = useState(2)
@@ -3385,6 +3390,7 @@ function StickingGeneratorPage() {
   const sessionControlRef = useRef(null)
   const { cells } = pattern
   const strokes = useMemo(() => cells.flatMap((cell) => cell.strokes), [cells])
+  const rudiment = cells.length === 1 && cells[0].number ? cells[0] : null
 
   useEffect(() => {
     rememberInHistory('sticking', `${rateId}:${strokes.join('')}`)
@@ -3392,12 +3398,12 @@ function StickingGeneratorPage() {
 
   useEffect(() => () => window.clearInterval(revealTimerRef.current), [])
 
-  // The cycle repeated to fill the bar, accents on the first stroke of each
-  // cell.
+  // The cycle repeated to fill the bar, accents where each cell has them (the
+  // first stroke of a chained cell, or where PAS marks them).
   const notation = useMemo(() => {
-    const cellStarts = new Set()
+    const accented = new Set()
     cells.reduce((start, cell) => {
-      cellStarts.add(start)
+      cell.accents.forEach((index) => accented.add(start + index))
       return start + cell.strokes.length
     }, 0)
 
@@ -3407,8 +3413,11 @@ function StickingGeneratorPage() {
     for (let slot = 0; slot < slotsPerBar; slot += 1) {
       const index = slot % strokes.length
       const isScrambling = reveal !== null && index >= reveal.settled
-      hits[slot] = { keys: [DRUM_KEYS.snare], accent: accents && !isScrambling && cellStarts.has(index) }
-      labels.push({ slot, row: 0, text: isScrambling ? reveal.noise[index] : strokes[index], color: isScrambling ? 'var(--text-muted)' : undefined })
+      const hand = strokeHand(strokes[index])
+      if (!isScrambling && !hand) continue
+      const grace = isScrambling ? '' : strokeGrace(strokes[index])
+      hits[slot] = { keys: [DRUM_KEYS.snare], accent: accents && !isScrambling && accented.has(index), grace: grace.length }
+      labels.push({ slot, row: 0, text: isScrambling ? reveal.noise[index] : hand, grace, color: isScrambling ? 'var(--text-muted)' : undefined })
       labels.push({ slot, row: 1, text: countLabel(slot, rate.notesPerBeat) })
     }
     return { voices: [{ stem: 1, hits }], labels }
@@ -3471,6 +3480,7 @@ function StickingGeneratorPage() {
       accents,
       tempo: pattern.tempo,
       cells: cells.map((cell) => cell.pattern),
+      ...(rudiment && { rudiment: rudiment.number }),
     }
   }
 
@@ -3587,8 +3597,13 @@ function StickingGeneratorPage() {
         />
 
         <div className="sticking-board surface-card">
+          {rudiment ? (
+            <div className={`fill-source-badge${reveal ? ' is-hidden' : ''}`} title={`PAS International Drum Rudiment No. ${rudiment.number}`}>
+              True Rudiment · {rudiment.name}
+            </div>
+          ) : null}
           <GrooveNotation
-            label={`Sticking: ${strokes.join(' ')}, repeated through the bar`}
+            label={`${rudiment ? `${rudiment.name}: ` : 'Sticking: '}${strokes.join(' ')}, repeated through the bar`}
             fallback={strokes.join(' ')}
             slotsPerBeat={rate.notesPerBeat}
             bars={1}
@@ -3629,12 +3644,12 @@ function StickingGeneratorPage() {
         </div>
 
         <div className={`surface-card sticking-built-from${reveal ? ' is-hidden' : ''}`} style={cardStyle}>
-          <div className="stat-label">Built From</div>
+          <div className="stat-label">{rudiment ? 'True Rudiment' : 'Built From'}</div>
           <ol className="sticking-cells">
             {cells.map((cell, index) => (
               <li key={index}>
-                <span className="sticking-line">{cell.pattern}</span>
-                <span className="sticking-cell-name">{cell.name}</span>
+                <span className="sticking-line">{cell.display}</span>
+                <span className="sticking-cell-name">{cell.number ? `PAS No. ${cell.number}, ${cell.name}` : cell.name}</span>
               </li>
             ))}
           </ol>
@@ -3642,7 +3657,7 @@ function StickingGeneratorPage() {
 
         <GeneratorFeedbackDialog
           open={isFeedbackOpen}
-          summary={cells.map((cell) => cell.pattern).join(' ')}
+          summary={rudiment ? `${rudiment.name}: ${rudiment.display}` : cells.map((cell) => cell.display).join(' · ')}
           tags={STICKING_FEEDBACK_TAGS}
           submitLabel="Log & New Sticking"
           onSubmit={submitDownvote}
