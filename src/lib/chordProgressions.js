@@ -112,7 +112,7 @@ export const PROGRESSIONS = [
   { id: 'rising-dim', type: 'diminished', mode: 'major', name: 'Rising diminished',
     chords: [c('I', 'I', 0, 'I'), c('♯i°7', '♯i', 1, 'dim7'), c('ii7', 'ii', 2, 'm7'), c('V7', 'V', 7, '7'), c('I', 'I', 0, 'I')] },
   { id: 'falling-dim', type: 'diminished', mode: 'major', name: 'Falling diminished',
-    chords: [c('iii7', 'iii', 4, 'm7'), c('♭iii°7', '♭iii', 3, 'dim7'), c('ii7', 'ii', 2, 'm7'), c('V7', 'V', 7, '7')] },
+    chords: [c('iii7', 'iii', 4, 'm7'), c('♭iii°7', '♭iii', 3, 'dim7'), c('ii7', 'ii', 2, 'm7'), c('V7', 'V', 7, '7'), c('I', 'I', 0, 'I')] },
 ]
 
 export function progressionsFor(types, modes) {

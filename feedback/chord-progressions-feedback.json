@@ -10,5 +10,17 @@
     "note": "I would like this example to resolve at the end on the I chord so as to practice the entire resolution movement",
     "tags": [],
     "review": "Tritone-sub turnaround now resolves to I at the end (Imaj7 ♭III7 ii7 ♭II7 I)."
+  },
+  {
+    "id": "2026-10-28T17-32-33-385Z-o23y8n",
+    "createdAt": "2026-10-28T17:32:33.385Z",
+    "tool": "chord-progressions",
+    "key": "falling-dim|9|C♯m7,C°7,Bm7,E7",
+    "reached": 3,
+    "revealed": false,
+    "vote": "down",
+    "note": "These examples should resolve to the tonic at the end",
+    "tags": [],
+    "review": "Falling diminished now resolves to I (iii7–♭iii°7–ii7–V7–I), matching Rising diminished's fix from 2026-10-25."
   }
 ]
