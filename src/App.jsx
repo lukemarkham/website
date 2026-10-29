@@ -34,6 +34,7 @@ import {
   useRecentActivity,
 } from './lib/practiceLog'
 import { fetchAnswerStatsByPin, fetchStudentAnswerStats, useAnswerStats, useAnswerTimer } from './lib/answerStats'
+import { RememberedSettings, useSetting } from './lib/userSettings'
 import { answerWeight, pickWeighted as pickByWeight, typicalAnswerTime } from './lib/answerWeights'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
@@ -1110,6 +1111,11 @@ function getDefaultMetronomeProbabilities() {
   }, {})
 }
 
+// A saved tempo range: two tempos, low to high.
+function isTempoRange(value) {
+  return value.length === 2 && value.every((tempo) => Number.isFinite(tempo) && tempo >= 30 && tempo <= 300) && value[0] <= value[1]
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
@@ -1139,9 +1145,9 @@ function getBestThumbnail(thumbnails) {
 }
 
 function TempoGuessrPage() {
-  const [minBpm, setMinBpm] = useState(60)
-  const [maxBpm, setMaxBpm] = useState(140)
-  const [bars, setBars] = useState(2)
+  const [minBpm, setMinBpm] = useSetting('tempo-guessr', 'minBpm', 60)
+  const [maxBpm, setMaxBpm] = useSetting('tempo-guessr', 'maxBpm', 140)
+  const [bars, setBars] = useSetting('tempo-guessr', 'bars', 2)
   const [targetBpm, setTargetBpm] = useState(null)
   const [guess, setGuess] = useState('')
   const [roundActive, setRoundActive] = useState(false)
@@ -1262,7 +1268,7 @@ function TempoGuessrPage() {
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
 
-        <PracticeTimer busy={roundActive} />
+        <PracticeTimer tool="tempo-guessr" busy={roundActive} />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '18px', marginBottom: '24px' }}>
           <div className="control-card">
@@ -1537,8 +1543,8 @@ function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, catego
 // "Finishing" and the session ends once the exercise does.
 const DEFAULT_SESSION_MINUTES = 15
 
-function PracticeTimer({ onComplete, busy = false, defaultMinutes = DEFAULT_SESSION_MINUTES }) {
-  const [minutesDraft, setMinutesDraft] = useState(String(defaultMinutes))
+function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAULT_SESSION_MINUTES }) {
+  const [minutesDraft, setMinutesDraft] = useSetting(tool, 'sessionMinutes', String(defaultMinutes))
   const [status, setStatus] = useState('idle')
   const [remaining, setRemaining] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
@@ -1695,14 +1701,14 @@ function PracticeTimer({ onComplete, busy = false, defaultMinutes = DEFAULT_SESS
 }
 
 function MetronomePage() {
-  const [tempo, setTempo] = useState(120)
-  const [tempoDraft, setTempoDraft] = useState('120')
-  const [beatsPerMeasure, setBeatsPerMeasure] = useState(4)
-  const [downbeatProbability, setDownbeatProbability] = useState(100)
-  const [silentBarProbability, setSilentBarProbability] = useState(0)
-  const [probabilities, setProbabilities] = useState(() => getDefaultMetronomeProbabilities())
-  const [isPatternLocked, setIsPatternLocked] = useState(false)
-  const [sessionMinutes, setSessionMinutes] = useState(DEFAULT_SESSION_MINUTES)
+  const [tempo, setTempo] = useSetting('metronome', 'tempo', 120)
+  const [tempoDraft, setTempoDraft] = useState(() => String(tempo))
+  const [beatsPerMeasure, setBeatsPerMeasure] = useSetting('metronome', 'beatsPerMeasure', 4)
+  const [downbeatProbability, setDownbeatProbability] = useSetting('metronome', 'downbeatProbability', 100)
+  const [silentBarProbability, setSilentBarProbability] = useSetting('metronome', 'silentBarProbability', 0)
+  const [probabilities, setProbabilities] = useSetting('metronome', 'probabilities', getDefaultMetronomeProbabilities)
+  const [isPatternLocked, setIsPatternLocked] = useSetting('metronome', 'isPatternLocked', false)
+  const [sessionMinutes, setSessionMinutes] = useSetting('metronome', 'sessionMinutes', DEFAULT_SESSION_MINUTES)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -2430,9 +2436,10 @@ function PracticeSession({
   click = true,
   onRunningChange,
 }) {
-  const [sessionMinutes, setSessionMinutes] = useState(DEFAULT_SESSION_MINUTES)
+  const [sessionMinutes, setSessionMinutes] = useSetting(practiceTool, 'sessionMinutes', DEFAULT_SESSION_MINUTES)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
-  const [rotationSeconds, setRotationSeconds] = useState(defaultRotation)
+  const [rotationSeconds, setRotationSeconds] = useSetting(practiceTool, 'rotationSeconds', defaultRotation,
+    (value) => rotationOptions.some((option) => option.seconds === value))
   const [isPlaying, setIsPlaying] = useState(false)
   usePracticeLog(practiceTool, isPlaying)
   const [activeBeat, setActiveBeat] = useState(null)
@@ -2989,10 +2996,10 @@ function ThumbIcon({ down = false }) {
 }
 
 function FillGeneratorPage() {
-  const [rateId, setRateId] = useState('sixteenth')
-  const [resolutionId, setResolutionId] = useState('kick')
-  const [beats, setBeats] = useState(2)
-  const [tempoRange, setTempoRange] = useState(FILL_DEFAULT_TEMPO_RANGE)
+  const [rateId, setRateId] = useSetting('fill', 'rateId', 'sixteenth', (id) => FILL_RATES.some((item) => item.id === id))
+  const [resolutionId, setResolutionId] = useSetting('fill', 'resolutionId', 'kick', (id) => FILL_RESOLUTIONS.some((item) => item.id === id))
+  const [beats, setBeats] = useSetting('fill', 'beats', 2, (value) => Number.isInteger(value) && value >= 1 && value <= 4)
+  const [tempoRange, setTempoRange] = useSetting('fill', 'tempoRange', FILL_DEFAULT_TEMPO_RANGE, isTempoRange)
   const rate = FILL_RATES.find((item) => item.id === rateId)
   const resolution = FILL_RESOLUTIONS.find((item) => item.id === resolutionId)
   const downvotedRef = useDownvotes('fill', (entry) => `${entry.strokes}>${entry.resolution}`)
@@ -3371,10 +3378,10 @@ function getRandomHandSticking(length, rateId, downvoted) {
 // rudiment), repeated to fill a bar and looped. Flams and drags are written
 // lR and llR. The Fill Generator covers hands and kick together.
 function StickingGeneratorPage() {
-  const [rateId, setRateId] = useState('sixteenth')
-  const [beats, setBeats] = useState(2)
-  const [accents, setAccents] = useState(true)
-  const [tempoRange, setTempoRange] = useState(FILL_DEFAULT_TEMPO_RANGE)
+  const [rateId, setRateId] = useSetting('sticking', 'rateId', 'sixteenth', (id) => HAND_RATES.some((item) => item.id === id))
+  const [beats, setBeats] = useSetting('sticking', 'beats', 2, (value) => HAND_CYCLE_BEATS.includes(value))
+  const [accents, setAccents] = useSetting('sticking', 'accents', true)
+  const [tempoRange, setTempoRange] = useSetting('sticking', 'tempoRange', FILL_DEFAULT_TEMPO_RANGE, isTempoRange)
   const rate = HAND_RATES.find((item) => item.id === rateId)
   const downvotedRef = useDownvotes('sticking', (entry) => entry.strokes)
   const [pattern, setPattern] = useState(() => ({
@@ -3709,8 +3716,8 @@ function exerciseNotation(exercise) {
 }
 
 function IndependencePage() {
-  const [feel, setFeel] = useState(null)
-  const [tempoRange, setTempoRange] = useState(INDEPENDENCE_DEFAULT_TEMPO_RANGE)
+  const [feel, setFeel] = useSetting('independence', 'feel', null, (id) => INDEPENDENCE_FEELS.some((item) => item.id === id))
+  const [tempoRange, setTempoRange] = useSetting('independence', 'tempoRange', INDEPENDENCE_DEFAULT_TEMPO_RANGE, isTempoRange)
   const downvotedRef = useDownvotes('independence', (entry) => entry.key)
   const [exercise, setExercise] = useState(() => ({
     ...getRandomExercise(null, new Set(readStoredList(downvotesKey('independence')))),
@@ -4108,14 +4115,14 @@ const SET_UP_CUE_OPTIONS = [
 ]
 
 function SightReadingPage() {
-  const [feel, setFeel] = useState('all')
-  const [bars, setBars] = useState(32)
-  const [fillBeats, setFillBeats] = useState(null)
-  const [cues, setCues] = useState(true)
-  const [repeats, setRepeats] = useState(true)
-  const [tempoRange, setTempoRange] = useState(SET_UP_DEFAULT_TEMPO_RANGE)
-  const [band, setBand] = useState('full')
-  const [click, setClick] = useState(true)
+  const [feel, setFeel] = useSetting('sight-reading', 'feel', 'all', (id) => id === 'all' || SET_UP_FEELS.some((item) => item.id === id))
+  const [bars, setBars] = useSetting('sight-reading', 'bars', 32, (value) => SET_UP_LENGTHS.includes(value))
+  const [fillBeats, setFillBeats] = useSetting('sight-reading', 'fillBeats', null, (value) => value === null || SET_UP_FILL_LENGTHS.some((item) => item.beats === value))
+  const [cues, setCues] = useSetting('sight-reading', 'cues', true)
+  const [repeats, setRepeats] = useSetting('sight-reading', 'repeats', true)
+  const [tempoRange, setTempoRange] = useSetting('sight-reading', 'tempoRange', SET_UP_DEFAULT_TEMPO_RANGE, isTempoRange)
+  const [band, setBand] = useSetting('sight-reading', 'band', 'full', (id) => SET_UP_BAND_OPTIONS.some((item) => item.id === id))
+  const [click, setClick] = useSetting('sight-reading', 'click', true)
   const bandBusRef = useRef(null)
   const boardRef = useRef(null)
   const followRef = useRef(null)
@@ -4805,20 +4812,20 @@ function ChordCard({ className, onPlay, children }) {
 
 function EarTrainerPage() {
   usePracticeLog('ear-training', useRecentActivity())
-  const [levels, setLevels] = useState(EAR_TRAINER_DEFAULT_LEVELS)
-  const [minTempo, setMinTempo] = useState(75)
-  const [maxTempo, setMaxTempo] = useState(100)
-  const [varySounds, setVarySounds] = useState(true)
-  const [instrumentId, setInstrumentId] = useState(CHORD_INSTRUMENTS[0].id)
-  const [useRandomKey, setUseRandomKey] = useState(true)
-  const [playReference, setPlayReference] = useState(true)
-  const [loopPlayback, setLoopPlayback] = useState(true)
-  const [drums, setDrums] = useState(true)
-  const [showKey, setShowKey] = useState(true)
-  const [showRoman, setShowRoman] = useState(true)
+  const [levels, setLevels] = useSetting('ear-training', 'levels', EAR_TRAINER_DEFAULT_LEVELS)
+  const [minTempo, setMinTempo] = useSetting('ear-training', 'minTempo', 75)
+  const [maxTempo, setMaxTempo] = useSetting('ear-training', 'maxTempo', 100)
+  const [varySounds, setVarySounds] = useSetting('ear-training', 'varySounds', true)
+  const [instrumentId, setInstrumentId] = useSetting('ear-training', 'instrumentId', CHORD_INSTRUMENTS[0].id, (id) => CHORD_INSTRUMENTS.some((item) => item.id === id))
+  const [useRandomKey, setUseRandomKey] = useSetting('ear-training', 'useRandomKey', true)
+  const [playReference, setPlayReference] = useSetting('ear-training', 'playReference', true)
+  const [loopPlayback, setLoopPlayback] = useSetting('ear-training', 'loopPlayback', true)
+  const [drums, setDrums] = useSetting('ear-training', 'drums', true)
+  const [showKey, setShowKey] = useSetting('ear-training', 'showKey', true)
+  const [showRoman, setShowRoman] = useSetting('ear-training', 'showRoman', true)
   // Hard mode leaves nothing on the page: the key centre sounds, the changes go
   // round, and every chord in them is a blank to be named.
-  const [hardMode, setHardMode] = useState(true)
+  const [hardMode, setHardMode] = useSetting('ear-training', 'hardMode', true)
   const [question, setQuestion] = useState(null)
   // A draft per blank, kept against the chord's place in the progression. One
   // blank or all of them is only a difference in how many keys this has, so the
@@ -5808,7 +5815,7 @@ function EarTrainerPage() {
           </div>
 
           <aside className="ear-sidebar">
-            <PracticeTimer onComplete={stopPlayback} busy={Boolean(question) && !showAnswerKey} />
+            <PracticeTimer tool="ear-training" onComplete={stopPlayback} busy={Boolean(question) && !showAnswerKey} />
 
             <div className="surface-card ear-score-card">
               <span className="control-label">Session</span>
@@ -5897,10 +5904,11 @@ function toggledProgressionTypes(types, id) {
 // once the last one lands the next question follows on its own.
 function ChordProgressionsPage() {
   usePracticeLog('chord-progressions', useRecentActivity())
-  const [modeId, setModeId] = useState('both')
+  const [modeId, setModeId] = useSetting('chord-progressions', 'modeId', 'both', (id) => TWO_FIVE_MODE_OPTIONS.some((item) => item.id === id))
   const modes = TWO_FIVE_MODE_OPTIONS.find((item) => item.id === modeId).modes
-  const [types, setTypes] = useState(storedProgressionTypes)
-  const [question, setQuestion] = useState(() => randomQuestion(types, ['major', 'minor'], null))
+  const [types, setTypes] = useSetting('chord-progressions', 'types', storedProgressionTypes,
+    (value) => value.length > 0 && value.every((id) => ALL_PROGRESSION_TYPES.includes(id)))
+  const [question, setQuestion] = useState(() => randomQuestion(types, modes, null))
   // The index of the chord being waited for; past the last one is solved.
   const [step, setStep] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -5913,7 +5921,7 @@ function ChordProgressionsPage() {
   const [feedbackOn, setFeedbackOn] = useState(null)
   const canVote = useCanVote()
   const [midi, setMidi] = useState({ status: MIDI_SUPPORTED ? 'idle' : 'unsupported', devices: [], error: null })
-  const [soundOn, setSoundOn] = useState(() => {
+  const [soundOn, setSoundOn] = useSetting('chord-progressions', 'soundOn', () => {
     try {
       return window.localStorage.getItem(TWO_FIVE_SOUND_KEY) !== 'off'
     } catch {
@@ -5977,11 +5985,6 @@ function ChordProgressionsPage() {
     if (nextTypes.join() === types.join()) return
     setTypes(nextTypes)
     ask(modes, nextTypes)
-    try {
-      window.localStorage.setItem(PROGRESSION_TYPES_KEY, JSON.stringify(nextTypes))
-    } catch {
-      // Not remembered, still applied.
-    }
   }
 
 
@@ -6129,11 +6132,6 @@ function ChordProgressionsPage() {
 
   function toggleSound(next) {
     setSoundOn(next)
-    try {
-      window.localStorage.setItem(TWO_FIVE_SOUND_KEY, next ? 'on' : 'off')
-    } catch {
-      // Not remembered, still applied.
-    }
   }
 
   function describeQuestion(asked, reached, shown) {
@@ -6345,7 +6343,7 @@ function ChordProgressionsPage() {
           </div>
 
           <aside className="ear-sidebar">
-            <PracticeTimer busy={midi.status === 'ready' && question !== null && !isSolved} />
+            <PracticeTimer tool="chord-progressions" busy={midi.status === 'ready' && question !== null && !isSolved} />
 
             <div className="surface-card ear-score-card" style={cardStyle}>
               <span className="control-label">Session</span>
@@ -6415,12 +6413,20 @@ function readFloatingMetronomeSettings() {
 // beats, subdivision, accent, volume, tap tempo and a session timer one tap
 // away. Settings are remembered per browser.
 function FloatingMetronome() {
-  const [settings, setSettings] = useState(readFloatingMetronomeSettings)
+  return (
+    <RememberedSettings tool="floating-metronome">
+      <FloatingMetronomeControls />
+    </RememberedSettings>
+  )
+}
+
+function FloatingMetronomeControls() {
+  const [settings, setSettings] = useSetting('floating-metronome', 'settings', readFloatingMetronomeSettings)
   const [tempoDraft, setTempoDraft] = useState(() => String(settings.tempo))
   const [expanded, setExpanded] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [activeBeat, setActiveBeat] = useState(null)
-  const [sessionMinutes, setSessionMinutes] = useState(String(DEFAULT_SESSION_MINUTES))
+  const [sessionMinutes, setSessionMinutes] = useSetting('floating-metronome', 'sessionMinutes', String(DEFAULT_SESSION_MINUTES))
   const [remainingSeconds, setRemainingSeconds] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [category, setCategory] = useState('metronome')
@@ -7320,15 +7326,15 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/tempo-guessr" element={<TempoGuessrPage />} />
-        <Route path="/metronome" element={<MetronomePage />} />
-        <Route path="/fill-generator" element={<FillGeneratorPage />} />
-        <Route path="/sticking-generator" element={<StickingGeneratorPage />} />
-        <Route path="/independence" element={<IndependencePage />} />
-        <Route path="/sight-reading" element={<SightReadingPage />} />
+        <Route path="/tempo-guessr" element={<RememberedSettings tool="tempo-guessr"><TempoGuessrPage /></RememberedSettings>} />
+        <Route path="/metronome" element={<RememberedSettings tool="metronome"><MetronomePage /></RememberedSettings>} />
+        <Route path="/fill-generator" element={<RememberedSettings tool="fill"><FillGeneratorPage /></RememberedSettings>} />
+        <Route path="/sticking-generator" element={<RememberedSettings tool="sticking"><StickingGeneratorPage /></RememberedSettings>} />
+        <Route path="/independence" element={<RememberedSettings tool="independence"><IndependencePage /></RememberedSettings>} />
+        <Route path="/sight-reading" element={<RememberedSettings tool="sight-reading"><SightReadingPage /></RememberedSettings>} />
         <Route path="/set-ups" element={<Navigate to="/sight-reading" replace />} />
-        <Route path="/ear-training" element={<EarTrainerPage />} />
-        <Route path="/chord-progressions" element={<ChordProgressionsPage />} />
+        <Route path="/ear-training" element={<RememberedSettings tool="ear-training"><EarTrainerPage /></RememberedSettings>} />
+        <Route path="/chord-progressions" element={<RememberedSettings tool="chord-progressions"><ChordProgressionsPage /></RememberedSettings>} />
         <Route path="/ii-vs" element={<Navigate to="/chord-progressions" replace />} />
         <Route path="/beats" element={<BeatsPage />} />
         <Route path="/video" element={<VideoPage />} />

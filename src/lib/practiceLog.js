@@ -86,6 +86,13 @@ export function rememberPracticePin(person) {
   if (person) flushPracticeLog()
 }
 
+// Calls `listener(person)` whenever the remembered PIN changes; returns the
+// unsubscribe.
+export function onPracticePinChange(listener) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
 export function usePracticePin() {
   const [person, setPerson] = useState(readPracticePin)
   useEffect(() => {

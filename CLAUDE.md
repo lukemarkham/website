@@ -94,6 +94,19 @@ Luke's Command Calendar app (`~/calendar`, `practice-sync.js`) reads his
 totals by PIN to tick off practice tasks, so keep the tool ids and the
 `?pin=` response shape stable, or update it there too.
 
+## Remembered settings
+
+Each person's settings on the practice tools follow their practice PIN
+between devices (`netlify/functions/user-settings.mjs`, browser side
+`src/lib/userSettings.js`); without a PIN they stay in that browser. A tool
+setting is `useSetting(tool, name, fallback, isValid)` in place of
+`useState`, and the tool's route is wrapped in `<RememberedSettings tool>` so
+the page rebuilds when settings arrive from the server or the PIN changes. A
+new tool's id goes in `SETTINGS_TOOLS` (`src/lib/settingsTools.js`). Pass an
+`isValid` for ids picked from a list, so a saved choice that no longer exists
+falls back to the default. Someone entering a PIN for the first time keeps the
+browser's current settings as their saved ones.
+
 ## Answer stats
 
 The quiz tools (Ear Trainer, Chord Progressions) time each answer with the

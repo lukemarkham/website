@@ -3,6 +3,18 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-29 — Settings remembered per person; Ravi's page moves
+
+- Practice tool settings (rates, lengths, tempo ranges, toggles, session
+  length, new-item interval, the floating metronome...) are saved under the
+  practice PIN and come back on any device (see "Remembered settings" in
+  `CLAUDE.md`). Not saved: anything mid-exercise (scores, the current item).
+  Chord Progressions' types and sound, kept per browser before, carry over
+  as the starting values.
+- Ravi Paranjpe's page is now `/ravi-paranjpe`; `/ravi` forwards there
+  (`formerly` in `netlify/lib/students.mjs`, so the old address isn't listed
+  in a public file). He still needs a PIN.
+
 ## 2026-10-29 — Sticking Generator: flams, drags and true rudiments
 
 - Chained stickings can now use flam and drag cells taken from the PAS
@@ -54,8 +66,7 @@ either machine. Newest first.
   Drive folder).
 
 ### Open items / ideas
-- Ravi: last name to come (move the page to `/ravi-<last>`, keep `/ravi`
-  working if he already has the link) and a PIN once he picks one.
+- Ravi: a PIN once he picks one.
 - The Gear Shop's Reverb embed is empty because the shop has no listings
   right now (not a bug).
 - Home page to fit one screen without scrolling (Luke's eventual goal).
