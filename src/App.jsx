@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter, Routes, Route, Link, Navigate, useParams, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { photographyShots } from './data/photography'
 import { reviews } from './data/reviews'
@@ -7095,6 +7095,7 @@ function PracticeStatsPage() {
 // are asked to leave them out.
 function StudentPage() {
   const { slug } = useParams()
+  const navigate = useNavigate()
   const [state, setState] = useState({ status: 'loading' })
   const [practiceDays, setPracticeDays] = useState(null)
   const [practiceAnswers, setPracticeAnswers] = useState(null)
@@ -7114,6 +7115,7 @@ function StudentPage() {
         const data = await response.json().catch(() => ({}))
         if (cancelled) return
         if (response.status === 404) setState({ status: 'missing' })
+        else if (data.movedTo) navigate(`/${data.movedTo}`, { replace: true })
         else if (!response.ok) setState({ status: 'error', message: data.error })
         else setState({ status: 'ready', ...data })
       })
@@ -7123,7 +7125,7 @@ function StudentPage() {
     return () => {
       cancelled = true
     }
-  }, [slug])
+  }, [slug, navigate])
 
   useEffect(() => {
     if (state.status === 'ready') document.title = `${state.name} · Lesson Notes · Luke Markham`

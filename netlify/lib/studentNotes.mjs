@@ -20,6 +20,11 @@ export function findStudent(slug) {
   return typeof slug === 'string' && Object.hasOwn(STUDENTS, slug) ? STUDENTS[slug] : null
 }
 
+// The current address for a page that moved (see `formerly` in students.mjs).
+export function movedStudentSlug(slug) {
+  return Object.keys(STUDENTS).find((key) => STUDENTS[key].formerly?.includes(slug)) ?? null
+}
+
 // Accepts a Doc's full sharing link or just its ID.
 export function docIdFrom(doc) {
   const match = /\/document\/d\/([\w-]{20,})/.exec(doc) ?? /^([\w-]{20,})$/.exec(doc)
@@ -258,7 +263,11 @@ async function fetchFolder(folderId, fetchImpl) {
 // fetchImpl is passed in so dev and tests can swap it.
 export async function handleStudentNotesRequest({ slug }, fetchImpl = fetch) {
   const student = findStudent(slug)
-  if (!student) return { statusCode: 404, payload: { error: 'No such page' } }
+  if (!student) {
+    const moved = movedStudentSlug(slug)
+    if (moved) return { statusCode: 200, payload: { movedTo: moved } }
+    return { statusCode: 404, payload: { error: 'No such page' } }
+  }
 
   const folderId = folderIdFrom(student.folder ?? '')
   const folderPromise = folderId ? fetchFolder(folderId, fetchImpl) : Promise.resolve(null)

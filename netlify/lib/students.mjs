@@ -5,6 +5,9 @@
 // an optional Google Drive folder of teaching materials, listed at the bottom
 // of the page; it needs the same "anyone with the link" sharing.
 //
+// `formerly` lists old addresses that should still find the page, for when a
+// page moves (the browser is sent on to the new one).
+//
 // `pin` is the four-digit practice PIN the student chose. Entered on a
 // practice tool, it logs their time with each tool, shown on their page. PINs
 // must be unique.
@@ -24,9 +27,9 @@ export const STUDENTS = {
     folder: 'https://drive.google.com/drive/folders/1iINnajX7LFXrw-qmRtFZrfiy4Ri8AiQr',
     pin: '1000',
   },
-  // Last name to come; the address becomes ravi-<last> then.
-  ravi: {
-    name: 'Ravi',
+  'ravi-paranjpe': {
+    name: 'Ravi Paranjpe',
+    formerly: ['ravi'],
     doc: 'https://docs.google.com/document/d/1P7yrWsPdsZVrsfl_wnqIteTl3gCOzsmJIqlyKWfnfjk/edit',
     folder: 'https://drive.google.com/drive/folders/1Es9YsdJyzUBVZV-pYEGHMh8UKtK-HFeh',
   },
