@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Megrim&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Megrim&family=Roboto+Mono:wght@300;400&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
   --font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Manrope', sans-serif;
   --font-wordmark: 'Megrim', 'Space Grotesk', sans-serif;
+  --font-nav: 'Roboto Mono', ui-monospace, Menlo, monospace;
   --bg: #0b0b0a;
   --bg-elevated: #151512;
   --surface: linear-gradient(135deg, rgba(16, 17, 18, 0.92), rgba(8, 8, 10, 0.9));
@@ -119,27 +120,65 @@ a {
 .site-nav {
   position: relative;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
   gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 22px;
-  padding: 14px 16px;
-  border: 1px solid var(--surface-border);
-  border-radius: 10px;
-  background: rgba(11, 11, 10, 0.74);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(18px);
+  margin-bottom: 18px;
+  padding: 22px 16px 18px;
+  text-align: center;
   z-index: 40;
   animation: fadeUp 500ms ease both;
+}
+
+.site-nav.is-compact {
+  gap: 8px;
+  padding: 10px 16px 10px;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 14px;
+  justify-content: center;
+  gap: 8px 30px;
   flex-wrap: wrap;
+}
+
+/* The slashes between links, set in the gap so a link's hover line stays its
+   own width. */
+.nav-links > * + *::before {
+  content: '/';
+  position: absolute;
+  left: -15px;
+  top: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-nav);
+  font-size: 0.92rem;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.site-socials {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.site-socials a {
+  display: inline-flex;
+  color: var(--text);
+  transition: color 160ms ease;
+}
+
+.site-socials a:hover {
+  color: var(--accent-warm);
+}
+
+.site-socials svg {
+  width: 21px;
+  height: 21px;
+  fill: currentColor;
 }
 
 .wordmark,
@@ -153,23 +192,28 @@ h3 {
 
 .wordmark {
   font-family: var(--font-wordmark);
-  font-size: 1.28rem;
+  font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 400;
-  letter-spacing: 0;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--accent-strong);
   text-shadow: none;
+}
+
+.is-compact .wordmark {
+  font-size: 1.6rem;
 }
 
 .nav-link {
   position: relative;
   display: inline-flex;
   align-items: center;
-  font-family: var(--font-body);
+  font-family: var(--font-nav);
   color: var(--text-soft);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: 0.92rem;
+  font-weight: 300;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   transition: color 160ms ease, opacity 160ms ease;
 }
@@ -206,10 +250,10 @@ h3 {
   border: 0;
   background: transparent;
   color: var(--text-soft);
-  font-family: var(--font-body);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-family: var(--font-nav);
+  font-size: 0.92rem;
+  font-weight: 300;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -240,6 +284,10 @@ h3 {
   visibility: hidden;
   pointer-events: none;
   transition: opacity 160ms ease, visibility 160ms ease, transform 160ms ease;
+}
+
+.nav-services .nav-dropdown-menu {
+  min-width: 290px;
 }
 
 .nav-dropdown:hover .nav-link,
@@ -279,8 +327,9 @@ h3 {
   padding: 10px 11px;
   border-radius: 5px;
   color: var(--text-soft);
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-family: var(--font-nav);
+  font-size: 0.86rem;
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: uppercase;
   transition: background 160ms ease, color 160ms ease;
@@ -302,7 +351,7 @@ h3 {
   width: 100%;
   border: 0;
   background: transparent;
-  font-family: var(--font-body);
+  font-family: var(--font-nav);
   text-align: center;
   cursor: pointer;
 }
@@ -441,10 +490,6 @@ h3 {
   border-color: rgba(212, 199, 161, 0.24) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38) !important;
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(212, 199, 161, 0.025)) !important;
-}
-
-.reviews-header {
-  margin-bottom: 22px;
 }
 
 .soundbetter-grid {
@@ -1730,11 +1775,6 @@ h3 {
   gap: 20px;
 }
 
-.video-portfolio-header {
-  max-width: 760px;
-  margin: 0 auto;
-}
-
 .video-frame {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -1765,6 +1805,7 @@ h3 {
 
 .video-grid-link {
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 0;
   height: 100%;
   text-align: left;
@@ -1801,31 +1842,16 @@ h3 {
   display: grid;
   gap: 8px;
   min-width: 0;
-  padding: 18px 18px 20px;
+  padding: 12px 14px 14px;
 }
 
 .video-card-title {
   font-family: var(--font-display);
-  font-size: 1.45rem;
-  line-height: 1;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.3;
   letter-spacing: 0;
   color: var(--text);
-}
-
-.video-card-description {
-  color: var(--text-muted);
-  font-size: 0.92rem;
-  line-height: 1.55;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.video-note {
-  color: var(--text-muted);
-  line-height: 1.7;
-  margin: 0;
 }
 
 code {
@@ -2828,14 +2854,21 @@ button.ear-chord-result:focus-visible {
   line-height: 1.5;
 }
 
-@media (max-width: 640px) {
-  .wordmark {
-    width: 100%;
+/* Once the links wrap, a slash would start a row. */
+@media (max-width: 1180px) {
+  .nav-links {
+    gap: 8px 24px;
   }
 
-  .site-nav,
-  .nav-links {
-    justify-content: center;
+  .nav-links > * + *::before {
+    content: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-nav {
+    gap: 16px;
+    padding-top: 16px;
   }
 
   .nav-dropdown {
@@ -3010,7 +3043,7 @@ button.ear-chord-result:focus-visible {
      chart scroll inside itself instead of pushing the page. The floor keeps a
      very short window from crushing the controls; below that the page scrolls
      as normal. */
-  height: calc(100vh - 96px);
+  height: calc(100vh - 116px);
   min-height: 520px;
 }
 
@@ -3717,6 +3750,23 @@ button.ear-chord-result:focus-visible {
 }
 
 /* In the nav it's a menu: the PIN, or who's logging and what to do about it. */
+.nav-practice {
+  position: absolute;
+  top: 22px;
+  right: 16px;
+}
+
+.is-compact .nav-practice {
+  top: 12px;
+}
+
+@media (max-width: 640px) {
+  .nav-practice,
+  .is-compact .nav-practice {
+    position: static;
+  }
+}
+
 .nav-practice .nav-dropdown-menu {
   min-width: 230px;
 }
@@ -3743,8 +3793,8 @@ button.dropdown-link {
   width: 100%;
   border: 0;
   background: none;
-  font-family: inherit;
-  text-align: left;
+  font-family: var(--font-nav);
+  text-align: center;
   cursor: pointer;
 }
 

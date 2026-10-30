@@ -63,7 +63,6 @@ import {
 } from './lib/chordSynth'
 
 const YOUTUBE_PLAYLIST_ID = 'PLb3uq0jpJ8q-KEpFbTwJdOXcoNcaZoneA'
-const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const SPOTIFY_PLAYLIST_ID = '63XW9ECd3X1hKJIMR0T7fr'
 const SOUNDBETTER_MAP_URL = 'https://soundbetter.com/profiles/45761-luke-markham/map'
 const SOUNDBETTER_MAP_IMAGE = '/.netlify/functions/soundbetter-map'
@@ -162,12 +161,6 @@ const mutedTextStyle = {
   color: 'var(--text-muted)',
   lineHeight: 1.75,
   margin: 0,
-}
-
-const gridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-  gap: '20px',
 }
 
 const cardStyle = {
@@ -360,17 +353,15 @@ const PRACTICE_PATHS = new Set([
   '/practice-stats',
 ])
 
-// The practice PIN, last in the nav on practice pages only: the student's
-// name while their time is being logged, "Log Practice" until then. The menu
-// holds the PIN form, the stats link and the way to change or stop.
+// The practice PIN, at the top right of every page: the student's name while
+// their time is being logged, "Log In" until then. The menu holds the PIN form,
+// the stats link and the way to change or stop.
 function NavPracticePin() {
   const person = usePracticePin()
-  const { pathname } = useLocation()
-  if (!PRACTICE_PATHS.has(pathname)) return null
   return (
     <div className="nav-dropdown is-end nav-practice">
       <button type="button" className="nav-link nav-trigger" aria-haspopup="menu">
-        {person ? <><span className="nav-practice-dot" aria-hidden="true" />{person.name.split(' ')[0]}</> : 'Log Practice'}
+        {person ? <><span className="nav-practice-dot" aria-hidden="true" />{person.name.split(' ')[0]}</> : 'Log In'}
       </button>
       <div className="nav-dropdown-menu" role="menu">
         <PracticePin />
@@ -407,12 +398,103 @@ function NavSubmenu({ label, tools }) {
   )
 }
 
-function SiteNav({ showHomeLink = false }) {
+const services = [
+  {
+    path: '/session-work',
+    title: 'Session Work and Production',
+    copy: [
+      'Remote and in-person drum tracking with parts shaped around the song, the artist, and the production.',
+      'Arrangement support, editing, programming, and practical problem-solving for artists and producers.',
+    ],
+    contact: 'Ask About Sessions',
+    subject: 'Session Work',
+  },
+  {
+    path: '/live-performance',
+    title: 'Live Performance',
+    copy: ['Prepared, adaptable drum support for live dates, artist sets, rehearsals, and performance-focused projects.'],
+    contact: 'Ask About Live Dates',
+    subject: 'Live Performance',
+  },
+  {
+    path: '/education',
+    title: 'Education',
+    copy: ['One-on-one instruction for students who want stronger time, better feel, cleaner technique, and a more musical approach to the kit.'],
+    contact: 'Ask About Lessons',
+    subject: 'Private Drum Lessons',
+  },
+]
+
+// Off until the service pages have their copy; the pages themselves stay up.
+const SHOW_SERVICES = false
+
+// Off for now; the page itself stays up.
+const SHOW_BOOK_LIST = false
+
+// Asked once per visit, since every page's nav wants the answer. Gear Shop stays
+// out of the nav if Reverb can't be reached.
+let reverbListings = null
+
+function useReverbHasListings() {
+  const [hasListings, setHasListings] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    reverbListings ??= fetch('/.netlify/functions/reverb-shop')
+      .then((response) => (response.ok ? response.json() : { listings: 0 }))
+      .then((data) => data.listings > 0)
+      .catch(() => false)
+    reverbListings.then((value) => {
+      if (!cancelled) setHasListings(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return hasListings
+}
+
+const socialLinks = [
+  {
+    label: 'Twitter',
+    href: 'https://twitter.com/Luke_Markham',
+    icon: 'M21.543 7.104c.015.211.015.423.015.636 0 6.507-4.954 14.01-14.01 14.01v-.003A13.94 13.94 0 0 1 0 19.539a9.88 9.88 0 0 0 7.287-2.041 4.93 4.93 0 0 1-4.6-3.42 4.916 4.916 0 0 0 2.223-.084A4.926 4.926 0 0 1 .96 9.167v-.062a4.887 4.887 0 0 0 2.235.616A4.928 4.928 0 0 1 1.67 3.148 13.98 13.98 0 0 0 11.82 8.292a4.929 4.929 0 0 1 8.39-4.49 9.868 9.868 0 0 0 3.128-1.196 4.941 4.941 0 0 1-2.165 2.724A9.828 9.828 0 0 0 24 4.555a10.019 10.019 0 0 1-2.457 2.549z',
+  },
+  {
+    label: 'Twitch',
+    href: 'https://www.twitch.tv/luke_markham',
+    icon: 'M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z',
+  },
+  {
+    label: 'YouTube',
+    href: 'https://www.youtube.com/user/lukemarkhamofficial',
+    icon: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z',
+  },
+  {
+    label: 'Instagram',
+    href: 'https://instagram.com/lukesmarkham',
+    icon: 'M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z',
+  },
+  {
+    label: 'Spotify',
+    href: 'https://open.spotify.com/user/lukemarkhamofficial',
+    icon: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z',
+  },
+]
+
+// The same masthead on every page; practice pages get a shorter one without
+// the social icons, so the tool stays on screen.
+function SiteNav() {
+  const { pathname } = useLocation()
+  const hasGear = useReverbHasListings()
+  const compact = PRACTICE_PATHS.has(pathname)
+
   return (
-    <nav className="site-nav">
-      <div className="wordmark">Luke Markham</div>
+    <nav className={`site-nav${compact ? ' is-compact' : ''}`}>
+      <Link className="wordmark" to="/">Luke Markham</Link>
       <div className="nav-links">
-        {showHomeLink ? <Link className="nav-link" to="/">Home</Link> : null}
+        <Link className="nav-link" to="/">Home</Link>
         <div className="nav-dropdown">
           <button
             type="button"
@@ -430,7 +512,24 @@ function SiteNav({ showHomeLink = false }) {
             </Link>
           </div>
         </div>
-        <a className="nav-link" href="/#services">Services</a>
+        {SHOW_SERVICES ? (
+          <div className="nav-dropdown nav-services">
+            <button
+              type="button"
+              className="nav-link nav-trigger"
+              aria-haspopup="menu"
+            >
+              Services
+            </button>
+            <div className="nav-dropdown-menu" role="menu">
+              {services.map((service) => (
+                <Link className="dropdown-link" to={service.path} key={service.path}>
+                  {service.title}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="nav-dropdown">
           <button
             type="button"
@@ -469,7 +568,7 @@ function SiteNav({ showHomeLink = false }) {
           </div>
         </div>
         <Link className="nav-link" to="/beats">Beat Store</Link>
-        <Link className="nav-link" to="/gear-shop">Gear Shop</Link>
+        {hasGear ? <Link className="nav-link" to="/gear-shop">Gear Shop</Link> : null}
         <Link className="nav-link" to="/contact">Contact</Link>
         <div className="nav-dropdown is-end">
           <button
@@ -483,13 +582,24 @@ function SiteNav({ showHomeLink = false }) {
             <Link className="dropdown-link" to="/photography">
               Photography
             </Link>
-            <Link className="dropdown-link" to="/book-list">
-              Book List
-            </Link>
+            {SHOW_BOOK_LIST ? (
+              <Link className="dropdown-link" to="/book-list">
+                Book List
+              </Link>
+            ) : null}
           </div>
         </div>
-        <NavPracticePin />
       </div>
+      {compact ? null : (
+        <div className="site-socials">
+          {socialLinks.map((social) => (
+            <a href={social.href} target="_blank" rel="noreferrer" aria-label={social.label} title={social.label} key={social.label}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d={social.icon} /></svg>
+            </a>
+          ))}
+        </div>
+      )}
+      <NavPracticePin />
     </nav>
   )
 }
@@ -683,15 +793,10 @@ function ClientMapSection() {
 function SoundBetterSection() {
   return (
     <section id="soundbetter" className="surface-panel" style={sectionStyle}>
-      <div className="reviews-header">
-        <div style={metaStyle}>SoundBetter</div>
-        <h2 style={sectionHeadingStyle}>Reviews And Client Map</h2>
-      </div>
-
       <div className="soundbetter-grid">
         <div className="soundbetter-column">
           <div className="soundbetter-column-header">
-            <span className="soundbetter-kicker">5-Star Reviews</span>
+            <span className="soundbetter-kicker">5-Star SoundBetter Reviews</span>
           </div>
           <ReviewGallery />
         </div>
@@ -760,11 +865,7 @@ function ReverbShopSection() {
   return (
     <section id="gear-shop" className="surface-panel" style={sectionStyle}>
       <div className="reverb-shop-header">
-        <div style={metaStyle}>Reverb</div>
         <h2 style={sectionHeadingStyle}>Gear Shop</h2>
-        <p style={{ ...mutedTextStyle, maxWidth: '720px', margin: '0 auto 22px' }}>
-          Browse available instruments, drums, recording gear, and other listings through Luke's Reverb shop.
-        </p>
       </div>
 
       <div className="reverb-shop-card surface-card">
@@ -791,44 +892,14 @@ function HomePage() {
       <section className="hero-shell surface-panel" style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 60px)', marginBottom: '28px' }}>
         <div style={metaStyle}>Freelance Musician • Drummer • Producer</div>
         <h1 style={titleStyle}>Drums, production, and musical support for artists who care about the details.</h1>
-        <p style={introStyle}>
-          Luke Markham helps artists, producers, and students bring songs into focus through tasteful drum parts, practical production support, and clear musical communication.
-        </p>
 
         <div style={buttonRowStyle} className="hero-actions">
-          <a href="#services">
-            <PrimaryButton>View Services</PrimaryButton>
-          </a>
           <Link to="/video">
-            <SecondaryButton>Watch Video Work</SecondaryButton>
+            <PrimaryButton>Watch Video Work</PrimaryButton>
           </Link>
           <Link to="/beats">
             <SecondaryButton>View Beat Store</SecondaryButton>
           </Link>
-        </div>
-      </section>
-
-
-      <section id="services" className="surface-panel" style={sectionStyle}>
-        <h2 style={sectionHeadingStyle}>Services</h2>
-        <div style={gridStyle}>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Session Drumming</h3>
-            <p style={mutedTextStyle}>Remote and in-person drum tracking with parts shaped around the song, the artist, and the production.</p>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Production & Editing</h3>
-            <p style={mutedTextStyle}>Arrangement support, editing, programming, and practical problem-solving for artists and producers.</p>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Private Drum Lessons</h3>
-            <p style={mutedTextStyle}>One-on-one instruction for students who want stronger time, better feel, cleaner technique, and a more musical approach to the kit.</p>
-            <a className="text-link" href="mailto:luke@lukemarkham.com?subject=Private%20Drum%20Lessons">Ask About Lessons</a>
-          </div>
-          <div className="surface-card" style={cardStyle}>
-            <h3 className="card-title">Live Performance</h3>
-            <p style={mutedTextStyle}>Prepared, adaptable drum support for live dates, artist sets, rehearsals, and performance-focused projects.</p>
-          </div>
         </div>
       </section>
 
@@ -862,14 +933,10 @@ function PhotographyPage() {
 
   return (
     <div style={{ ...pageShellStyle, maxWidth: '1280px' }}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
-        <div style={metaStyle}>Extras</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Photography</h1>
-        <p style={introStyle}>
-          Some of my favorite personal shots from outside the music world.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)', marginBottom: '28px' }}>Photography</h1>
 
         {photographyShots.length > 0 ? (
           <div className="photo-grid">
@@ -1132,18 +1199,6 @@ function buildYouTubePlaylistEmbedUrl(playlistId) {
   return `https://www.youtube.com/embed?listType=playlist&list=${playlistId}&rel=0`
 }
 
-function getBestThumbnail(thumbnails) {
-  if (!thumbnails) return ''
-  return (
-    thumbnails.maxres?.url ||
-    thumbnails.standard?.url ||
-    thumbnails.high?.url ||
-    thumbnails.medium?.url ||
-    thumbnails.default?.url ||
-    ''
-  )
-}
-
 function TempoGuessrPage() {
   const [minBpm, setMinBpm] = useSetting('tempo-guessr', 'minBpm', 60)
   const [maxBpm, setMaxBpm] = useSetting('tempo-guessr', 'maxBpm', 140)
@@ -1263,10 +1318,10 @@ function TempoGuessrPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Tempo Guessr</h1>
 
         <PracticeTimer tool="tempo-guessr" busy={roundActive} />
 
@@ -1981,11 +2036,10 @@ function MetronomePage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Metronome</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Metronome</h1>
 
         <div className="metronome-transport surface-card">
           <div className="metronome-tempo">
@@ -3157,11 +3211,10 @@ function FillGeneratorPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Fill Generator</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Fill Generator</h1>
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3523,11 +3576,10 @@ function StickingGeneratorPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sticking Generator</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Sticking Generator</h1>
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -3787,11 +3839,10 @@ function IndependencePage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Independence</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Independence</h1>
 
         <div className="sticking-toolbar independence-toolbar">
           <div className="control-card">
@@ -4289,11 +4340,10 @@ function SightReadingPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools · Drums</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Sight Reading</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Sight Reading</h1>
 
         <div className="sticking-toolbar">
           <div className="control-card">
@@ -4458,11 +4508,10 @@ function SightReadingPage() {
 function BeatsPage() {
   return (
     <div style={{ ...pageShellStyle, maxWidth: '1320px' }}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Beat Store</h1>
-        <p style={introStyle}>Stream, browse, and purchase beats from Luke's BeatStars store.</p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)', marginBottom: '28px' }}>Beat Store</h1>
 
         <div className="embed-shell">
           <iframe
@@ -4479,101 +4528,41 @@ function BeatsPage() {
 }
 
 function VideoPage() {
-  const [videos, setVideos] = useState([])
-  const [status, setStatus] = useState(YOUTUBE_API_KEY ? 'loading' : 'fallback')
-  const [errorMessage, setErrorMessage] = useState('')
+  const [videos, setVideos] = useState(null)
+  const [status, setStatus] = useState('loading')
 
   useEffect(() => {
-    if (!YOUTUBE_API_KEY) {
-      return
-    }
+    document.title = 'Video · Luke Markham'
+    let cancelled = false
 
-    const controller = new AbortController()
-
-    async function loadPlaylistVideos() {
-      try {
-        setStatus('loading')
-        setErrorMessage('')
-
-        const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems')
-        url.searchParams.set('part', 'snippet,contentDetails')
-        url.searchParams.set('maxResults', '24')
-        url.searchParams.set('playlistId', YOUTUBE_PLAYLIST_ID)
-        url.searchParams.set('key', YOUTUBE_API_KEY)
-
-        const response = await fetch(url, { signal: controller.signal })
-        if (!response.ok) {
-          throw new Error(`YouTube API request failed with status ${response.status}.`)
-        }
-
-        const data = await response.json()
-        const playlistVideos = (data.items || [])
-          .map((item) => {
-            const snippet = item.snippet || {}
-            const resourceVideoId = snippet.resourceId?.videoId
-            const contentVideoId = item.contentDetails?.videoId
-            const videoId = resourceVideoId || contentVideoId
-
-            if (!videoId) {
-              return null
-            }
-
-            return {
-              id: item.id,
-              videoId,
-              title: snippet.title || 'Untitled video',
-              description: snippet.description || '',
-              thumbnail: getBestThumbnail(snippet.thumbnails),
-            }
-          })
-          .filter(Boolean)
-
-        if (playlistVideos.length === 0) {
-          throw new Error('No playlist videos were returned.')
-        }
-
-        setVideos(playlistVideos)
+    fetch('/.netlify/functions/youtube-playlist')
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.status))))
+      .then((data) => {
+        if (cancelled) return
+        setVideos(data.videos)
         setStatus('ready')
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          return
-        }
-
-        setStatus('fallback')
-        setErrorMessage(error.message)
-      }
-    }
-
-    loadPlaylistVideos()
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('fallback')
+      })
 
     return () => {
-      controller.abort()
+      cancelled = true
     }
   }, [])
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
-        <div style={metaStyle}>Content</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Video</h1>
-        <p style={introStyle}>
-          Watch recent performances, playthroughs, studio clips, and other video work.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)', marginBottom: '28px' }}>Video</h1>
 
         {status === 'ready' ? (
           <div className="video-portfolio">
-            <div className="video-portfolio-header">
-              <h2 style={{ ...sectionHeadingStyle, marginBottom: '6px' }}>Playlist Grid</h2>
-              <p style={mutedTextStyle}>
-                {videos.length} videos from Luke's featured YouTube playlist.
-              </p>
-            </div>
-
             <div className="video-grid">
               {videos.map((video) => (
-                <article key={video.id} className="video-grid-card">
+                <article key={video.videoId} className="video-grid-card">
                   <a
                     href={`https://www.youtube.com/watch?v=${video.videoId}&list=${YOUTUBE_PLAYLIST_ID}`}
                     target="_blank"
@@ -4581,42 +4570,31 @@ function VideoPage() {
                     className="video-grid-link"
                   >
                     <div className="video-grid-media">
-                      <img className="video-thumb" src={video.thumbnail} alt="" />
+                      <img className="video-thumb" src={`https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`} alt="" loading="lazy" />
                       <span className="video-play-badge">Watch</span>
                     </div>
                     <div className="video-card-copy">
                       <span className="video-card-title">{video.title}</span>
-                      {video.description ? (
-                        <span className="video-card-description">{video.description}</span>
-                      ) : null}
                     </div>
                   </a>
                 </article>
               ))}
             </div>
           </div>
-        ) : (
-          <div className="surface-card" style={cardStyle}>
-            <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Playlist Embed</h2>
-            <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-              {status === 'loading'
-                ? 'Loading videos from YouTube.'
-                : 'Watch the featured YouTube playlist below.'}
-            </p>
-            {errorMessage ? <p className="video-note">{errorMessage}</p> : null}
+        ) : null}
 
-            <div className="embed-shell">
-              <iframe
-                src={buildYouTubePlaylistEmbedUrl(YOUTUBE_PLAYLIST_ID)}
-                title="YouTube playlist"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-                className="video-frame"
-              ></iframe>
-            </div>
+        {status === 'fallback' ? (
+          <div className="embed-shell">
+            <iframe
+              src={buildYouTubePlaylistEmbedUrl(YOUTUBE_PLAYLIST_ID)}
+              title="YouTube playlist"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              className="video-frame"
+            ></iframe>
           </div>
-        )}
+        ) : null}
       </section>
     </div>
   )
@@ -4625,32 +4603,21 @@ function VideoPage() {
 function AudioPage() {
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(30px, 4vw, 44px)' }}>
-        <div style={metaStyle}>Content</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Audio</h1>
-        <p style={introStyle}>
-          Listen to selected productions, drum work, beats, and releases.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)', marginBottom: '28px' }}>Audio</h1>
 
-        <div className="surface-card" style={cardStyle}>
-          <h2 style={{ ...sectionHeadingStyle, marginBottom: '10px' }}>Featured Playlist</h2>
-          <p style={{ ...mutedTextStyle, marginBottom: '18px' }}>
-            A curated Spotify playlist featuring selected audio work.
-          </p>
-
-          <div className="embed-shell">
-            <iframe
-              title="Spotify playlist"
-              src={`https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0`}
-              width="100%"
-              height="720"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              className="audio-frame"
-            ></iframe>
-          </div>
+        <div className="embed-shell">
+          <iframe
+            title="Spotify playlist"
+            src={`https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0`}
+            width="100%"
+            height="720"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            className="audio-frame"
+          ></iframe>
         </div>
       </section>
     </div>
@@ -5389,7 +5356,7 @@ function EarTrainerPage() {
       style={{ ...pageShellStyle, maxWidth: '1340px', padding: '12px clamp(14px, 2.5vw, 30px) 16px' }}
       className="ear-shell"
     >
-      <SiteNav showHomeLink />
+      <SiteNav />
       <ConfettiBurst trigger={celebration} />
       {question ? (
         <GeneratorFeedbackDialog
@@ -5552,7 +5519,7 @@ function EarTrainerPage() {
             <div className="surface-card ear-stage">
               {!question ? (
                 <p className="ear-stage-empty">
-                  Press Start. Every question picks a fresh progression, key, instrument and feel.
+                  Press Start.
                 </p>
               ) : (
                 <>
@@ -6164,7 +6131,7 @@ function ChordProgressionsPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
       {feedbackOn ? (
         <GeneratorFeedbackDialog
           open
@@ -6177,8 +6144,7 @@ function ChordProgressionsPage() {
       ) : null}
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <div style={metaStyle}>Practice Tools · Keys</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' , marginBottom: '28px' }}>Chord Progressions</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Chord Progressions</h1>
 
         <div className="twofive-layout">
           <div className="twofive-main">
@@ -7075,7 +7041,7 @@ function PracticeStatsPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(20px, 3vw, 30px)' }}>
         <div className="practice-stats-heading">
           <h1 style={{ ...titleStyle, fontSize: 'clamp(30px, 4vw, 42px)', marginBottom: '16px' }}>{person ? person.name : 'Your Practice'}</h1>
@@ -7158,11 +7124,11 @@ function StudentPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
         <div style={metaStyle}>Lesson Notes</div>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' }}>
           {state.status === 'ready' ? state.name : '\u00a0'}
         </h1>
 
@@ -7256,10 +7222,10 @@ function DocPage({ page, title }) {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>{title}</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' }}>{title}</h1>
 
         <div className="surface-card student-notes-card doc-page-card" style={cardStyle}>
           {state.status === 'loading' ? <p className="student-notes-status">Loading…</p> : null}
@@ -7280,8 +7246,28 @@ function GearShopPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
       <ReverbShopSection />
+    </div>
+  )
+}
+
+function ServicePage({ service }) {
+  useEffect(() => {
+    document.title = `${service.title} · Luke Markham`
+  }, [service.title])
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' }}>{service.title}</h1>
+        {service.copy.map((paragraph) => (
+          <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }} key={paragraph}>{paragraph}</p>
+        ))}
+        <a className="text-link" href={`mailto:luke@lukemarkham.com?subject=${encodeURIComponent(service.subject)}`}>{service.contact}</a>
+      </section>
     </div>
   )
 }
@@ -7293,13 +7279,10 @@ function ContactPage() {
 
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
 
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Contact</h1>
-        <p style={{ ...mutedTextStyle, maxWidth: '680px', margin: '0 auto 20px' }}>
-          Reach out about recording sessions, private lessons, live work, production support, or custom music.
-        </p>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' }}>Contact</h1>
         <a className="text-link" href="mailto:luke@lukemarkham.com">Email Me</a>
       </section>
     </div>
@@ -7309,9 +7292,9 @@ function ContactPage() {
 function NotFoundPage() {
   return (
     <div style={pageShellStyle}>
-      <SiteNav showHomeLink />
+      <SiteNav />
       <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
-        <h1 style={{ ...titleStyle, fontSize: 'clamp(34px, 6vw, 62px)' }}>Page not found</h1>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' }}>Page not found</h1>
         <p style={introStyle}>
           {"There's nothing at this address. "}
           <Link className="text-link" to="/">Back to the home page</Link>
@@ -7346,6 +7329,9 @@ function App() {
         <Route path="/gear-shop" element={<GearShopPage />} />
         <Route path="/used-gear" element={<Navigate to="/gear-shop" replace />} />
         <Route path="/contact" element={<ContactPage />} />
+        {services.map((service) => (
+          <Route path={service.path} element={<ServicePage key={service.path} service={service} />} key={service.path} />
+        ))}
         <Route path="/book-list" element={<DocPage key="book-list" page="book-list" title="Book List" />} />
         <Route path="/about" element={<Navigate to="/bio" replace />} />
         <Route path="/:slug" element={<StudentPage />} />

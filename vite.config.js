@@ -8,6 +8,8 @@ import { handleDocPageRequest } from './netlify/lib/docPages.mjs'
 import { handlePracticeLogRequest } from './netlify/lib/practiceLog.mjs'
 import { handleAnswerStatsRequest } from './netlify/lib/answerStats.mjs'
 import { handleUserSettingsRequest } from './netlify/lib/userSettings.mjs'
+import { fetchPlaylistVideos } from './netlify/lib/youtubePlaylist.mjs'
+import { fetchShopListingCount } from './netlify/lib/reverbShop.mjs'
 import { recordAnswer } from './src/lib/answerWeights.js'
 
 const TWITCH_STATUS_PATH = '/.netlify/functions/twitch-status'
@@ -17,6 +19,8 @@ const DOC_PAGE_PATH = '/.netlify/functions/doc-page'
 const PRACTICE_LOG_PATH = '/.netlify/functions/practice-log'
 const ANSWER_STATS_PATH = '/.netlify/functions/answer-stats'
 const USER_SETTINGS_PATH = '/.netlify/functions/user-settings'
+const YOUTUBE_PLAYLIST_PATH = '/.netlify/functions/youtube-playlist'
+const REVERB_SHOP_PATH = '/.netlify/functions/reverb-shop'
 
 // `vite` alone does not run Netlify functions, so serve the Twitch endpoint
 // from the same module during local dev. Without this the card is simply never
@@ -32,6 +36,38 @@ function twitchStatusDevEndpoint(env) {
         res.statusCode = statusCode
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(payload))
+      })
+    },
+  }
+}
+
+function youtubePlaylistDevEndpoint() {
+  return {
+    name: 'youtube-playlist-dev-endpoint',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(YOUTUBE_PLAYLIST_PATH, async (_req, res) => {
+        const videos = await fetchPlaylistVideos().catch(() => null)
+
+        res.statusCode = videos ? 200 : 502
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ videos }))
+      })
+    },
+  }
+}
+
+function reverbShopDevEndpoint() {
+  return {
+    name: 'reverb-shop-dev-endpoint',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(REVERB_SHOP_PATH, async (_req, res) => {
+        const listings = await fetchShopListingCount().catch(() => null)
+
+        res.statusCode = listings === null ? 502 : 200
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ listings }))
       })
     },
   }
@@ -237,6 +273,6 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react(), twitchStatusDevEndpoint(env), practiceFeedbackDevEndpoint(), studentNotesDevEndpoint(), practiceLogDevEndpoint(), answerStatsDevEndpoint(), userSettingsDevEndpoint()],
+    plugins: [react(), twitchStatusDevEndpoint(env), youtubePlaylistDevEndpoint(), reverbShopDevEndpoint(), practiceFeedbackDevEndpoint(), studentNotesDevEndpoint(), practiceLogDevEndpoint(), answerStatsDevEndpoint(), userSettingsDevEndpoint()],
   }
 })

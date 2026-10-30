@@ -50,10 +50,27 @@ throughout, at Luke's request. The roster is server-only, so the site's code nev
 
 ## Bio, Credits and Book List
 
-`/bio`, `/credits` (under About in the nav) and `/book-list` (under Extras)
+`/bio`, `/credits` (under About in the nav) and `/book-list` (out of the nav for
+now, `SHOW_BOOK_LIST`)
 show Google Docs Luke edits
 (IDs in `DOC_PAGES`, `netlify/lib/docPages.mjs`), restyled like the student
 pages but left-aligned. Netlify's CDN caches them for five minutes.
+
+## Masthead
+
+`SiteNav` is the same on every page: Megrim name, Roboto Mono menu with
+slashes, social icons. Pages in `PRACTICE_PATHS` get a shorter one without the
+icons; the Ear Trainer's panel height assumes that height (`.ear-panel`).
+`SHOW_SERVICES` keeps Services out of the nav until `/session-work`,
+`/live-performance` and `/education` have their copy. Gear Shop shows only while
+Reverb reports listings (`netlify/functions/reverb-shop.mjs`).
+
+## Video
+
+The Video page's grid comes from the public YouTube playlist page, no API key
+(`netlify/functions/youtube-playlist.mjs`, parsing in
+`netlify/lib/youtubePlaylist.mjs`), cached an hour. If that fails the page shows
+YouTube's own playlist player.
 
 ## Practice tools
 
@@ -76,12 +93,12 @@ the words' attacks never sit on the beat.
 
 ## Practice log
 
-Students (and Luke, PIN 4315) enter a four-digit PIN in the nav (last item, shown
-only on practice pages) and their time with each tool is logged, shown on their student page and at
+Students (and Luke, PIN 4315) enter a four-digit PIN under "Log In" at the top
+right of every page and their time with each tool is logged, shown on their student page and at
 `/practice-stats`. Students choose their own PIN and tell Luke; add it as
 `pin` on their entry in `netlify/lib/students.mjs` (PINs must be unique;
 people without a notes page go in `PRACTICE_ONLY` there). A new practice
-tool goes in `practiceToolMenu` (which also puts the PIN in its nav) and gets `usePracticeLog(tool,
+tool goes in `practiceToolMenu` and `PRACTICE_PATHS` (its short masthead) and gets `usePracticeLog(tool,
 isPlaying)` (or `useRecentActivity()` when it has nothing to start), with
 its id added to `PRACTICE_TOOLS` and `PRACTICE_TOOL_LABELS`
 (`netlify/lib/practiceLog.mjs`, `src/lib/practiceLog.js`).

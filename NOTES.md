@@ -3,6 +3,25 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-30 — Masthead, less filler, video grid
+
+- Luke's old Bandzoogle header is back on every page, smaller (see "Masthead"
+  in `CLAUDE.md`). Log In sits at the top right of every page, no longer only
+  on practice pages, and is labelled "Log In" rather than "Log Practice".
+- Filler removed site-wide (labels above titles, intro sentences, Video and
+  Audio subheadings). Page titles shrank to 36px. Tool instructions stayed.
+- Home lost the Services block, its "View Services" button and its intro. The
+  block became `/session-work`, `/live-performance` and `/education`, out of
+  the nav until Luke writes them. Book List is out of the nav too.
+- Video page is a grid of the playlist, read without an API key. 29 of the 34
+  videos YouTube counts appear.
+
+### Open items / ideas
+- Twitch icon links to `luke_markham` (old site) but the live card defaults to
+  `slywalker_sound`: Luke to say which.
+- Home page on one screen: still needs the reviews and map moved or shrunk.
+- Add the new student to `netlify/lib/students.mjs`.
+
 ## 2026-10-30 — Go-live: lukemarkham.com moves to Netlify
 
 - `public/_redirects` sends the old Bandzoogle pages on: /home, /blog and
