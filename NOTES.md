@@ -17,8 +17,6 @@ either machine. Newest first.
   videos YouTube counts appear.
 
 ### Open items / ideas
-- Twitch icon links to `luke_markham` (old site) but the live card defaults to
-  `slywalker_sound`: Luke to say which.
 - Home page on one screen: still needs the reviews and map moved or shrunk.
 - Add the new student to `netlify/lib/students.mjs`.
 
