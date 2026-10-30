@@ -29,7 +29,12 @@ either machine. Newest first.
   `/reviews/<id>/download` link; the id now comes from `data-review-id`. Same
   numbers, so all 20 reviews on the profile match saved ones. The home page's
   live read of the profile was failing the same way.
-- HostGator's nameservers go to dns1–dns4.p01.nsone.net today.
+- HostGator's nameservers went to dns1–dns4.p01.nsone.net. DNS switched within
+  minutes; the Let's Encrypt certificate took about an hour and failed once
+  when provisioned by hand before Netlify's own retry got it. `www` and http
+  forward to https://lukemarkham.com. `lukemarkham.netlify.app` still answers
+  on its own rather than forwarding, and PINs are per address, so anyone who
+  used it enters theirs again.
 
 ## 2026-10-29 — Settings remembered per person; Ravi's page moves
 
