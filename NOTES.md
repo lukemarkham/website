@@ -3,6 +3,17 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-30 — Go-live: lukemarkham.com moves to Netlify
+
+- `public/_redirects` sends the old Bandzoogle pages on: /home, /blog and
+  /misc to the home page, /videos to /video, /store and /beats-sound-packs to
+  /beats. The tab title is "Luke Markham" (it was still "website").
+- `reviews:sync` had been failing because SoundBetter no longer has the
+  `/reviews/<id>/download` link; the id now comes from `data-review-id`. Same
+  numbers, so all 20 reviews on the profile match saved ones. The home page's
+  live read of the profile was failing the same way.
+- HostGator's nameservers go to dns1–dns4.p01.nsone.net today.
+
 ## 2026-10-29 — Settings remembered per person; Ravi's page moves
 
 - Practice tool settings (rates, lengths, tempo ranges, toggles, session

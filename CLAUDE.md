@@ -128,7 +128,7 @@ Independence tool, Sight Reading (formerly Set Ups; tool id still `setups`), the
 start-of-session pull, fetch each tool's entries:
 
     for tool in fill sticking independence setups ear-training chord-progressions; do
-      curl -s "https://lukemarkham.netlify.app/.netlify/functions/practice-feedback?tool=$tool"
+      curl -sL "https://lukemarkham.netlify.app/.netlify/functions/practice-feedback?tool=$tool"
     done
 
 Entries come back oldest first. Compare their `id`s with

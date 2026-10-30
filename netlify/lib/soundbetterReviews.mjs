@@ -25,7 +25,7 @@ function plainText(markup) {
 export function parseReviews(html) {
   return [...html.matchAll(/<li class="review[ "][\s\S]*?<\/li>/g)]
     .map(([item]) => {
-      const id = item.match(/\/reviews\/(\d+)\/download/)?.[1]
+      const id = item.match(/data-review-id="(\d+)"/)?.[1]
       const quote = item.match(/class="review__body">([\s\S]*?)<\/div>/)?.[1]
       const source = item.match(/by <\/span><span><strong>(?:<a[^>]*>)?([^<]+)/)?.[1]
       if (!id || !quote || !source) return null
