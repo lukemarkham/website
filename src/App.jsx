@@ -36,6 +36,8 @@ import {
 import { fetchAnswerStatsByPin, fetchStudentAnswerStats, useAnswerStats, useAnswerTimer } from './lib/answerStats'
 import { RememberedSettings, useSetting } from './lib/userSettings'
 import { useScreenWakeLock } from './lib/wakeLock'
+import { RUDIMENTS, RUDIMENT_FAMILIES, RUDIMENT_NUMBERS, parseGroup, pickRudiment } from './lib/rudiments'
+import { renderRudiment } from './lib/rudimentNotation'
 import { answerWeight, pickWeighted as pickByWeight, typicalAnswerTime } from './lib/answerWeights'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
@@ -337,6 +339,7 @@ const practiceToolMenu = [
     tools: [
       { label: 'Fill Generator', to: '/fill-generator' },
       { label: 'Sticking Generator', to: '/sticking-generator' },
+      { label: 'Rudiments', to: '/rudiments' },
       { label: 'Independence', to: '/independence' },
       { label: 'Sight Reading', to: '/sight-reading' },
     ],
@@ -2222,6 +2225,7 @@ const PRACTICE_EVERY_CYCLE = -1
 
 const PRACTICE_TEMPO_LIMITS = { min: 40, max: 240 }
 const FILL_DEFAULT_TEMPO_RANGE = [90, 150]
+const RUDIMENTS_DEFAULT_TEMPO_RANGE = [60, 120]
 const PRACTICE_CHIME_SECONDS = 0.7
 const PRACTICE_REVEAL_MS = 1500
 
@@ -3731,6 +3735,173 @@ function exerciseNotation(exercise) {
 
   slots.forEach((slot) => labels.push({ slot, row: 1, text: countLabel(slot, exercise.slotsPerBeat) }))
   return { voices: [{ stem: 1, hits: up }, { stem: -1, hits: down }], labels }
+}
+
+function RudimentNotation({ rudiment }) {
+  const hostRef = useRef(null)
+  const [vexflow, setVexflow] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    loadVexFlow()
+      .then((module) => {
+        if (!cancelled) setVexflow(module)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!vexflow || !host) return
+    const style = getComputedStyle(host)
+    renderRudiment(host, vexflow, {
+      groups: rudiment.groups,
+      bothLeads: rudiment.bothLeads,
+      parse: parseGroup,
+      colors: { ink: style.getPropertyValue('--text').trim() },
+      font: style.fontFamily,
+    })
+  }, [vexflow, rudiment])
+
+  if (failed) return <div className="sticking-line fill-notation-fallback">{rudiment.name}</div>
+  return <div ref={hostRef} className="rudiment-notation" role="img" aria-label={`${rudiment.name}, PAS No. ${rudiment.number}`} />
+}
+
+// Numbers still on the PAS list, in case a saved pool ever holds anything else.
+function isRudimentPool(value) {
+  return Array.isArray(value) && value.length > 0 && value.every((number) => RUDIMENT_NUMBERS.includes(number))
+}
+
+// The practice "question" is one PAS rudiment at a tempo from the range, drawn
+// from the person's pool: all 40 until they log in and choose their own.
+function RudimentsPage() {
+  const person = usePracticePin()
+  const [pool, setPool] = useSetting('rudiments', 'pool', RUDIMENT_NUMBERS, isRudimentPool)
+  const [tempoRange, setTempoRange] = useSetting('rudiments', 'tempoRange', RUDIMENTS_DEFAULT_TEMPO_RANGE, isTempoRange)
+  const [question, setQuestion] = useState(() => ({
+    rudiment: pickRudiment(pool, null),
+    tempo: randomInt(...tempoRange),
+  }))
+  const [manualCount, setManualCount] = useState(0)
+  const [isChoosing, setIsChoosing] = useState(false)
+  const activePool = person ? pool : RUDIMENT_NUMBERS
+  const { rudiment } = question
+
+  function next(fromPool = activePool) {
+    setQuestion({ rudiment: pickRudiment(fromPool, rudiment.number), tempo: randomInt(...tempoRange) })
+  }
+
+  function nextByHand() {
+    next()
+    setManualCount((count) => count + 1)
+  }
+
+  function updateTempoRange(nextRange) {
+    setTempoRange(nextRange)
+    setQuestion((current) => ({ ...current, tempo: clamp(current.tempo, nextRange[0], nextRange[1]) }))
+  }
+
+  // The pool can't be emptied, so there's always a rudiment to draw.
+  function changePool(nextPool) {
+    if (nextPool.length === 0) return
+    setPool(nextPool)
+    if (!nextPool.includes(rudiment.number)) next(nextPool)
+  }
+
+  function toggle(number) {
+    changePool(pool.includes(number) ? pool.filter((item) => item !== number) : [...pool, number])
+  }
+
+  function setFamily(family, included) {
+    const numbers = RUDIMENTS.filter((item) => item.family === family).map((item) => item.number)
+    const others = pool.filter((number) => !numbers.includes(number))
+    changePool(included ? [...others, ...numbers] : others)
+  }
+
+  return (
+    <div style={pageShellStyle}>
+      <SiteNav />
+
+      <section className="surface-panel" style={{ ...sectionStyle, padding: 'clamp(28px, 4vw, 42px)' }}>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(26px, 3.2vw, 36px)' , marginBottom: '28px' }}>Rudiments</h1>
+
+        <div className="sticking-toolbar rudiment-toolbar">
+          <div className="control-card">
+            <label className="control-label" htmlFor="rudiment-tempo-range">Tempo Range</label>
+            <div className="range-value">{tempoRange[0]}–{tempoRange[1]} BPM</div>
+            <TempoRangeSlider id="rudiment-tempo-range" value={tempoRange} onChange={updateTempoRange} />
+          </div>
+
+          <div className="control-card">
+            <span className="control-label">Your Rudiments</span>
+            <div className="range-value">{activePool.length} of {RUDIMENTS.length}</div>
+            {person ? (
+              <button className="secondary-button" type="button" aria-expanded={isChoosing} onClick={() => setIsChoosing((value) => !value)}>
+                {isChoosing ? 'Done' : 'Choose Rudiments'}
+              </button>
+            ) : (
+              <p className="rudiment-login-note">Log in to choose your own.</p>
+            )}
+          </div>
+        </div>
+
+        {person && isChoosing ? (
+          <div className="surface-card rudiment-picker" style={{ ...cardStyle, marginBottom: '18px' }}>
+            {RUDIMENT_FAMILIES.map((family) => {
+              const members = RUDIMENTS.filter((item) => item.family === family)
+              return (
+                <div className="rudiment-family" key={family}>
+                  <div className="rudiment-family-header">
+                    <span className="control-label">{family}</span>
+                    <button className="text-link rudiment-family-action" type="button" onClick={() => setFamily(family, true)}>All</button>
+                    <button className="text-link rudiment-family-action" type="button" onClick={() => setFamily(family, false)}>None</button>
+                  </div>
+                  <div className="sticking-chips">
+                    {members.map((item) => (
+                      <button
+                        key={item.number}
+                        type="button"
+                        className={`ear-level-chip${pool.includes(item.number) ? ' is-active' : ''}`}
+                        aria-pressed={pool.includes(item.number)}
+                        onClick={() => toggle(item.number)}
+                      >
+                        {item.number}. {item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+
+        <PracticeSession
+          itemName="rudiment"
+          practiceTool="rudiments"
+          tempo={question.tempo}
+          onNewItem={() => next()}
+          manualFillCount={manualCount}
+        />
+
+        <div className="sticking-board surface-card">
+          <h2 className="card-title rudiment-title">{rudiment.number}. {rudiment.name}</h2>
+          <div className="range-value">{question.tempo} BPM</div>
+          <RudimentNotation rudiment={rudiment} />
+          <div className="sticking-board-actions">
+            <button className="primary-button" type="button" onClick={nextByHand}>
+              Next Rudiment
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function IndependencePage() {
@@ -7280,6 +7451,7 @@ function App() {
         <Route path="/metronome" element={<RememberedSettings tool="metronome"><MetronomePage /></RememberedSettings>} />
         <Route path="/fill-generator" element={<RememberedSettings tool="fill"><FillGeneratorPage /></RememberedSettings>} />
         <Route path="/sticking-generator" element={<RememberedSettings tool="sticking"><StickingGeneratorPage /></RememberedSettings>} />
+        <Route path="/rudiments" element={<RememberedSettings tool="rudiments"><RudimentsPage /></RememberedSettings>} />
         <Route path="/independence" element={<RememberedSettings tool="independence"><IndependencePage /></RememberedSettings>} />
         <Route path="/sight-reading" element={<RememberedSettings tool="sight-reading"><SightReadingPage /></RememberedSettings>} />
         <Route path="/set-ups" element={<Navigate to="/sight-reading" replace />} />

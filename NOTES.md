@@ -3,6 +3,13 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-10-30 — Rudiments tool
+
+- `/rudiments`, under Drums: every PAS rudiment engraved from the 2024 PAS sheet
+  (the sticking generator keeps its own 21 on-grid ones). Students logged in
+  pick their pool by rudiment or by family. It has no vote buttons, since the
+  rudiments are fixed.
+
 ## 2026-10-30 — Masthead, less filler, video grid
 
 - A 15-minute Sticking session logged 10:08 because the screen slept, which

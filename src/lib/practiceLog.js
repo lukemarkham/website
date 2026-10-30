@@ -32,6 +32,7 @@ export const PRACTICE_TOOL_LABELS = {
   'tempo-guessr': 'Tempo Guessr',
   fill: 'Fill Generator',
   sticking: 'Sticking Generator',
+  rudiments: 'Rudiments',
   independence: 'Independence',
   'sight-reading': 'Sight Reading',
   'ear-training': 'Ear Trainer',

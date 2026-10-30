@@ -16,7 +16,7 @@
 
 import { STUDENTS, PRACTICE_ONLY } from './students.mjs'
 
-export const PRACTICE_TOOLS = ['metronome', 'tempo-guessr', 'fill', 'sticking', 'independence', 'sight-reading', 'ear-training', 'chord-progressions', 'metronome-drums', 'metronome-keys', 'metronome-drums-independence', 'metronome-drums-sticking', 'metronome-drums-vocab']
+export const PRACTICE_TOOLS = ['metronome', 'tempo-guessr', 'fill', 'sticking', 'rudiments', 'independence', 'sight-reading', 'ear-training', 'chord-progressions', 'metronome-drums', 'metronome-keys', 'metronome-drums-independence', 'metronome-drums-sticking', 'metronome-drums-vocab']
 
 const MAX_SESSIONS = 50
 const MAX_SECONDS = 6 * 60 * 60

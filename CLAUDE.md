@@ -92,6 +92,16 @@ own click: a bar of half notes, then a bar of quarters, then time starts
 (`COUNT_OFF_BEATS` and `countOffCount` in `App.jsx`). No spoken count-ins:
 the words' attacks never sit on the beat.
 
+## Rudiments
+
+`/rudiments` (tool id `rudiments`) draws one of the 40 PAS rudiments at a tempo
+from the range, over the click. They're written note for note from the PAS
+sheet in `src/lib/rudiments.js` (format at the top of the file) and engraved by
+`src/lib/rudimentNotation.js`, with no time signature because the sheet has
+none. Logged-in people choose their own pool (`useSetting('rudiments', 'pool')`,
+so it follows the PIN); without a PIN it's all 40. Its time counts as sticking
+on the Command Calendar (`practice-sync.js`).
+
 ## Practice log
 
 Students (and Luke, PIN 4315) enter a four-digit PIN under "Log In" at the top

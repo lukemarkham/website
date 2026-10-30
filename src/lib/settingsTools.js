@@ -6,6 +6,7 @@ export const SETTINGS_TOOLS = [
   'tempo-guessr',
   'fill',
   'sticking',
+  'rudiments',
   'independence',
   'sight-reading',
   'ear-training',

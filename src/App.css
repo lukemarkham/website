@@ -1578,6 +1578,51 @@ h3 {
   }
 }
 
+@media (min-width: 641px) {
+  .sticking-toolbar.rudiment-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rudiment-title {
+  margin: 0 0 4px;
+}
+
+.rudiment-notation {
+  --text: #f3efe3;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.rudiment-login-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.rudiment-family + .rudiment-family {
+  margin-top: 18px;
+}
+
+.rudiment-family-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.rudiment-family-header .control-label {
+  margin: 0;
+}
+
+.rudiment-family-action {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
 .fill-source-badge {
   position: absolute;
   top: 10px;
