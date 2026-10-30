@@ -32,6 +32,7 @@ export const STUDENTS = {
     formerly: ['ravi'],
     doc: 'https://docs.google.com/document/d/1P7yrWsPdsZVrsfl_wnqIteTl3gCOzsmJIqlyKWfnfjk/edit',
     folder: 'https://drive.google.com/drive/folders/1Es9YsdJyzUBVZV-pYEGHMh8UKtK-HFeh',
+    pin: '6656',
   },
 }
 
