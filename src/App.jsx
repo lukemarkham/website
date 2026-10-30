@@ -431,8 +431,9 @@ const SHOW_SERVICES = false
 // Off for now; the page itself stays up.
 const SHOW_BOOK_LIST = false
 
-// Asked once per visit, since every page's nav wants the answer. Gear Shop stays
-// out of the nav if Reverb can't be reached.
+// Asked in the browser, once per visit, since every page's nav wants the answer
+// (Reverb turns Netlify's servers away). Gear Shop stays out of the nav if Reverb
+// can't be reached.
 let reverbListings = null
 
 function useReverbHasListings() {
@@ -440,9 +441,11 @@ function useReverbHasListings() {
 
   useEffect(() => {
     let cancelled = false
-    reverbListings ??= fetch('/.netlify/functions/reverb-shop')
-      .then((response) => (response.ok ? response.json() : { listings: 0 }))
-      .then((data) => data.listings > 0)
+    reverbListings ??= fetch(`https://api.reverb.com/api/listings/all?shop=${REVERB_SHOP_SLUG}&per_page=1`, {
+      headers: { 'Accept-Version': '3.0', Accept: 'application/hal+json' },
+    })
+      .then((response) => (response.ok ? response.json() : { total: 0 }))
+      .then((data) => data.total > 0)
       .catch(() => false)
     reverbListings.then((value) => {
       if (!cancelled) setHasListings(value)

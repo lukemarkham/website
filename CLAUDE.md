@@ -63,7 +63,8 @@ slashes, social icons. Pages in `PRACTICE_PATHS` get a shorter one without the
 icons; the Ear Trainer's panel height assumes that height (`.ear-panel`).
 `SHOW_SERVICES` keeps Services out of the nav until `/session-work`,
 `/live-performance` and `/education` have their copy. Gear Shop shows only while
-Reverb reports listings (`netlify/functions/reverb-shop.mjs`).
+Reverb reports listings (`useReverbHasListings`, asked from the browser because
+Reverb refuses Netlify's servers).
 
 ## Video
 
