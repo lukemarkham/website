@@ -5,7 +5,10 @@
 // A tool is in use while it plays (usePracticeLog(tool, isPlaying)), or,
 // for tools with nothing to start, while someone is working the page
 // (useRecentActivity). Time stops while the tab is hidden and picks up when
-// it's back. Each stretch becomes a session, queued here until the server
+// it's back, except with `background`: a tool whose click is sounding counts on
+// a hidden tab or a dark screen, since the player is still playing to it. Time
+// the computer spent asleep never counts. Each stretch becomes a session, queued
+// here until the server
 // confirms it, so nothing is lost offline; a closing page also sends the
 // queue by beacon, and the server counts a resent session once.
 
@@ -19,6 +22,10 @@ const MIN_SECONDS = 10
 // Without a transport, a page counts as in use this long after the last
 // key, click or note.
 const ACTIVITY_WINDOW_MS = 90 * 1000
+// A gap this long between beats of the hook's heartbeat means the computer
+// slept; even a hidden tab's timers run at least once a minute.
+const HEARTBEAT_MS = 15 * 1000
+const ASLEEP_AFTER_MS = 2 * 60 * 1000
 
 export const PRACTICE_TOOL_LABELS = {
   metronome: 'Metronome',
@@ -187,8 +194,9 @@ let releasedOnLoad = false
  * Logs `tool` as practised for as long as `isActive` is true and the page
  * is showing. With `hold`, time is kept back for releaseHeldPractice.
  */
-export function usePracticeLog(tool, isActive, { hold = false } = {}) {
+export function usePracticeLog(tool, isActive, { hold = false, background = false } = {}) {
   const startedRef = useRef(null)
+  const lastSeenRef = useRef(0)
   const holdRef = useRef(hold)
 
   useLayoutEffect(() => {
@@ -205,17 +213,23 @@ export function usePracticeLog(tool, isActive, { hold = false } = {}) {
 
   useEffect(() => {
     const begin = () => {
-      if (!startedRef.current && document.visibilityState === 'visible') startedRef.current = new Date()
+      if (startedRef.current) return
+      if (background || document.visibilityState === 'visible') {
+        startedRef.current = new Date()
+        lastSeenRef.current = Date.now()
+      }
     }
     const end = () => {
       const started = startedRef.current
       if (!started) return
       startedRef.current = null
-      queueSession(tool, started, (Date.now() - started.getTime()) / 1000, holdRef.current)
+      const asleep = Date.now() - lastSeenRef.current > ASLEEP_AFTER_MS
+      const until = asleep ? lastSeenRef.current : Date.now()
+      queueSession(tool, started, (until - started.getTime()) / 1000, holdRef.current)
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
-        end()
+        if (!background) end()
         beaconPracticeLog()
       } else if (isActive) {
         begin()
@@ -226,6 +240,15 @@ export function usePracticeLog(tool, isActive, { hold = false } = {}) {
       end()
       beaconPracticeLog()
     }
+    const heartbeat = window.setInterval(() => {
+      if (!startedRef.current) return
+      if (Date.now() - lastSeenRef.current > ASLEEP_AFTER_MS) {
+        end()
+        if (isActive) begin()
+      } else {
+        lastSeenRef.current = Date.now()
+      }
+    }, HEARTBEAT_MS)
 
     if (isActive) begin()
     document.addEventListener('visibilitychange', onVisibility)
@@ -233,10 +256,11 @@ export function usePracticeLog(tool, isActive, { hold = false } = {}) {
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', onPageHide)
+      window.clearInterval(heartbeat)
       end()
       flushPracticeLog()
     }
-  }, [tool, isActive])
+  }, [tool, isActive, background])
 }
 
 // Pages without a transport call this on anything that isn't a key or a

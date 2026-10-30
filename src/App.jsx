@@ -35,6 +35,7 @@ import {
 } from './lib/practiceLog'
 import { fetchAnswerStatsByPin, fetchStudentAnswerStats, useAnswerStats, useAnswerTimer } from './lib/answerStats'
 import { RememberedSettings, useSetting } from './lib/userSettings'
+import { useScreenWakeLock } from './lib/wakeLock'
 import { answerWeight, pickWeighted as pickByWeight, typicalAnswerTime } from './lib/answerWeights'
 import { loadVexFlow, renderFillNotation } from './lib/fillNotation'
 import { DRUM_KEYS, renderDrumNotation } from './lib/drumNotation'
@@ -1589,11 +1590,11 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
   const [status, setStatus] = useState('idle')
   const [remaining, setRemaining] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
+  useScreenWakeLock(status === 'running' || status === 'finishing')
   const endsAtRef = useRef(null)
   const pausedMsRef = useRef(null)
   const tickRef = useRef(null)
   const audioContextRef = useRef(null)
-  const wakeLockRef = useRef(null)
   const onCompleteRef = useRef(onComplete)
   const busyRef = useRef(busy)
 
@@ -1604,29 +1605,14 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
   useEffect(() => {
     return () => {
       window.clearInterval(tickRef.current)
-      wakeLockRef.current?.release().catch(() => {})
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close()
       }
     }
   }, [])
 
-  async function holdWakeLock() {
-    try {
-      wakeLockRef.current = await navigator.wakeLock?.request('screen')
-    } catch {
-      wakeLockRef.current = null
-    }
-  }
-
-  function releaseWakeLock() {
-    wakeLockRef.current?.release().catch(() => {})
-    wakeLockRef.current = null
-  }
-
   function halt() {
     window.clearInterval(tickRef.current)
-    releaseWakeLock()
   }
 
   function finish() {
@@ -1660,7 +1646,6 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
         setRemaining(Math.ceil(leftMs / 1000))
       }
     }, 250)
-    holdWakeLock()
   }
 
   function start() {
@@ -1755,7 +1740,8 @@ function MetronomePage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [category, setCategory] = useState('metronome')
   const holdsPractice = isPlaying ? remainingSessionSeconds !== null : isCompleteOpen
-  usePracticeLog('metronome', isPlaying, { hold: holdsPractice })
+  usePracticeLog('metronome', isPlaying, { hold: holdsPractice, background: true })
+  useScreenWakeLock(isPlaying)
   const [activeTick, setActiveTick] = useState(null)
   const audioContextRef = useRef(null)
   const schedulerRef = useRef(null)
@@ -2481,7 +2467,9 @@ function PracticeSession({
   const [rotationSeconds, setRotationSeconds] = useSetting(practiceTool, 'rotationSeconds', defaultRotation,
     (value) => rotationOptions.some((option) => option.seconds === value))
   const [isPlaying, setIsPlaying] = useState(false)
-  usePracticeLog(practiceTool, isPlaying)
+  const [isPaused, setIsPaused] = useState(false)
+  usePracticeLog(practiceTool, isPlaying && !isPaused, { background: true })
+  useScreenWakeLock(isPlaying)
   const [activeBeat, setActiveBeat] = useState(null)
   const [banner, setBanner] = useState(null)
   const [clock, setClock] = useState({ session: null, nextFill: null })
@@ -2489,7 +2477,6 @@ function PracticeSession({
   const schedulerRef = useRef(null)
   const clockRef = useRef(null)
   const visualTimeoutsRef = useRef([])
-  const wakeLockRef = useRef(null)
   const runRef = useRef(null)
   const tempoRef = useRef(tempo)
   const onNewFillRef = useRef(onNewItem)
@@ -2538,7 +2525,6 @@ function PracticeSession({
       window.clearInterval(schedulerRef.current)
       window.clearInterval(clockRef.current)
       visualTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId))
-      wakeLockRef.current?.release().catch(() => {})
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close()
       }
@@ -2680,13 +2666,6 @@ function PracticeSession({
     setIsPlaying(true)
     runFrom(ctx)
     onRunningChangeRef.current?.(true)
-
-    // Keep the screen awake for the session; the fill is no use on a dark screen.
-    try {
-      wakeLockRef.current = await navigator.wakeLock?.request('screen')
-    } catch {
-      wakeLockRef.current = null
-    }
   }
 
   // Holds the click and the session clock where they are. Anything already
@@ -2705,6 +2684,7 @@ function PracticeSession({
     run.finishAt = null
     setActiveBeat(null)
     setBanner('Paused')
+    setIsPaused(true)
   }
 
   function resume({ newFill = false } = {}) {
@@ -2729,6 +2709,7 @@ function PracticeSession({
     run.beatIndex = 0
     run.nextFillAt = null
     run.paused = null
+    setIsPaused(false)
     runFrom(ctx)
   }
 
@@ -2736,9 +2717,8 @@ function PracticeSession({
     window.clearInterval(schedulerRef.current)
     window.clearInterval(clockRef.current)
     clearVisualTimeouts()
-    wakeLockRef.current?.release().catch(() => {})
-    wakeLockRef.current = null
     runRef.current = null
+    setIsPaused(false)
     setActiveBeat(null)
     setBanner(null)
     setClock({ session: null, nextFill: null })
@@ -6383,7 +6363,8 @@ function FloatingMetronomeControls() {
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [category, setCategory] = useState('metronome')
   const holdsPractice = isPlaying ? remainingSeconds !== null : isCompleteOpen
-  usePracticeLog('metronome', isPlaying, { hold: holdsPractice })
+  usePracticeLog('metronome', isPlaying, { hold: holdsPractice, background: true })
+  useScreenWakeLock(isPlaying)
   const audioContextRef = useRef(null)
   const schedulerRef = useRef(null)
   const sessionIntervalRef = useRef(null)

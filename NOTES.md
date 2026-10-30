@@ -5,6 +5,13 @@ either machine. Newest first.
 
 ## 2026-10-30 — Masthead, less filler, video grid
 
+- A 15-minute Sticking session logged 10:08 because the screen slept, which
+  stopped the count while the click and the timer ran on, so the calendar task
+  stayed open. Click tools now count on a dark screen or hidden tab, stop while
+  paused, and skip time the computer was asleep. The screen lock came back only
+  on start, so it's now `useScreenWakeLock`, re-asked whenever the page returns,
+  and the metronomes have it too.
+
 - Luke's old Bandzoogle header is back on every page, smaller (see "Masthead"
   in `CLAUDE.md`). Log In sits at the top right of every page, no longer only
   on practice pages, and is labelled "Log In" rather than "Log Practice".

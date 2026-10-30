@@ -103,6 +103,11 @@ tool goes in `practiceToolMenu` and `PRACTICE_PATHS` (its short masthead) and ge
 isPlaying)` (or `useRecentActivity()` when it has nothing to start), with
 its id added to `PRACTICE_TOOLS` and `PRACTICE_TOOL_LABELS`
 (`netlify/lib/practiceLog.mjs`, `src/lib/practiceLog.js`).
+Tools with a click (`usePracticeLog(tool, playing, { background: true })`: the
+metronomes and the drum generators) keep counting on a hidden tab or a dark
+screen, stop while paused, and never count time the computer was asleep. Other
+tools stop while hidden. Anything with a click or a session timer holds the
+screen on with `useScreenWakeLock(active)`.
 A timed metronome session (page or floating) ends by asking whether it
 counts as drums or keys, and for drums which kind (matching the Command
 Calendar's drum tasks); its time is held back until then and logged as
