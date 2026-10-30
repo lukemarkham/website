@@ -413,44 +413,30 @@ h3 {
 .hero-shell {
   position: relative;
   overflow: hidden;
-  min-height: min(720px, calc(100svh - 130px));
+  min-height: 320px;
   display: grid;
-  align-content: end;
-  text-align: left;
+  grid-template-columns: 58% 1fr;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
 }
 
 .hero-shell > * {
   position: relative;
   z-index: 1;
+  grid-column: 1;
 }
 
 .hero-shell::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 auto;
   z-index: 0;
+  width: 42%;
   background:
-    linear-gradient(90deg, rgba(11, 11, 10, 0.12) 0%, rgba(11, 11, 10, 0.04) 54%, rgba(11, 11, 10, 0) 100%),
-    radial-gradient(circle at 76% 42%, rgba(143, 157, 120, 0.14), transparent 34%),
-    url('./assets/hero.png') right clamp(18px, 7vw, 82px) center / min(38vw, 360px) auto no-repeat;
-  filter: none;
+    linear-gradient(90deg, rgba(11, 11, 10, 1) 0%, rgba(11, 11, 10, 0) 38%),
+    url('./assets/hero-photos-optimized/IMG_20230805_203444.webp') center 66% / cover no-repeat;
   pointer-events: none;
-}
-
-.hero-shell::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  z-index: 0;
-  width: min(66%, 760px);
-  background:
-    linear-gradient(90deg, rgba(11, 11, 10, 0.96) 0%, rgba(11, 11, 10, 0.9) 68%, rgba(11, 11, 10, 0) 100%);
-  pointer-events: none;
-}
-
-.hero-actions {
-  align-items: center;
-  justify-content: flex-start !important;
 }
 
 .surface-panel {
@@ -506,7 +492,7 @@ h3 {
 }
 
 .soundbetter-column-header {
-  text-align: left;
+  text-align: center;
 }
 
 .soundbetter-kicker {
@@ -646,7 +632,7 @@ h3 {
   border: 1px solid var(--surface-border);
   border-radius: 10px;
   background: var(--card-surface);
-  text-align: left;
+  text-align: center;
 }
 
 .map-card-media {
@@ -739,7 +725,7 @@ h3 {
   min-height: 150px;
   padding: 16px !important;
   border-top: 1px solid var(--surface-border) !important;
-  text-align: left;
+  text-align: center;
 }
 
 .reverb-embedded-listing-title {
@@ -789,7 +775,7 @@ h3 {
   border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  text-align: left;
+  text-align: center;
   cursor: zoom-in;
   break-inside: avoid;
 }
@@ -1059,7 +1045,7 @@ h3 {
   grid-template-columns: minmax(120px, 180px) auto;
   align-items: center;
   gap: 0 10px;
-  text-align: left;
+  text-align: center;
 }
 
 .metronome-tempo .control-label {
@@ -1084,7 +1070,7 @@ h3 {
   grid-template-columns: minmax(110px, 150px) auto;
   align-items: center;
   gap: 0 10px;
-  text-align: left;
+  text-align: center;
 }
 
 .metronome-session .control-label {
@@ -1681,7 +1667,7 @@ h3 {
   grid-template-columns: 7.5ch minmax(0, 1fr);
   align-items: baseline;
   gap: 14px;
-  text-align: left;
+  text-align: center;
 }
 
 .sticking-cell-name {
@@ -1717,7 +1703,7 @@ h3 {
   gap: 10px;
   max-width: 680px;
   margin: 18px auto 0;
-  text-align: left;
+  text-align: center;
   padding: 0;
   list-style: none;
 }
@@ -1808,7 +1794,7 @@ h3 {
   grid-template-rows: auto 1fr;
   gap: 0;
   height: 100%;
-  text-align: left;
+  text-align: center;
 }
 
 .video-grid-media {
@@ -2094,7 +2080,7 @@ code {
   align-content: center;
   justify-items: start;
   gap: 12px;
-  text-align: left;
+  text-align: center;
 }
 
 .ear-select {
@@ -2146,6 +2132,7 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-top: 10px;
   padding-top: 10px;
@@ -2625,7 +2612,7 @@ button.ear-chord-result {
   margin: 0;
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -2947,29 +2934,20 @@ button.ear-chord-result:focus-visible {
 
   .hero-shell {
     min-height: auto;
-    text-align: center;
+    grid-template-columns: 1fr;
   }
 
+  /* No room beside the text, so the photo goes behind it. */
   .hero-shell::before {
-    background:
-      linear-gradient(180deg, rgba(11, 11, 10, 0.08) 0%, rgba(11, 11, 10, 0.36) 42%, rgba(11, 11, 10, 0.94) 82%),
-      radial-gradient(circle at 50% 12%, rgba(212, 199, 161, 0.08), transparent 34%),
-      url('./assets/hero.png') center top 16px / 190px auto no-repeat;
-  }
-
-  .hero-shell::after {
-    inset: auto 0 0;
+    inset: 0;
     width: 100%;
-    height: 74%;
-    background: linear-gradient(180deg, rgba(11, 11, 10, 0) 0%, rgba(11, 11, 10, 0.94) 36%, rgba(11, 11, 10, 0.98) 100%);
+    background:
+      linear-gradient(rgba(11, 11, 10, 0.74), rgba(11, 11, 10, 0.74)),
+      url('./assets/hero-photos-optimized/IMG_20230805_203444.webp') center 66% / cover no-repeat;
   }
 
   .photo-grid {
     column-count: 1;
-  }
-
-  .hero-actions {
-    justify-content: center !important;
   }
 
   .primary-button,
@@ -3097,7 +3075,7 @@ button.ear-chord-result:focus-visible {
      the sidebar packs its cards at the top instead. */
   align-items: stretch;
   gap: 16px;
-  text-align: left;
+  text-align: center;
 }
 
 .ear-main {
@@ -3153,6 +3131,7 @@ button.ear-chord-result:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: center;
 }
 
 .ear-transport button {
@@ -3166,7 +3145,7 @@ button.ear-chord-result:focus-visible {
 }
 
 .ear-stage .ear-question-meta {
-  justify-content: flex-start;
+  justify-content: center;
   margin-bottom: 12px;
   font-size: 0.7rem;
 }
@@ -3212,12 +3191,12 @@ button.ear-chord-result:focus-visible {
 
 .ear-answer-card .ear-answer-row {
   margin-top: 0;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .ear-answer-card .ear-answer-input {
   max-width: none;
-  text-align: left;
+  text-align: center;
 }
 
 .ear-answer-card .ear-hint {
@@ -3760,7 +3739,8 @@ button.ear-chord-result:focus-visible {
   top: 12px;
 }
 
-@media (max-width: 640px) {
+/* Below this the name would run into it. */
+@media (max-width: 760px) {
   .nav-practice,
   .is-compact .nav-practice {
     position: static;
@@ -3778,7 +3758,7 @@ button.ear-chord-result:focus-visible {
   margin: 0;
   padding: 4px;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
 }
 
 .nav-practice .practice-pin > span:first-child {

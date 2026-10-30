@@ -15,6 +15,11 @@ either machine. Newest first.
   the nav until Luke writes them. Book List is out of the nav too.
 - Video page is a grid of the playlist, read without an API key. 29 of the 34
   videos YouTube counts appear.
+- Home hero is smaller with no buttons, and the old graphic gave way to a red
+  night shot from `hero-photos-optimized` (Luke mentioned a Drive hero folder,
+  which wasn't found, so that one may get swapped).
+- Text is centered site-wide, Luke's preference. Bio, Credits and Book List stay
+  left as prose. "Logged in as: <first name>" replaces the bare name in the nav.
 
 ### Open items / ideas
 - Home page on one screen: still needs the reviews and map moved or shrunk.

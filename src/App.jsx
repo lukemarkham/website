@@ -353,15 +353,15 @@ const PRACTICE_PATHS = new Set([
   '/practice-stats',
 ])
 
-// The practice PIN, at the top right of every page: the student's name while
-// their time is being logged, "Log In" until then. The menu holds the PIN form,
-// the stats link and the way to change or stop.
+// The practice PIN, at the top right of every page: "Logged in as: <first name>"
+// once it's entered, "Log In" until then. The menu holds the PIN form, the stats
+// link and the way to change or stop.
 function NavPracticePin() {
   const person = usePracticePin()
   return (
     <div className="nav-dropdown is-end nav-practice">
       <button type="button" className="nav-link nav-trigger" aria-haspopup="menu">
-        {person ? <><span className="nav-practice-dot" aria-hidden="true" />{person.name.split(' ')[0]}</> : 'Log In'}
+        {person ? <><span className="nav-practice-dot" aria-hidden="true" />Logged in as: {person.name.split(' ')[0]}</> : 'Log In'}
       </button>
       <div className="nav-dropdown-menu" role="menu">
         <PracticePin />
@@ -605,14 +605,6 @@ function SiteNav() {
       <NavPracticePin />
     </nav>
   )
-}
-
-function PrimaryButton({ children }) {
-  return <button className="primary-button">{children}</button>
-}
-
-function SecondaryButton({ children }) {
-  return <button className="secondary-button">{children}</button>
 }
 
 // The saved reviews (src/data/reviews.js) plus any newer ones SoundBetter has
@@ -894,16 +886,7 @@ function HomePage() {
 
       <section className="hero-shell surface-panel" style={{ ...sectionStyle, padding: 'clamp(32px, 5vw, 60px)', marginBottom: '28px' }}>
         <div style={metaStyle}>Freelance Musician • Drummer • Producer</div>
-        <h1 style={titleStyle}>Drums, production, and musical support for artists who care about the details.</h1>
-
-        <div style={buttonRowStyle} className="hero-actions">
-          <Link to="/video">
-            <PrimaryButton>Watch Video Work</PrimaryButton>
-          </Link>
-          <Link to="/beats">
-            <SecondaryButton>View Beat Store</SecondaryButton>
-          </Link>
-        </div>
+        <h1 style={{ ...titleStyle, fontSize: 'clamp(28px, 3.6vw, 44px)', lineHeight: 1.08, maxWidth: '620px', margin: 0 }}>Drums, production, and musical support for artists who care about the details.</h1>
       </section>
 
       <SoundBetterSection />
