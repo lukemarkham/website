@@ -2691,7 +2691,9 @@ function PracticeSession({
     setIsPaused(true)
   }
 
-  function resume({ newFill = false } = {}) {
+  // `newFill` asks the session for the new item; `fresh` means the page has
+  // already put one up. Either way it gets the reveal and a fresh count-off.
+  function resume({ newFill = false, fresh = false } = {}) {
     const run = runRef.current
     const ctx = audioContextRef.current
     if (!run || !run.paused) {
@@ -2700,10 +2702,10 @@ function PracticeSession({
     }
 
     const now = ctx.currentTime
-    const startsAt = now + (newFill ? PRACTICE_REVEAL_MS / 1000 : 0) + 0.3
-    if (newFill) {
+    const startsAt = now + (newFill || fresh ? PRACTICE_REVEAL_MS / 1000 : 0) + 0.3
+    if (newFill || fresh) {
       setBanner(`New ${itemName}`)
-      onNewFillRef.current()
+      if (newFill) onNewFillRef.current()
     } else {
       setBanner(null)
     }
@@ -2743,10 +2745,19 @@ function PracticeSession({
     start(minutes)
   }
 
+  // A new item put up by hand mid-session: everything queued is dropped and
+  // the new one starts from its top after a fresh count-off, never from
+  // wherever the old one had got to. Does nothing when no session is running.
+  function restart() {
+    if (!runRef.current) return
+    pause()
+    resume({ fresh: true })
+  }
+
   // The page drives pause and resume around a downvote.
   useEffect(() => {
     if (!controlRef) return undefined
-    controlRef.current = { pause, resume }
+    controlRef.current = { pause, resume, restart }
     return () => {
       controlRef.current = null
     }
@@ -3918,9 +3929,6 @@ function IndependencePage() {
   const canVote = useCanVote()
   const sessionControlRef = useRef(null)
   const notation = useMemo(() => exerciseNotation(exercise), [exercise])
-  const newTempo = exercise.newTempoRatio
-    ? Math.round((exercise.tempo * exercise.newTempoRatio[0]) / exercise.newTempoRatio[1])
-    : null
 
   useEffect(() => {
     rememberInHistory('independence', exercise.key)
@@ -4056,26 +4064,6 @@ function IndependencePage() {
               New Exercise
             </button>
           </div>
-        </div>
-
-        <div className="surface-card independence-notes" style={cardStyle}>
-          <div className="stat-label">How To Play It</div>
-          <p style={mutedTextStyle}>{exercise.idea}</p>
-          {exercise.bars > 1 ? (
-            <p style={mutedTextStyle}>Comes back around after {exercise.bars} bars; a new exercise waits for the end of the cycle.</p>
-          ) : null}
-          {newTempo ? (
-            <p style={mutedTextStyle}>At {exercise.tempo} BPM, the new tempo is about {newTempo} BPM.</p>
-          ) : null}
-          <ul className="independence-parts">
-            {exercise.parts.map((item) => (
-              <li key={item.limb}>
-                <span className="independence-limb">{limbName(item.limb)}</span>
-                <span className="independence-part-instrument">{item.instrument}</span>
-                <span className="sticking-cell-name">{item.text}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <GeneratorFeedbackDialog
@@ -4365,9 +4353,12 @@ function SightReadingPage() {
     setUpvoted(null)
   }
 
+  // A piece picked by hand mid-session always starts from the top: the
+  // session stops and counts the new piece in.
   function generateByHand(next) {
     generate(next)
     setManualCount((count) => count + 1)
+    sessionControlRef.current?.restart()
   }
 
   function updateTempoRange(nextRange) {
@@ -4603,30 +4594,6 @@ function SightReadingPage() {
               New Phrase
             </button>
           </div>
-        </div>
-
-        <div className="surface-card" style={cardStyle}>
-          <div className="stat-label">How To Play It</div>
-          <ol className="set-ups-list">
-            {phrase.descriptions.map((description, index) => (
-              <li key={index} style={mutedTextStyle}>{description}</li>
-            ))}
-          </ol>
-          <p style={mutedTextStyle}>
-            Slashes with stems inside a fill bracket are band hits in the middle of the fill: catch them and
-            keep filling. A roof-top accent (^) is short and punched; an accent (&gt;) is held for its full length; a line
-            (tenuto) is held for a full quarter; a dot is short and light. The figures outside the brackets are rhythm cues: catch them on the snare, or just
-            read them while you keep time.
-          </p>
-          <p style={mutedTextStyle}>
-            The words over the staff are the directions a real chart gives. "2 feel" means the bass plays half
-            notes, so keep it light until it says "Walk" or "In 4".
-            "To ride", "To hi-hats", "Cross stick", "Cáscara" and "To bell" tell you what to play time on, and "Time"
-            brings the groove back after a solo. A "SOLO" bracket is yours: when trading, the band lays out
-            completely for your turn; around figures, the band plays only the written hits. At an end repeat (the
-            thick barline with dots and wings) go back to the start repeat; "3x" or "4x" over it says how many
-            times through in all.
-          </p>
         </div>
 
         <GeneratorFeedbackDialog

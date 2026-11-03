@@ -3,6 +3,18 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-11-03 — Sight Reading: new piece starts from the top
+
+- A student found that New Phrase mid-session sometimes started the new piece
+  at the bar the old one had reached: the session's beat count ran on under
+  the swapped chart. A piece picked by hand mid-session (New Phrase or any
+  setting chip) now stops the session and counts the new one in from bar 1
+  (`restart` on `PracticeSession`'s `controlRef`). The session clock carries on.
+- The "How To Play It" cards under the Sight Reading and Independence charts
+  are gone (Independence's held the exercise idea, the limb-by-limb list and
+  the metric-modulation tempo; the chart's screen-reader label still lists
+  the limbs).
+
 ## 2026-10-30 — Rudiments tool
 
 - `/rudiments`, under Drums: every PAS rudiment engraved from the 2024 PAS sheet
