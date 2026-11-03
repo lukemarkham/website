@@ -677,7 +677,7 @@ function ReviewGallery() {
 
     const intervalId = window.setInterval(() => {
       showReview((currentIndex + 1) % totalReviews)
-    }, 5500)
+    }, 8000)
 
     return () => {
       window.clearInterval(intervalId)
@@ -794,16 +794,10 @@ function SoundBetterSection() {
     <section id="soundbetter" className="surface-panel" style={sectionStyle}>
       <div className="soundbetter-grid">
         <div className="soundbetter-column">
-          <div className="soundbetter-column-header">
-            <span className="soundbetter-kicker">5-Star SoundBetter Reviews</span>
-          </div>
           <ReviewGallery />
         </div>
 
         <div className="soundbetter-column">
-          <div className="soundbetter-column-header">
-            <span className="soundbetter-kicker">Client Map</span>
-          </div>
           <ClientMapSection />
         </div>
       </div>

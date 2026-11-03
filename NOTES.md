@@ -14,6 +14,8 @@ either machine. Newest first.
   are gone (Independence's held the exercise idea, the limb-by-limb list and
   the metric-modulation tempo; the chart's screen-reader label still lists
   the limbs).
+- Home page: the review gallery advances every 8 s (was 5.5 s), and the
+  "5-Star SoundBetter Reviews" and "Client Map" titles are gone.
 
 ## 2026-10-30 — Rudiments tool
 

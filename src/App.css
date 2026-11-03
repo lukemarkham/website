@@ -487,20 +487,6 @@ h3 {
 
 .soundbetter-column {
   display: grid;
-  gap: 14px;
-  grid-template-rows: auto 1fr;
-}
-
-.soundbetter-column-header {
-  text-align: center;
-}
-
-.soundbetter-kicker {
-  color: var(--accent-warm);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .review-stage {
