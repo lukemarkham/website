@@ -80,7 +80,10 @@ Every practice tool gets a session timer. Drop in the shared `<PracticeTimer />`
 their own Start/Stop transport, like the metronome and the drum generators,
 run the countdown off that transport instead, finishing with
 `playSessionCompleteSound`. Every timer's end also opens the shared
-`<SessionCompleteDialog />` (add 5, 10 or a chosen number of minutes).
+`<SessionCompleteDialog />` (add 5, 10 or a chosen number of minutes, or
+"Until I stop": no limit, the clock counts the extra time up as `+m:ss`, and
+the tool's Stop becomes Finish; on the metronomes Finish reopens the dialog so
+the time is still asked drums or keys).
 Time running out never cuts off an exercise in progress: the timer reads
 "Finishing" and the session ends once the exercise does. `PracticeSession`
 plays the current cycle out; with `<PracticeTimer />`, pass `busy` while a

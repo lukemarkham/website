@@ -3690,6 +3690,14 @@ button.ear-chord-result:focus-visible {
   width: auto;
 }
 
+.session-complete-options {
+  flex-wrap: wrap;
+}
+
+.session-complete-options button {
+  white-space: nowrap;
+}
+
 .session-complete .control-input {
   width: 110px;
   text-align: center;

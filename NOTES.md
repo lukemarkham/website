@@ -3,6 +3,21 @@
 A running log of what changed and what's still open, so work can pick up on
 either machine. Newest first.
 
+## 2026-11-12 — "Until I stop" on a session's end
+
+- The Session complete dialog has a third option next to +5/+10 min: "Until
+  I stop". The tool (and its click) carries on with no limit; the timer counts
+  the extra time up as `+m:ss`, and Stop becomes Finish. Covers the shared
+  `PracticeTimer` (Pause and Finish), the drum generators' `PracticeSession`,
+  the metronome page and the floating metronome.
+- On the metronomes, Finish reopens the dialog so the extra time is still
+  sorted into drums/keys like the timed part; it's held until Done. Other
+  tools log it as usual.
+- Checked in Chrome on Tempo Guessr and the metronome page (clock sped up);
+  the drum generators' version wasn't run in a browser.
+- `src/lib/independence.js` had uncommitted edits from earlier (dropping the
+  `idea` text now that How To Play It is gone); left as they were.
+
 ## 2026-11-03 — Sight Reading: new piece starts from the top
 
 - A student found that New Phrase mid-session sometimes started the new piece

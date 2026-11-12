@@ -1485,10 +1485,11 @@ function formatSessionTime(totalSeconds) {
 // generator run theirs off their Start button instead. It keeps time against
 // the wall clock, so a throttled background tab still ends on time.
 // Shown by every session timer when it runs out: the session is done, or
-// carry on for 5 or 10 more minutes, or a number of your own. With
+// carry on for 5 or 10 more minutes, a number of your own, or (with
+// `onKeepGoing`) with no limit until the player stops it. With
 // `categories`, it also asks what the session counts as, and for a category
 // with `parts`, which kind of it.
-function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, category, onCategoryChange }) {
+function SessionCompleteDialog({ open, onAddMinutes, onKeepGoing, onClose, categories, category, onCategoryChange }) {
   const dialogRef = useRef(null)
   const [customMinutes, setCustomMinutes] = useState('')
 
@@ -1554,6 +1555,18 @@ function SessionCompleteDialog({ open, onAddMinutes, onClose, categories, catego
         <div className="session-complete-options">
           <button className="secondary-button" type="button" onClick={() => add(5)}>+5 min</button>
           <button className="secondary-button" type="button" onClick={() => add(10)}>+10 min</button>
+          {onKeepGoing ? (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => {
+                setCustomMinutes('')
+                onKeepGoing()
+              }}
+            >
+              Until I stop
+            </button>
+          ) : null}
         </div>
         <div className="session-complete-custom">
           <input
@@ -1587,8 +1600,13 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
   const [status, setStatus] = useState('idle')
   const [remaining, setRemaining] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
+  // After "Until I stop" the clock counts up from the session's end until
+  // Finish is pressed.
+  const [isOpenEnded, setIsOpenEnded] = useState(false)
+  const [overtime, setOvertime] = useState(0)
   useScreenWakeLock(status === 'running' || status === 'finishing')
   const endsAtRef = useRef(null)
+  const openSinceRef = useRef(null)
   const pausedMsRef = useRef(null)
   const tickRef = useRef(null)
   const audioContextRef = useRef(null)
@@ -1645,6 +1663,26 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
     }, 250)
   }
 
+  function runOpen(alreadyMs) {
+    openSinceRef.current = Date.now() - alreadyMs
+    setStatus('running')
+    setOvertime(Math.floor(alreadyMs / 1000))
+    window.clearInterval(tickRef.current)
+    tickRef.current = window.setInterval(() => {
+      setOvertime(Math.floor((Date.now() - openSinceRef.current) / 1000))
+    }, 250)
+  }
+
+  // Finish on an open-ended session ends it there and then, without the
+  // dialog: the player chose to stop.
+  function finishOpen() {
+    halt()
+    setIsOpenEnded(false)
+    setStatus('done')
+    setRemaining(0)
+    onCompleteRef.current?.()
+  }
+
   function start() {
     // The chime at the end needs an audio context that was opened by a click.
     if (!audioContextRef.current) {
@@ -1659,13 +1697,14 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
   }
 
   function pause() {
-    pausedMsRef.current = endsAtRef.current - Date.now()
+    pausedMsRef.current = isOpenEnded ? Date.now() - openSinceRef.current : endsAtRef.current - Date.now()
     halt()
     setStatus('paused')
   }
 
   function reset() {
     halt()
+    setIsOpenEnded(false)
     setStatus('idle')
     setRemaining(null)
   }
@@ -1694,20 +1733,32 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
       ) : (
         <>
           <div className="practice-timer-clock" aria-live="polite">
-            {status === 'done' ? 'Session complete' : status === 'finishing' ? 'Finishing' : formatSessionTime(remaining)}
+            {status === 'done'
+              ? 'Session complete'
+              : status === 'finishing'
+                ? 'Finishing'
+                : isOpenEnded ? formatOvertime(overtime) : formatSessionTime(remaining)}
           </div>
           <div className="practice-timer-row">
             {status === 'running' ? (
               <button className="secondary-button" type="button" onClick={pause}>Pause</button>
             ) : null}
             {status === 'paused' ? (
-              <button className="secondary-button" type="button" onClick={() => run(pausedMsRef.current)}>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => (isOpenEnded ? runOpen(pausedMsRef.current) : run(pausedMsRef.current))}
+              >
                 Resume
               </button>
             ) : null}
-            <button className="secondary-button" type="button" onClick={reset}>
-              {status === 'done' ? 'New Session' : 'Reset'}
-            </button>
+            {isOpenEnded ? (
+              <button className="secondary-button" type="button" onClick={finishOpen}>Finish</button>
+            ) : (
+              <button className="secondary-button" type="button" onClick={reset}>
+                {status === 'done' ? 'New Session' : 'Reset'}
+              </button>
+            )}
           </div>
         </>
       )}
@@ -1717,6 +1768,11 @@ function PracticeTimer({ tool, onComplete, busy = false, defaultMinutes = DEFAUL
         onAddMinutes={(minutes) => {
           setIsCompleteOpen(false)
           run(minutes * 60 * 1000)
+        }}
+        onKeepGoing={() => {
+          setIsCompleteOpen(false)
+          setIsOpenEnded(true)
+          runOpen(0)
         }}
       />
     </div>
@@ -1736,7 +1792,11 @@ function MetronomePage() {
   const [remainingSessionSeconds, setRemainingSessionSeconds] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [category, setCategory] = useState('metronome')
-  const holdsPractice = isPlaying ? remainingSessionSeconds !== null : isCompleteOpen
+  // After "Until I stop": the click carries on and the time counts up until
+  // Finish, which asks what it counts as like a timed end does.
+  const [overtimeSeconds, setOvertimeSeconds] = useState(null)
+  const isOpenEnded = overtimeSeconds !== null
+  const holdsPractice = isPlaying ? remainingSessionSeconds !== null || isOpenEnded : isCompleteOpen
   usePracticeLog('metronome', isPlaying, { hold: holdsPractice, background: true })
   useScreenWakeLock(isPlaying)
   const [activeTick, setActiveTick] = useState(null)
@@ -1893,7 +1953,7 @@ function MetronomePage() {
     }
   }
 
-  async function startMetronome(minutes = sessionMinutes) {
+  async function startMetronome(minutes = sessionMinutes, { openEnded = false } = {}) {
     if (isPlaying) return
 
     const ctx = await getAudioContext()
@@ -1920,6 +1980,9 @@ function MetronomePage() {
       sessionTimeoutRef.current = window.setTimeout(() => {
         stopMetronome({ playCompletion: true })
       }, sessionDurationMs)
+    } else if (openEnded) {
+      setRemainingSessionSeconds(null)
+      sessionCountdownRef.current = startWallClockCountUp(setOvertimeSeconds)
     } else {
       setRemainingSessionSeconds(null)
     }
@@ -1945,17 +2008,19 @@ function MetronomePage() {
     visualTimeoutsRef.current = []
     setActiveTick(null)
     setRemainingSessionSeconds(null)
+    setOvertimeSeconds(null)
     setIsPlaying(false)
 
     if (options.playCompletion && audioContextRef.current) {
       playSessionCompleteSound(audioContextRef.current)
       setIsCompleteOpen(true)
     }
+    if (options.finish) setIsCompleteOpen(true)
   }
 
   function toggleMetronome() {
     if (isPlaying) {
-      stopMetronome()
+      stopMetronome({ finish: isOpenEnded })
     } else {
       startMetronome()
     }
@@ -2045,12 +2110,14 @@ function MetronomePage() {
               disabled={isPlaying}
             />
             <span className="metronome-bpm">
-              {remainingSessionSeconds === null ? 'Min' : formatSessionTime(remainingSessionSeconds)}
+              {isOpenEnded
+                ? formatOvertime(overtimeSeconds)
+                : remainingSessionSeconds === null ? 'Min' : formatSessionTime(remainingSessionSeconds)}
             </span>
           </div>
 
           <button className="primary-button" type="button" onClick={toggleMetronome}>
-            {isPlaying ? 'Stop' : 'Start'}
+            {isOpenEnded ? 'Finish' : isPlaying ? 'Stop' : 'Start'}
           </button>
         </div>
 
@@ -2196,6 +2263,10 @@ function MetronomePage() {
         onAddMinutes={(minutes) => {
           setIsCompleteOpen(false)
           startMetronome(minutes)
+        }}
+        onKeepGoing={() => {
+          setIsCompleteOpen(false)
+          startMetronome(0, { openEnded: true })
         }}
         categories={METRONOME_CATEGORIES}
         category={category}
@@ -2635,6 +2706,7 @@ function PracticeSession({
     setClock({
       session: run.sessionEndsAt === null ? null : Math.max(0, Math.ceil(run.sessionEndsAt - now)),
       finishing: run.sessionEndsAt !== null && now >= run.sessionEndsAt,
+      overtime: run.openSince === null ? null : Math.max(0, Math.floor(now - run.openSince)),
       nextFill: run.nextFillAt === null ? null : Math.max(0, Math.ceil(run.nextFillAt - now)),
     })
   }
@@ -2647,7 +2719,9 @@ function PracticeSession({
     clockRef.current = window.setInterval(() => updateClock(ctx), 200)
   }
 
-  async function start(minutes = sessionMinutes) {
+  // `openEnded` is "Until I stop" on the session's end: no limit, and the
+  // readout counts the extra time up from there.
+  async function start(minutes = sessionMinutes, { openEnded = false } = {}) {
     const ctx = await getAudioContext()
     const startsAt = ctx.currentTime + 0.08
     const sessionSeconds = clampWholeNumber(minutes, 0, 240) * 60
@@ -2656,6 +2730,7 @@ function PracticeSession({
       nextBeatTime: startsAt,
       beatIndex: 0,
       rotationSeconds,
+      openSince: openEnded ? ctx.currentTime : null,
       sessionEndsAt: sessionSeconds > 0 ? startsAt + sessionSeconds : null,
       finishAt: null,
       nextFillAt: null,
@@ -2678,6 +2753,7 @@ function PracticeSession({
     clearVisualTimeouts()
     run.paused = {
       sessionLeft: run.sessionEndsAt === null ? null : Math.max(0, run.sessionEndsAt - ctx.currentTime),
+      overtime: run.openSince === null ? null : ctx.currentTime - run.openSince,
     }
     run.finishAt = null
     setActiveBeat(null)
@@ -2705,6 +2781,7 @@ function PracticeSession({
     }
 
     run.sessionEndsAt = run.paused.sessionLeft === null ? null : now + run.paused.sessionLeft
+    run.openSince = run.paused.overtime === null ? null : now - run.paused.overtime
     run.nextBeatTime = startsAt
     run.beatIndex = 0
     run.nextFillAt = null
@@ -2721,7 +2798,7 @@ function PracticeSession({
     setIsPaused(false)
     setActiveBeat(null)
     setBanner(null)
-    setClock({ session: null, nextFill: null })
+    setClock({ session: null, nextFill: null, overtime: null })
     setIsPlaying(false)
     onRunningChangeRef.current?.(false)
 
@@ -2737,6 +2814,12 @@ function PracticeSession({
     setIsCompleteOpen(false)
     onNewFillRef.current()
     start(minutes)
+  }
+
+  function keepGoing() {
+    setIsCompleteOpen(false)
+    onNewFillRef.current()
+    start(0, { openEnded: true })
   }
 
   // A new item put up by hand mid-session: everything queued is dropped and
@@ -2796,7 +2879,7 @@ function PracticeSession({
         </div>
 
         <button className="primary-button" type="button" onClick={() => (isPlaying ? stop() : start())}>
-          {isPlaying ? 'Stop' : 'Start Session'}
+          {isPlaying ? (clock.overtime != null ? 'Finish' : 'Stop') : 'Start Session'}
         </button>
       </div>
 
@@ -2822,7 +2905,9 @@ function PracticeSession({
             <span className="stat-label">Session</span>
             {clock.finishing
               ? 'Finishing'
-              : clock.session !== null
+              : clock.overtime != null
+                ? formatOvertime(clock.overtime)
+                : clock.session !== null
                 ? formatSessionTime(clock.session)
                 : sessionMinutes > 0 ? formatSessionTime(sessionMinutes * 60) : 'Open'}
           </span>
@@ -2836,7 +2921,12 @@ function PracticeSession({
           </span>
         </div>
       </div>
-      <SessionCompleteDialog open={isCompleteOpen} onClose={() => setIsCompleteOpen(false)} onAddMinutes={addMinutes} />
+      <SessionCompleteDialog
+        open={isCompleteOpen}
+        onClose={() => setIsCompleteOpen(false)}
+        onAddMinutes={addMinutes}
+        onKeepGoing={keepGoing}
+      />
     </div>
   )
 }
@@ -6464,6 +6554,18 @@ function startWallClockCountdown(seconds, onTick, onDone) {
   return intervalId
 }
 
+// After "Until I stop" on a session's end: counts the extra time up from 0,
+// against the wall clock. Returns the interval id.
+function startWallClockCountUp(onTick) {
+  const startedAt = Date.now()
+  onTick(0)
+  return window.setInterval(() => onTick(Math.floor((Date.now() - startedAt) / 1000)), 250)
+}
+
+function formatOvertime(seconds) {
+  return `+${formatSessionTime(seconds)}`
+}
+
 function readFloatingMetronomeSettings() {
   try {
     const stored = JSON.parse(window.localStorage.getItem(FLOATING_METRONOME_KEY) || '{}')
@@ -6494,7 +6596,10 @@ function FloatingMetronomeControls() {
   const [remainingSeconds, setRemainingSeconds] = useState(null)
   const [isCompleteOpen, setIsCompleteOpen] = useState(false)
   const [category, setCategory] = useState('metronome')
-  const holdsPractice = isPlaying ? remainingSeconds !== null : isCompleteOpen
+  // After "Until I stop", as on the metronome page.
+  const [overtimeSeconds, setOvertimeSeconds] = useState(null)
+  const isOpenEnded = overtimeSeconds !== null
+  const holdsPractice = isPlaying ? remainingSeconds !== null || isOpenEnded : isCompleteOpen
   usePracticeLog('metronome', isPlaying, { hold: holdsPractice, background: true })
   useScreenWakeLock(isPlaying)
   const audioContextRef = useRef(null)
@@ -6613,7 +6718,7 @@ function FloatingMetronomeControls() {
     sessionIntervalRef.current = startWallClockCountdown(minutes * 60, setRemainingSeconds, () => stop({ playCompletion: true }))
   }
 
-  function stop({ playCompletion = false } = {}) {
+  function stop({ playCompletion = false, finish = false } = {}) {
     window.clearInterval(schedulerRef.current)
     window.clearInterval(sessionIntervalRef.current)
     schedulerRef.current = null
@@ -6622,16 +6727,18 @@ function FloatingMetronomeControls() {
     visualTimeoutsRef.current = []
     setActiveBeat(null)
     setRemainingSeconds(null)
+    setOvertimeSeconds(null)
     setIsPlaying(false)
     if (playCompletion && audioContextRef.current) {
       playSessionCompleteSound(audioContextRef.current)
       setIsCompleteOpen(true)
     }
+    if (finish) setIsCompleteOpen(true)
   }
 
   function togglePlayback() {
     if (isPlaying) {
-      stop()
+      stop({ finish: isOpenEnded })
     } else {
       startSessionTimer()
       start()
@@ -6729,9 +6836,11 @@ function FloatingMetronomeControls() {
           className={`floating-metronome-play${activeBeat != null ? ' is-pulsing' : ''}`}
           type="button"
           onClick={togglePlayback}
-          aria-label={isPlaying ? 'Pause metronome' : 'Play metronome'}
+          aria-label={isOpenEnded ? 'Finish session' : isPlaying ? 'Pause metronome' : 'Play metronome'}
         >
-          {isPlaying ? (
+          {isOpenEnded ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+          ) : isPlaying ? (
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
           ) : (
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" /></svg>
@@ -6751,7 +6860,9 @@ function FloatingMetronomeControls() {
           }}
           aria-label="Tempo in BPM"
         />
-        <span className="floating-metronome-unit">{remainingSeconds != null ? formatSessionTime(remainingSeconds) : 'BPM'}</span>
+        <span className="floating-metronome-unit">{isOpenEnded
+            ? formatOvertime(overtimeSeconds)
+            : remainingSeconds != null ? formatSessionTime(remainingSeconds) : 'BPM'}</span>
         <button
           className="floating-metronome-toggle"
           type="button"
@@ -6772,6 +6883,11 @@ function FloatingMetronomeControls() {
         onAddMinutes={(minutes) => {
           setIsCompleteOpen(false)
           startSessionTimer(minutes)
+          start()
+        }}
+        onKeepGoing={() => {
+          setIsCompleteOpen(false)
+          sessionIntervalRef.current = startWallClockCountUp(setOvertimeSeconds)
           start()
         }}
         categories={METRONOME_CATEGORIES}
